@@ -1,12 +1,10 @@
 import traceback
 from pathlib import Path
 
-import imageio
 import numpy
 import pims
 import skimage
 from czifile import czifile
-from tifffile import tifffile
 
 
 def imread(path):

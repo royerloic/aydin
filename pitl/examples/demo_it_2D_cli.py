@@ -1,5 +1,5 @@
 import numpy as np
-from napari.util import app_context
+
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr

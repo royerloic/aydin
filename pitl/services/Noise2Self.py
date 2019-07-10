@@ -29,7 +29,6 @@ class Noise2Self:
 
         regressor = GBMRegressor(learning_rate=0.01,
                                  num_leaves=256,
-                                 max_depth=8,
                                  n_estimators=1024,
                                  early_stopping_rounds=20)
 
