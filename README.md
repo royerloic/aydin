@@ -5,7 +5,12 @@ Portable Image Translation Learning
 
 ## setup anaconda:
 
-conda env create -f condaenv.yml
+```bash
+conda create --name pitl python=3.6
+source activate pitl
+pip install -r requirements.txt
+```
+
 
 ## example:
 
