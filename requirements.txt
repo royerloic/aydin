@@ -1,3 +1,4 @@
+black>=19.3b0
 certifi==2019.6.16
 Click==7.0
 czifile==2019.7.2
@@ -10,6 +11,7 @@ lightgbm==2.2.1
 matplotlib==3.1.0
 numpy==1.16.4
 PIMS==0.4.1
+pre-commit>=1.16.1
 psutil==5.6.3
 pyopencl==2019.1
 PyQt5==5.13.0
