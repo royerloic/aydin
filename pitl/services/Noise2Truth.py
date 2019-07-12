@@ -25,14 +25,17 @@ class Noise2Truth:
         :return: denoised version of the input image, will be np compatible
         """
 
-        generator = MultiscaleConvolutionalFeatures(kernel_widths=Noise2Truth.widths,
-                                                    kernel_scales=Noise2Truth.scales,
-                                                    exclude_center=False)
+        generator = MultiscaleConvolutionalFeatures(
+            kernel_widths=Noise2Truth.widths,
+            kernel_scales=Noise2Truth.scales,
+            exclude_center=False,
+        )
 
-        regressor = GBMRegressor(num_leaves=63,
-                                 n_estimators=512)
+        regressor = GBMRegressor(num_leaves=63, n_estimators=512)
 
         it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)
 
-        denoised = it.train(noisy_image, image) # TODO: figure out what is going on with return
+        denoised = it.train(
+            noisy_image, image
+        )  # TODO: figure out what is going on with return
         return it.translate(noisy_test)

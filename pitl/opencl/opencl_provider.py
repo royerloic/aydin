@@ -6,7 +6,6 @@ from pyopencl._cl import get_platforms
 
 
 class OpenCLProvider:
-
     def __init__(self, includes=[], excludes=['CPU']):
 
         os.environ['PYOPENCL_NO_CACHE'] = '1'
@@ -25,9 +24,12 @@ class OpenCLProvider:
 
         self.program_cache = {}
 
-
     def get_all_devices(self):
-        return list(itertools.chain.from_iterable([platform.get_devices() for platform in get_platforms()]))
+        return list(
+            itertools.chain.from_iterable(
+                [platform.get_devices() for platform in get_platforms()]
+            )
+        )
 
     def get_filtered_device_list(self, includes=[], excludes=[], sort_by_mem_size=True):
         valid_devices = []
@@ -57,6 +59,3 @@ class OpenCLProvider:
             program = cl.Program(self.context, program_code).build()
             self.program_cache[program_code] = program
             return program
-
-
-

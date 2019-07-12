@@ -1,12 +1,23 @@
-
-def compute_feature_3d(generator, image_gpu, feature_gpu, dx, dy, dz, lx, ly, lz, exclude_center=True, reduction='sum'):
+def compute_feature_3d(
+    generator,
+    image_gpu,
+    feature_gpu,
+    dx,
+    dy,
+    dz,
+    lx,
+    ly,
+    lz,
+    exclude_center=True,
+    reduction='sum',
+):
     """
     Compute a given feature for a displacement (dx,dy,dz) relative to the center pixel, and a patch size (lx,ly,lz)
 
     """
-    image_x  = image_gpu.shape[2]
-    image_y  = image_gpu.shape[1]
-    image_z  = image_gpu.shape[0]
+    image_x = image_gpu.shape[2]
+    image_y = image_gpu.shape[1]
+    image_z = image_gpu.shape[0]
 
     rx = lx // 2
     ry = ly // 2
@@ -83,4 +94,10 @@ def compute_feature_3d(generator, image_gpu, feature_gpu, dx, dy, dz, lx, ly, lz
 
     feature_kernel = program.feature_kernel
 
-    feature_kernel(generator.opencl_provider.queue, image_gpu.shape, None, image_gpu.data, feature_gpu.data)
+    feature_kernel(
+        generator.opencl_provider.queue,
+        image_gpu.shape,
+        None,
+        image_gpu.data,
+        feature_gpu.data,
+    )

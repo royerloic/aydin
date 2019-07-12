@@ -1,6 +1,14 @@
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, QLabel, QProgressBar, QPlainTextEdit, \
-    QSplitter
+from PyQt5.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QPushButton,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPlainTextEdit,
+    QSplitter,
+)
 
 from pitl.gui.components.filepath_picker import FilePathPicker
 
@@ -19,7 +27,9 @@ class Noise2TruthTab(QWidget):
         paths_layout = QVBoxLayout()
         paths_layout.addWidget(QLabel("Path for the input training noisy images: "))
         paths_layout.addWidget(FilePathPicker())
-        paths_layout.addWidget(QLabel("Path for the input training groundtruth images: "))
+        paths_layout.addWidget(
+            QLabel("Path for the input training groundtruth images: ")
+        )
         paths_layout.addWidget(FilePathPicker())
         paths_layout.addWidget(QLabel("Path for the input test noisy images: "))
         paths_layout.addWidget(FilePathPicker())
@@ -30,7 +40,6 @@ class Noise2TruthTab(QWidget):
         buttons_layout = QHBoxLayout()
         buttons_layout.addWidget(QPushButton("Train"))
         buttons_layout.addWidget(QPushButton("Test"))
-
 
         # Build splitter
         def_splitter = QSplitter(Qt.Vertical)

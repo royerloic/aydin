@@ -26,17 +26,20 @@ def test_lgbm_regressor():
     scales = [1, 3, 7, 15]
     widths = [3, 3, 3, 3]
 
-    generator = MultiscaleConvolutionalFeatures(kernel_widths=widths,
-                                                kernel_scales=scales,
-                                                kernel_shapes=['l1'] * len(scales),
-                                                exclude_center=True,
-                                                )
+    generator = MultiscaleConvolutionalFeatures(
+        kernel_widths=widths,
+        kernel_scales=scales,
+        kernel_shapes=['l1'] * len(scales),
+        exclude_center=True,
+    )
 
-    regressor = GBMRegressor(learning_rate=0.01,
-                             num_leaves=127,
-                             max_bin=512,
-                             n_estimators=512,
-                             early_stopping_rounds=20)
+    regressor = GBMRegressor(
+        learning_rate=0.01,
+        num_leaves=127,
+        max_bin=512,
+        n_estimators=512,
+        early_stopping_rounds=20,
+    )
 
     features = generator.compute(noisy)
 
@@ -57,7 +60,13 @@ def test_lgbm_regressor():
     if display:
         with app_context():
             viewer = Viewer()
-            viewer.add_image(rescale_intensity(image, in_range='image', out_range=(0, 1)), name='image')
-            viewer.add_image(rescale_intensity(denoised, in_range='image', out_range=(0, 1)), name='denoised')
+            viewer.add_image(
+                rescale_intensity(image, in_range='image', out_range=(0, 1)),
+                name='image',
+            )
+            viewer.add_image(
+                rescale_intensity(denoised, in_range='image', out_range=(0, 1)),
+                name='denoised',
+            )
 
     assert ssim_value > 0.84

@@ -17,6 +17,7 @@ def demo_examples():
         array, metadata = io.imread(example_file_path)
 
         from napari import ViewerApp
+
         with app_context():
             viewer = ViewerApp()
             viewer.add_image(array, name='image')

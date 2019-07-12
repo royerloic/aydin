@@ -14,20 +14,17 @@ class LinearRegressor:
 
     linear: LinearRegression
 
-    def __init__(self,
-                 mode = 'Lasso'
-                 ):
+    def __init__(self, mode='Lasso'):
         """
         Constructs a linear regressor.
 
         """
-        if mode=='lasso':
+        if mode == 'lasso':
             self.linear = Lasso(alpha=0.1)
-        elif mode=='huber':
+        elif mode == 'huber':
             self.linear = HuberRegressor()
-        elif mode=='linear':
+        elif mode == 'linear':
             self.linear = LinearRegression()
-
 
     def fit(self, x_train, y_train, x_valid=None, y_valid=None):
         """

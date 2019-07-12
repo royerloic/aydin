@@ -17,16 +17,15 @@ class SupportVectorRegressor:
 
     svr: SVR
 
-    def __init__(self, linear = True):
+    def __init__(self, linear=True):
         """
         Constructs a linear regressor.
 
         """
         if linear:
-            self.svr = LinearSVR() #gamma='scale')
+            self.svr = LinearSVR()  # gamma='scale')
         else:
             self.svr = SVR(gamma='scale')
-
 
     def fit(self, x_train, y_train, x_valid=None, y_valid=None):
         """

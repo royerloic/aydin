@@ -9,7 +9,6 @@ from pitl.gui.tabs.tabs import Tabs
 
 
 class App(QMainWindow):
-
     def __init__(self):
         super().__init__()
 
@@ -24,10 +23,10 @@ class App(QMainWindow):
         self.setGeometry(self.left, self.top, self.width, self.height)
 
         self.tabs = Tabs(self, self.threadpool)
-        #self.log_console = LogConsole(self)
+        # self.log_console = LogConsole(self)
         self.main_widget = QSplitter(Qt.Vertical)
         self.main_widget.addWidget(self.tabs)
-        #self.main_widget.addWidget(self.log_console)
+        # self.main_widget.addWidget(self.log_console)
         self.main_widget.setSizes([1, 0])
         self.setCentralWidget(self.main_widget)
 

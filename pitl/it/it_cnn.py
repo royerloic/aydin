@@ -19,13 +19,9 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         """
         self.debug_log = True
 
-
         self.self_supervised = None
 
-
-    def train(self,
-              input_image,
-              target_image):
+    def train(self, input_image, target_image):
         """
             Train to translate a given input image to a given output image
         :param input_image:
