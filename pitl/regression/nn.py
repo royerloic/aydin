@@ -10,10 +10,10 @@ from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 import numpy as np
 from keras import optimizers
 
+
 class Modeltype(Enum):
     Perceptron = 0
     Convolutional = 1
-
 
 
 class CNNRegressor:
@@ -22,19 +22,20 @@ class CNNRegressor:
 
     """
 
-#    nnreg: NNRegressor
+    #    nnreg: NNRegressor
 
-    def __init__(self,
-                 mode = Modeltype.Perceptron,
-                 #                 feature_dim=9,
-                 #                 max_depth=-1,
-                 #                 num_layers,
-                 net_width=128,
-                 kernel_size = 16,
-                 learning_rate=0.001,
-                 #                 eval_metric='l1',
-                 early_stopping_rounds=5
-                 ):
+    def __init__(
+        self,
+        mode=Modeltype.Perceptron,
+        #                 feature_dim=9,
+        #                 max_depth=-1,
+        #                 num_layers,
+        net_width=128,
+        kernel_size=16,
+        learning_rate=0.001,
+        #                 eval_metric='l1',
+        early_stopping_rounds=5,
+    ):
         """
         Constructs a LightGBM regressor.
 
@@ -56,18 +57,22 @@ class CNNRegressor:
         self.learning_rate = learning_rate
         self.kernel_size = kernel_size
         self.cnnreg = None
-        self.EStop = EarlyStopping(monitor='val_loss',
-                                   min_delta=0,
-                                   patience=early_stopping_rounds,
-                                   verbose=1, mode='auto')
+        self.EStop = EarlyStopping(
+            monitor='val_loss',
+            min_delta=0,
+            patience=early_stopping_rounds,
+            verbose=1,
+            mode='auto',
+        )
 
-        self.ReduceLR = ReduceLROnPlateau(monitor='val_loss',
-                                          factor=0.1,
-                                          verbose=1,
-                                          patience=3,
-                                          mode='auto',
-                                          min_lr=1e-8)
-        
+        self.ReduceLR = ReduceLROnPlateau(
+            monitor='val_loss',
+            factor=0.1,
+            verbose=1,
+            patience=3,
+            mode='auto',
+            min_lr=1e-8,
+        )
 
     def fit(self, x_train, y_train, x_test, y_test):
         """
@@ -83,24 +88,30 @@ class CNNRegressor:
         :param y_test:
         :type y_test:
         """
-        
-        def fc_bn(x, unit=1, act='relu', lyrname = None):
-            x = Dense(unit, name = lyrname + 'fc')(x)
-            x = BatchNormalization(name = lyrname + 'bn')(x)
-            return Activation(act, name = lyrname + 'act')(x)
-        
-        def conv1d_bn(x, unit, k_size, act='relu', lyrname = None):
-            x = Conv1D(unit, k_size, padding='same', name = lyrname + 'fc')(x)
-            x = BatchNormalization(name = lyrname + 'bn')(x)
-            return Activation(act, name = lyrname + 'act')(x)
+
+        def fc_bn(x, unit=1, act='relu', lyrname=None):
+            x = Dense(unit, name=lyrname + 'fc')(x)
+            x = BatchNormalization(name=lyrname + 'bn')(x)
+            return Activation(act, name=lyrname + 'act')(x)
+
+        def conv1d_bn(x, unit, k_size, act='relu', lyrname=None):
+            x = Conv1D(unit, k_size, padding='same', name=lyrname + 'fc')(x)
+            x = BatchNormalization(name=lyrname + 'bn')(x)
+            return Activation(act, name=lyrname + 'act')(x)
 
         feature_dim = x_train.shape[-1]
         # self.feature_dim = feature_dim
         input_feature = Input(shape=(1, feature_dim), name='input')
 
         if self.mode:
-            x = Conv1D(self.n_estimators, 1, padding='same', trainable = False,
-                       name='randomize_lyr', activation='linear')(input_feature)
+            x = Conv1D(
+                self.n_estimators,
+                1,
+                padding='same',
+                trainable=False,
+                name='randomize_lyr',
+                activation='linear',
+            )(input_feature)
             x = conv1d_bn(x, self.n_estimators, self.kernel_size, lyrname='cv1')
             x = conv1d_bn(x, self.n_estimators, self.kernel_size, lyrname='cv2')
             x = conv1d_bn(x, self.n_estimators, self.kernel_size, lyrname='cv3')
@@ -116,18 +127,22 @@ class CNNRegressor:
         model = Model(input_feature, x)
 
         opt = optimizers.Adam(lr=self.learning_rate)
-        model.compile(optimizer = opt, loss='mse')
+        model.compile(optimizer=opt, loss='mse')
         self.cnnreg = model
-        
-        x_train = x_train.reshape(-1,1,feature_dim)
-        y_train = y_train.reshape(-1,1,1)
-        x_test = x_test.reshape(-1,1,feature_dim)
-        y_test = y_test.reshape(-1,1,1)
-        
-        self.cnnreg.fit(x_train, y_train,
-                          validation_data=(x_test, y_test),
-                          epochs=100, batch_size=512,
-                          callbacks=[self.EStop, self.ReduceLR])
+
+        x_train = x_train.reshape(-1, 1, feature_dim)
+        y_train = y_train.reshape(-1, 1, 1)
+        x_test = x_test.reshape(-1, 1, feature_dim)
+        y_test = y_test.reshape(-1, 1, 1)
+
+        self.cnnreg.fit(
+            x_train,
+            y_train,
+            validation_data=(x_test, y_test),
+            epochs=100,
+            batch_size=512,
+            callbacks=[self.EStop, self.ReduceLR],
+        )
 
     def predict(self, x):
         """
@@ -137,5 +152,5 @@ class CNNRegressor:
         :return:
         :rtype:
         """
-        x = x.reshape(-1,1,x.shape[-1])
+        x = x.reshape(-1, 1, x.shape[-1])
         return self.cnnreg.predict(x)

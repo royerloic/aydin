@@ -7,9 +7,9 @@ from sys import platform
 
 def get_home_folder():
     from os.path import expanduser
+
     home_folder = expanduser("~")
     return home_folder
-
 
 
 def get_temp_folder():
@@ -17,7 +17,7 @@ def get_temp_folder():
     temp_folder = None
 
     if platform == "linux" or platform == "linux2":
-        temp_folder =  tempfile.gettempdir()
+        temp_folder = tempfile.gettempdir()
 
     elif platform == "darwin":
         temp_folder = tempfile.gettempdir()
@@ -34,7 +34,6 @@ def get_temp_folder():
         return temp_folder
     else:
         return None
-
 
 
 def get_cache_folder():
@@ -59,5 +58,3 @@ def get_cache_folder():
         return cache_folder
     else:
         return None
-
-

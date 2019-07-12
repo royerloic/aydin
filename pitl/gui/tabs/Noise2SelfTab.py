@@ -1,6 +1,15 @@
 from PyQt5.QtCore import QThreadPool, pyqtSignal, QRunnable, QObject, pyqtSlot, Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, QLabel, QProgressBar, QSplitter, \
-    QPlainTextEdit, QApplication
+from PyQt5.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QPushButton,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QSplitter,
+    QPlainTextEdit,
+    QApplication,
+)
 
 from pitl.gui.components.filepath_picker import FilePathPicker
 from pitl.gui.components.worker import Worker
@@ -33,7 +42,9 @@ class Noise2SelfTab(QWidget):
         # Buttons layout where we have run button and other functional methods
         buttons_layout = QHBoxLayout()
         self.run_button = QPushButton("Run")
-        self.run_button.pressed.connect(lambda: Worker.enqueue_funcname(self.threadpool, self.run_func))
+        self.run_button.pressed.connect(
+            lambda: Worker.enqueue_funcname(self.threadpool, self.run_func)
+        )
         buttons_layout.addWidget(self.run_button)
 
         # Build splitter
@@ -63,7 +74,7 @@ class Noise2SelfTab(QWidget):
 
         output_path = self.outputfile_picker.lbl_text.text()
         if len(output_path) <= 0:
-            output_path = input_path[:-4]+"_denoised"+input_path[-4:]
+            output_path = input_path[:-4] + "_denoised" + input_path[-4:]
             self.outputfile_picker.lbl_text.setText(output_path)
 
         denoised = Noise2Self.run(noisy)

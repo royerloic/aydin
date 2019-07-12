@@ -12,6 +12,7 @@ from pitl.features.mcfocl import MultiscaleConvolutionalFeatures
 
 def demo(image):
     from napari import Viewer
+
     with app_context():
         viewer = Viewer()
         viewer.add_image(image, name='image')
@@ -20,16 +21,19 @@ def demo(image):
         scales = [1, 3, 7, 15, 31]
         widths = [3, 3, 3, 3, 3]
 
-        generator = MultiscaleConvolutionalFeatures(kernel_widths=widths[:level],
-                                                    kernel_scales=scales[:level],
-                                                    exclude_center=False
-                                                    )
+        generator = MultiscaleConvolutionalFeatures(
+            kernel_widths=widths[:level],
+            kernel_scales=scales[:level],
+            exclude_center=False,
+        )
 
-        regressor = GBMRegressor(num_leaves=128,
-                                 n_estimators=128,
-                                 learning_rate=0.01,
-                                 metric='l1',
-                                 early_stopping_rounds=None)
+        regressor = GBMRegressor(
+            num_leaves=128,
+            n_estimators=128,
+            learning_rate=0.01,
+            metric='l1',
+            early_stopping_rounds=None,
+        )
 
         it = ImageTranslatorClassic(generator, regressor)
 
@@ -45,7 +49,10 @@ def demo(image):
         stop = time.time()
         print(f"inference train: elapsed time:  {stop-start} ")
 
-        viewer.add_image(rescale_intensity(denoised, in_range='image', out_range=(0, 1)), name='denoised')
+        viewer.add_image(
+            rescale_intensity(denoised, in_range='image', out_range=(0, 1)),
+            name='denoised',
+        )
 
 
 # (3, 320, 865, 1014)

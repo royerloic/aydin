@@ -11,13 +11,13 @@ def imread(path):
 
     extension = Path(path).suffix
 
-    is_tiff = '.tif'  in extension or '.tiff' in extension
-    is_ome  = is_tiff and '.ome.tif' in path
-    is_czi  = '.czi'  in extension
-    is_png  = '.png'  in extension
+    is_tiff = '.tif' in extension or '.tiff' in extension
+    is_ome = is_tiff and '.ome.tif' in path
+    is_czi = '.czi' in extension
+    is_png = '.png' in extension
     is_zarr = '.zarr' in extension
-    is_nd2  = '.nd2'  in extension
-    is_npy  = '.npy'  in extension
+    is_nd2 = '.nd2' in extension
+    is_npy = '.npy' in extension
 
     array = None
 
@@ -47,16 +47,11 @@ def imread(path):
         print(f"Could not read file {path} !")
         array = None
 
-    #pims
+    # pims
 
-
-    metadata={}
+    metadata = {}
 
     # Remove single-dimensional entries from the array shape.
     array = numpy.squeeze(array)
 
     return (array, metadata)
-
-
-
-

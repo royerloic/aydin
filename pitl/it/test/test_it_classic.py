@@ -17,7 +17,9 @@ def test_it_classic():
         Test for self-supervised denoising using camera image with synthetic noise
     """
 
-    image = rescale_intensity(camera().astype(numpy.float32), in_range='image', out_range=(0, 1))
+    image = rescale_intensity(
+        camera().astype(numpy.float32), in_range='image', out_range=(0, 1)
+    )
 
     intensity = 5
     numpy.random.seed(0)
@@ -27,11 +29,13 @@ def test_it_classic():
 
     generator = MultiscaleConvolutionalFeatures(exclude_center=True)
 
-    regressor = GBMRegressor(learning_rate=0.01,
-                             num_leaves=127,
-                             max_bin=512,
-                             n_estimators=2048,
-                             early_stopping_rounds=20)
+    regressor = GBMRegressor(
+        learning_rate=0.01,
+        num_leaves=127,
+        max_bin=512,
+        n_estimators=2048,
+        early_stopping_rounds=20,
+    )
 
     it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)
 

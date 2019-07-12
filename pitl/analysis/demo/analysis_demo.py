@@ -11,7 +11,7 @@ from skimage.io import imread
 from pitl.analysis.analysis import correlation, correlation_distance
 
 
-def discs(shape=(512,512), radius= 10, num=512, fill=True, image=None):
+def discs(shape=(512, 512), radius=10, num=512, fill=True, image=None):
 
     if image is None:
         image = np.zeros(shape, dtype=np.float)
@@ -23,28 +23,33 @@ def discs(shape=(512,512), radius= 10, num=512, fill=True, image=None):
             rr, cc = circle(x, y, radius, shape=image.shape)
             image[rr, cc] = 1
         else:
-            rr, cc = circle_perimeter(x, y, radius, method='bresenham', shape=image.shape)
+            rr, cc = circle_perimeter(
+                x, y, radius, method='bresenham', shape=image.shape
+            )
             image[rr, cc] = 1
 
     return image
 
-def lines(shape=(512,512), length= 10, num=512, fill=False, image=None):
+
+def lines(shape=(512, 512), length=10, num=512, fill=False, image=None):
 
     if image is None:
         image = np.zeros(shape, dtype=np.float)
 
     for i in range(num):
-        xb = int(random.uniform(length, shape[0]-1-length))
-        yb = int(random.uniform(length, shape[1]-1-length))
-        angle = random.uniform(0, 2*pi)
-        xe = int(xb + length*cos(angle))
-        ye = int(yb + length*sin(angle))
+        xb = int(random.uniform(length, shape[0] - 1 - length))
+        yb = int(random.uniform(length, shape[1] - 1 - length))
+        angle = random.uniform(0, 2 * pi)
+        xe = int(xb + length * cos(angle))
+        ye = int(yb + length * sin(angle))
         rr, cc, val = line_aa(xb, yb, xe, ye)
         image[rr, cc] = val
 
     return image
 
+
 plot_length = 256
+
 
 def noise_example():
     image = np.random.random((1500, 1500))
@@ -71,6 +76,7 @@ def camera_example():
 
     print("camera  %d,%d " % correlation_distance(camera))
 
+
 def astronaut_example():
 
     astronaut = rgb2gray(data.astronaut())
@@ -86,7 +92,7 @@ def astronaut_example():
 
 
 def clock_example():
-    clock = data.clock()[70:220,150:270]
+    clock = data.clock()[70:220, 150:270]
     plt.imshow(clock)
     plt.show()
 
@@ -113,9 +119,9 @@ def coins_example():
 
 def discs_example():
 
-    discs1 = discs(shape=(1500,1500), radius=40, num=90)
-    discs2 = discs(shape=(1500,1500), radius=20, num=160)
-    discs3 = discs(shape=(1500,1500), radius=10, num=420)
+    discs1 = discs(shape=(1500, 1500), radius=40, num=90)
+    discs2 = discs(shape=(1500, 1500), radius=20, num=160)
+    discs3 = discs(shape=(1500, 1500), radius=10, num=420)
 
     plt.imshow(discs1)
     plt.show()
@@ -140,9 +146,9 @@ def discs_example():
 
 def lines_example():
 
-    lines1 = lines(shape=(1500,1500), length=40, num=3000)
-    lines2 = lines(shape=(1500,1500), length=20, num=6000)
-    lines3 = lines(shape=(1500,1500), length=10, num=12000)
+    lines1 = lines(shape=(1500, 1500), length=40, num=3000)
+    lines2 = lines(shape=(1500, 1500), length=20, num=6000)
+    lines3 = lines(shape=(1500, 1500), length=10, num=12000)
 
     plt.imshow(lines1)
     plt.show()
@@ -162,7 +168,6 @@ def lines_example():
     print("lines3  %d,%d " % correlation_distance(lines3))
 
 
-
 def cells_example():
     cells = imread("../../../../data/examples_single/HV115_P0500510002.png")
     plt.imshow(cells)
@@ -177,7 +182,9 @@ def cells_example():
 
 
 def dmel_example():
-    cells = imread("../../../../data/examples_single/SPC0_TM0132_CM0_CM1_CHN00_CHN01.fusedStack.tif")
+    cells = imread(
+        "../../../../data/examples_single/SPC0_TM0132_CM0_CM1_CHN00_CHN01.fusedStack.tif"
+    )
 
     plt.imshow(cells[50, :, :])
     plt.show()
@@ -214,5 +221,3 @@ discs_example()
 lines_example()
 cells_example()
 dmel_example()
-
-

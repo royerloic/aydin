@@ -77,4 +77,3 @@ class RegressorBase(ABC):
         :rtype:
         """
         raise NotImplementedError()
-

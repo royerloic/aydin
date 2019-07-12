@@ -29,7 +29,6 @@ class OutLog:
 
 
 class LogConsole(QPlainTextEdit):
-
     def __init__(self, parent):
         super(QPlainTextEdit, self).__init__()
         sys.stdout = OutLog(self, out=sys.stdout)

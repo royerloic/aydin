@@ -26,11 +26,12 @@ def demo_lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, displa
     scales = [1, 3, 7, 15]
     widths = [3, 3, 3, 3]
 
-    generator = MultiscaleConvolutionalFeatures(kernel_widths=widths,
-                                                kernel_scales=scales,
-                                                kernel_shapes=['l1'] * len(scales),
-                                                exclude_center=True,
-                                                )
+    generator = MultiscaleConvolutionalFeatures(
+        kernel_widths=widths,
+        kernel_scales=scales,
+        kernel_shapes=['l1'] * len(scales),
+        exclude_center=True,
+    )
 
     features = generator.compute(noisy)
 
@@ -40,17 +41,19 @@ def demo_lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, displa
     # shuffling:
     num_datapoints = len(y)
     perm = numpy.random.permutation(num_datapoints)
-    xt = x[perm, :][num_datapoints // 10:]
-    yt = y[perm][num_datapoints // 10:]
-    xv = x[perm, :][0:num_datapoints // 10]
-    yv = y[perm][0:num_datapoints // 10]
+    xt = x[perm, :][num_datapoints // 10 :]
+    yt = y[perm][num_datapoints // 10 :]
+    xv = x[perm, :][0 : num_datapoints // 10]
+    yv = y[perm][0 : num_datapoints // 10]
 
-    params = {'learning_rate': 0.01,
-              'num_leaves': 127,
-              'max_bin': 512,
-              'n_estimators': 512,
-              'early_stopping_rounds': 20,
-              'verbosity': 0}
+    params = {
+        'learning_rate': 0.01,
+        'num_leaves': 127,
+        'max_bin': 512,
+        'n_estimators': 512,
+        'early_stopping_rounds': 20,
+        'verbosity': 0,
+    }
 
     regressor = GBMRegressor(**params)
 
@@ -85,7 +88,10 @@ def demo_lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, displa
     if display:
         with app_context():
             viewer = Viewer()
-            viewer.add_image(rescale_intensity(image, in_range='image', out_range=(0, 1)), name='image')
+            viewer.add_image(
+                rescale_intensity(image, in_range='image', out_range=(0, 1)),
+                name='image',
+            )
             viewer.add_image(denoised, name='denoised')
 
     return ssim_value
@@ -96,7 +102,9 @@ def test_demo_lgbm_regressor():
     ssim_one_batch = demo_lgbm_regressor(batch=True, num_used_batches=1, display=False)
     ssim_batch = demo_lgbm_regressor(batch=True, display=False)
 
-    print(f"ssim_no_batch={ssim_no_batch}, ssim_one_batch={ssim_one_batch}, ssim_batch={ssim_batch} ")
+    print(
+        f"ssim_no_batch={ssim_no_batch}, ssim_one_batch={ssim_one_batch}, ssim_batch={ssim_batch} "
+    )
 
     assert ssim_no_batch > ssim_batch
     assert ssim_batch > ssim_one_batch

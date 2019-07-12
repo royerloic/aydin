@@ -91,7 +91,7 @@ class FilePathPicker(QWidget):
             e.accept()
 
             for url in e.mimeData().urls():
-                    fname = str(url.toLocalFile())
+                fname = str(url.toLocalFile())
 
             self.filename = fname
             self.load_file()

@@ -26,15 +26,16 @@ class GBMRegressor(RegressorBase):
 
     lgbmr: Union[Booster, List[Booster]]
 
-    def __init__(self,
-                 num_leaves=63,
-                 n_estimators=128,
-                 max_bin=512,
-                 learning_rate=0.05,
-                 metric='l1',
-                 early_stopping_rounds=5,
-                 verbosity=100
-                 ):
+    def __init__(
+        self,
+        num_leaves=63,
+        n_estimators=128,
+        max_bin=512,
+        learning_rate=0.05,
+        metric='l1',
+        early_stopping_rounds=5,
+        verbosity=100,
+    ):
         """
         Constructs a LightGBM regressor.
 
@@ -70,7 +71,6 @@ class GBMRegressor(RegressorBase):
         self.lgbmr = []
         gc.collect()
 
-
     def _get_params(self, num_samples, batch=False):
         min_data_in_leaf = 20 + int(0.01 * (num_samples / self.num_leaves))
         # print(f'min_data_in_leaf: {min_data_in_leaf}')
@@ -81,25 +81,26 @@ class GBMRegressor(RegressorBase):
         elif objective == 'l2':
             objective = 'regression_l2'
 
-        params = {"boosting_type": "gbdt",
-         'objective': objective,
-         "learning_rate": self.learning_rate,
-         "num_leaves": self.num_leaves,
-         "max_depth": max(3, int(math.log2(self.num_leaves)) - 1),
-         "max_bin": self.max_bin,
-         # "min_data_in_leaf": min_data_in_leaf,
-         "subsample_for_bin": 200000,
-         "num_threads": multiprocessing.cpu_count() // 2,
-         "metric": self.metric,
-         'verbosity': -1,  # self.verbosity
-         "bagging_freq": 1,
-         "bagging_fraction": 0.8,
-         # "device_type" : 'gpu'
-         }
+        params = {
+            "boosting_type": "gbdt",
+            'objective': objective,
+            "learning_rate": self.learning_rate,
+            "num_leaves": self.num_leaves,
+            "max_depth": max(3, int(math.log2(self.num_leaves)) - 1),
+            "max_bin": self.max_bin,
+            # "min_data_in_leaf": min_data_in_leaf,
+            "subsample_for_bin": 200000,
+            "num_threads": multiprocessing.cpu_count() // 2,
+            "metric": self.metric,
+            'verbosity': -1,  # self.verbosity
+            "bagging_freq": 1,
+            "bagging_fraction": 0.8,
+            # "device_type" : 'gpu'
+        }
 
-        if self.metric=='l1':
+        if self.metric == 'l1':
             params["lambda_l1"] = 0.01
-        elif self.metric=='l2':
+        elif self.metric == 'l2':
             params["lambda_l2"] = 0.01
         else:
             params["lambda_l1"] = 0.01
@@ -118,16 +119,21 @@ class GBMRegressor(RegressorBase):
         has_valid_dataset = x_valid is not None and y_valid is not None
 
         train_dataset = lightgbm.Dataset(x_train, y_train)
-        valid_dataset = lightgbm.Dataset(x_valid, y_valid) if has_valid_dataset else None
+        valid_dataset = (
+            lightgbm.Dataset(x_valid, y_valid) if has_valid_dataset else None
+        )
 
-        model = lightgbm.train(params=self._get_params(num_samples, batch=is_batch),
-                               init_model=None,  # self.lgbmr if is_batch else None, <-- not working...
-                                    train_set=train_dataset,
-                                    valid_sets=valid_dataset,
-                               early_stopping_rounds=self.early_stopping_rounds if has_valid_dataset else None,
-                                    num_boost_round=self.n_estimators,
-                               # keep_training_booster= is_batch, <-- not working...
-                                    )
+        model = lightgbm.train(
+            params=self._get_params(num_samples, batch=is_batch),
+            init_model=None,  # self.lgbmr if is_batch else None, <-- not working...
+            train_set=train_dataset,
+            valid_sets=valid_dataset,
+            early_stopping_rounds=self.early_stopping_rounds
+            if has_valid_dataset
+            else None,
+            num_boost_round=self.n_estimators,
+            # keep_training_booster= is_batch, <-- not working...
+        )
 
         if is_batch:
             if (not isinstance(self.lgbmr, (list,))) or self.lgbmr is None:
@@ -154,13 +160,13 @@ class GBMRegressor(RegressorBase):
 
             nb_models = len(self.lgbmr)
 
-            size_in_bytes = nb_models*x.size*x.itemsize
+            size_in_bytes = nb_models * x.size * x.itemsize
             free_mem_in_bytes = psutil.virtual_memory().free
 
             # we check if there is enough memory to compute the median:
-            is_enough_memory =  1.2*size_in_bytes < free_mem_in_bytes
+            is_enough_memory = 1.2 * size_in_bytes < free_mem_in_bytes
 
-            if batch_mode=='median' and is_enough_memory:
+            if batch_mode == 'median' and is_enough_memory:
 
                 yp_batch_list = []
 
@@ -186,7 +192,6 @@ class GBMRegressor(RegressorBase):
                 yp /= counter
 
                 return yp
-
 
         else:
             return self.lgbmr.predict(x, num_iteration=self.lgbmr.best_iteration)

@@ -28,16 +28,19 @@ def demo_pitl_2D():
     widths = [3, 3, 3, 3, 3, 3, 3, 3]
 
     for param in range(7, len(scales), 1):
-        generator = MultiscaleConvolutionalFeatures(kernel_widths=widths[0:param],
-                                                    kernel_scales=scales[0:param],
-                                                    kernel_shapes=['l1'] * len(scales[0:param]),
-                                                    exclude_center=True,
-                                                    )
+        generator = MultiscaleConvolutionalFeatures(
+            kernel_widths=widths[0:param],
+            kernel_scales=scales[0:param],
+            kernel_shapes=['l1'] * len(scales[0:param]),
+            exclude_center=True,
+        )
 
-        regressor = GBMRegressor(learning_rate=0.01,
-                                 num_leaves=256,
-                                 n_estimators=1024,
-                                 early_stopping_rounds=20)
+        regressor = GBMRegressor(
+            learning_rate=0.01,
+            num_leaves=256,
+            n_estimators=1024,
+            early_stopping_rounds=20,
+        )
 
         it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)
 
