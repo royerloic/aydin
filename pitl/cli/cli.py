@@ -60,7 +60,7 @@ def demo(**kwargs):
 def noise2self(**kwargs):
     path = os.path.abspath(kwargs['path'])
     noisy = read_image_from_path(path)
-    Noise2Self.run(noisy)
+    Noise2Self.run(noisy, progress_callback)
 
 
 if __name__ == '__main__':

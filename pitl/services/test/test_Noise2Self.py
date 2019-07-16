@@ -20,7 +20,7 @@ def test_run():
 
     # Call the Noise2Self service
     n2s = Noise2Self()
-    denoised_image = n2s.run(noisy_image)
+    denoised_image = n2s.run(noisy_image, progress_callback)
 
     # Check if denoised image satisfies some checks
     assert psnr(denoised_image, image) >= 20.0

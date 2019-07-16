@@ -18,8 +18,8 @@ class App(QMainWindow):
         self.title = 'Cool Image Translation'
         self.left = 0
         self.top = 0
-        self.width = 600
-        self.height = 400
+        self.width = 700
+        self.height = 800
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
