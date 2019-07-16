@@ -84,12 +84,12 @@ class Worker(QRunnable):
         print("%d%% done" % n)
 
     @classmethod
-    def enqueue_funcname(cls, threadpool, funcname):
+    def enqueue_funcname(cls, threadpool, funcname, progress_func):
         # Pass the function to execute
         worker = cls(funcname)  # Any other args, kwargs are passed to the run function
         worker.signals.result.connect(worker.print_output)
         worker.signals.finished.connect(worker.thread_complete)
-        worker.signals.progress.connect(worker.progress_fn)
+        worker.signals.progress.connect(progress_func)
 
         # Execute
         threadpool.start(worker)

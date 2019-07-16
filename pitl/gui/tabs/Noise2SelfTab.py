@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
 )
 
 from pitl.gui.components.filepath_picker import FilePathPicker
+from pitl.gui.components.plot_canvas import PlotCanvas
 from pitl.gui.components.worker import Worker
 from pitl.services.Noise2Self import Noise2Self
 from pitl.util.resource import read_image_from_path
@@ -33,17 +34,25 @@ class Noise2SelfTab(QWidget):
         """
         paths_layout = QVBoxLayout()
         paths_layout.addWidget(QLabel("Path for the input training noisy images: "))
-        self.inputfile_picker = FilePathPicker()
+        self.input_lbl = QLabel(self)
+        self.inputfile_picker = FilePathPicker(self.input_lbl)
         paths_layout.addWidget(self.inputfile_picker)
         paths_layout.addWidget(QLabel("Path to save resulting denoised images: "))
-        self.outputfile_picker = FilePathPicker()
+        self.output_lbl = QLabel(self)
+        self.outputfile_picker = FilePathPicker(self.output_lbl)
         paths_layout.addWidget(self.outputfile_picker)
+        pixmaps_layout = QHBoxLayout()
+        pixmaps_layout.addWidget(self.input_lbl)
+        pixmaps_layout.addWidget(self.output_lbl)
+        paths_layout.addLayout(pixmaps_layout)
 
         # Buttons layout where we have run button and other functional methods
         buttons_layout = QHBoxLayout()
         self.run_button = QPushButton("Run")
         self.run_button.pressed.connect(
-            lambda: Worker.enqueue_funcname(self.threadpool, self.run_func)
+            lambda: Worker.enqueue_funcname(
+                self.threadpool, self.run_func, self.progressbar_update
+            )
         )
         buttons_layout.addWidget(self.run_button)
 
@@ -57,6 +66,8 @@ class Noise2SelfTab(QWidget):
         paths_and_buttons_layout.addLayout(buttons_layout)
         self.progress_bar = QProgressBar(self)
         paths_and_buttons_layout.addWidget(self.progress_bar)
+        self.pb = PlotCanvas(self)
+        paths_and_buttons_layout.addWidget(self.pb.native)
 
         paths_and_buttons = QWidget()
         paths_and_buttons.setLayout(paths_and_buttons_layout)
@@ -65,6 +76,11 @@ class Noise2SelfTab(QWidget):
         # Add splitter into main layout
         self.layout.addWidget(def_splitter)
         self.setLayout(self.layout)
+
+    def progressbar_update(self, value):
+        if 0 <= value <= 100:
+            self.pb.add_pos(100 + value)
+            self.progress_bar.setValue(value)
 
     def run_func(self, progress_callback):
         self.run_button.setStyleSheet("background-color: orange")
@@ -77,7 +93,7 @@ class Noise2SelfTab(QWidget):
             output_path = input_path[:-4] + "_denoised" + input_path[-4:]
             self.outputfile_picker.lbl_text.setText(output_path)
 
-        denoised = Noise2Self.run(noisy)
+        denoised = Noise2Self.run(noisy, progress_callback)
 
         imsave(output_path, denoised)
         self.run_button.setText("Re-Run")

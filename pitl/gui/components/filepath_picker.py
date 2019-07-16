@@ -9,7 +9,7 @@ class FilePathPicker(QWidget):
     Alternatively set up dragging and dropping of image files onto the widget
     """
 
-    def __init__(self):
+    def __init__(self, lbl):
         super(FilePathPicker, self).__init__()
         self.filename = None
 
@@ -19,7 +19,7 @@ class FilePathPicker(QWidget):
 
         # Path viewing region
         self.lbl_text = QLineEdit(self)
-        self.lbl = QLabel(self)
+        self.lbl = lbl
 
         # A horizontal layout to include the button on the left
         layout_button = QHBoxLayout()
@@ -29,7 +29,7 @@ class FilePathPicker(QWidget):
         # A Vertical layout to include the button layout and then the image
         layout = QVBoxLayout()
         layout.addLayout(layout_button)
-        layout.addWidget(self.lbl)
+        # layout.addWidget(self.lbl)
 
         self.setLayout(layout)
 

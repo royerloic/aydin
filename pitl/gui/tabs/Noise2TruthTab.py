@@ -26,15 +26,15 @@ class Noise2TruthTab(QWidget):
         """
         paths_layout = QVBoxLayout()
         paths_layout.addWidget(QLabel("Path for the input training noisy images: "))
-        paths_layout.addWidget(FilePathPicker())
+        paths_layout.addWidget(FilePathPicker(QLabel(self)))
         paths_layout.addWidget(
             QLabel("Path for the input training groundtruth images: ")
         )
-        paths_layout.addWidget(FilePathPicker())
+        paths_layout.addWidget(FilePathPicker(QLabel(self)))
         paths_layout.addWidget(QLabel("Path for the input test noisy images: "))
-        paths_layout.addWidget(FilePathPicker())
+        paths_layout.addWidget(FilePathPicker(QLabel(self)))
         paths_layout.addWidget(QLabel("Path for the resulting output images: "))
-        paths_layout.addWidget(FilePathPicker())
+        paths_layout.addWidget(FilePathPicker(QLabel(self)))
 
         # Buttons layout where we have run button and other functional methods
         buttons_layout = QHBoxLayout()

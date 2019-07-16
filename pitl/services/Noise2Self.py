@@ -14,14 +14,16 @@ class Noise2Self:
             Noise2Self.widths = widths
 
     @staticmethod
-    def run(noisy_image):
+    def run(noisy_image, progress_callback):
         """
         Method to run Noise2Self service
 
+        :param progress_callback:
         :param self:
         :param noisy_image: input noisy image, must be np compatible
         :return: denoised version of the input image, will be np compatible
         """
+        progress_callback.emit(0)
         generator = MultiscaleConvolutionalFeatures(
             kernel_widths=Noise2Self.widths[0:7],
             kernel_scales=Noise2Self.scales[0:7],
@@ -29,6 +31,7 @@ class Noise2Self:
             exclude_center=True,
         )
 
+        progress_callback.emit(40)
         regressor = GBMRegressor(
             learning_rate=0.01,
             num_leaves=256,
@@ -36,5 +39,8 @@ class Noise2Self:
             early_stopping_rounds=20,
         )
 
+        progress_callback.emit(65)
         it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)
-        return it.train(noisy_image, noisy_image)
+        response = it.train(noisy_image, noisy_image)
+        progress_callback.emit(100)
+        return response
