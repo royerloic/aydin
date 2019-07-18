@@ -1,42 +1,47 @@
 import numpy as np
 import sys
 
-from vispy import gloo, app, visuals
+from PyQt5.QtWidgets import QWidget
+from vispy import gloo, app, visuals, scene
+
+CustomLineVisual = scene.visuals.create_visual_node(visuals.LinePlotVisual)
 
 
-class PlotCanvas(app.Canvas):
+class PlotCanvas(QWidget):
     def __init__(self, parent):
-        # vertex positions of data to draw
-        app.Canvas.__init__(self, keys=None, vsync=True, size=(600, 600))
-        super().__init__(parent)
+        # build canvas
+        self.canvas = scene.SceneCanvas(keys=None, show=True)
 
-        self.line = None
+        # Add a ViewBox to let the user zoom/rotate
+        self.view = self.canvas.central_widget.add_view()
+        self.view.camera = 'panzoom'
+        self.view.camera.distance = 60
 
-    def on_draw(self, event):
-        gloo.clear('black')
-        if self.line is not None:
-            self.line.draw()
+        N = 10
+        pos = np.zeros((N, 2), dtype=np.float32)
+        self.x = np.linspace(0.10, 0.2, N)
+        self.y = np.random.normal(size=N, scale=0.1, loc=0.5)
 
-    def on_resize(self, event):
-        # Set canvas viewport and reconfigure visual transforms to match.
-        vp = (0, 0, self.physical_size[0], self.physical_size[1])
-        self.context.set_viewport(*vp)
-        if self.line is not None:
-            self.line.transforms.configure(canvas=self, viewport=vp)
-
-    def add_pos(self, N):
-        self.pos = np.zeros((N, 2), dtype=np.float32)
-        self.pos[:, 0] = np.linspace(10, 590, N)
-        self.pos[:, 1] = np.random.normal(size=N, scale=50, loc=150)
-        print(self.pos)
-        self.line = visuals.LinePlotVisual(
+        # plot
+        self.pos = np.c_[self.x, self.y]
+        self.line = CustomLineVisual(
             self.pos,
-            color='w',
+            width=2.0,
+            color='red',
             edge_color='w',
             symbol='o',
-            face_color=(0.2, 0.2, 1),
-            marker_size=5,
+            face_color=(0.2, 0.2, 1, 0.8),
+            parent=self.view.scene,
         )
+
+    def add_pos(self, N):
+        self.pos = np.zeros((N // 10, 2), dtype=np.float32)
+        self.x = np.linspace(0.1, (N / 500) * 1.5, N // 10)
+        self.y = np.random.normal(size=N // 10, scale=0.1, loc=0.5)
+
+        # plot
+        self.pos = np.c_[self.x, self.y]
+        self.line.set_data(self.pos)
 
 
 if __name__ == '__main__':

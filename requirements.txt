@@ -24,3 +24,4 @@ scipy==1.2.1
 sentry-sdk==0.10.1
 tifffile==2019.7.2
 QDarkStyle==2.7
+vispy==0.6.0
