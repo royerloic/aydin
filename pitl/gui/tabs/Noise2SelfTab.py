@@ -17,6 +17,7 @@ from pitl.gui.components.worker import Worker
 from pitl.services.Noise2Self import Noise2Self
 from pitl.util.resource import read_image_from_path
 from skimage.io import imsave
+from pitl.gui.components.dlineplotexample import MyCanvas
 
 
 class Noise2SelfTab(QWidget):
@@ -67,7 +68,7 @@ class Noise2SelfTab(QWidget):
         self.progress_bar = QProgressBar(self)
         paths_and_buttons_layout.addWidget(self.progress_bar)
         self.pb = PlotCanvas(self)
-        paths_and_buttons_layout.addWidget(self.pb.native)
+        paths_and_buttons_layout.addWidget(self.pb.canvas.native)
 
         paths_and_buttons = QWidget()
         paths_and_buttons.setLayout(paths_and_buttons_layout)
