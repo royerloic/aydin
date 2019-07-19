@@ -8,11 +8,12 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
+from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from pitl.io import io
 from pitl.io.datasets import examples_single
 from pitl.it.it_classic import ImageTranslatorClassic
 from pitl.regression.gbm import GBMRegressor
-from pitl.features.mcfocl import MultiscaleConvolutionalFeatures
+from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 
 
 def demo(image, min_level=7, max_level=100):
@@ -41,7 +42,7 @@ def demo(image, min_level=7, max_level=100):
         widths = [3, 3, 3, 3, 3, 3, 3, 3]
 
         for param in range(min_level, min(max_level, len(scales)), 1):
-            generator = MultiscaleConvolutionalFeatures(
+            generator = FastMultiscaleConvolutionalFeatures(
                 kernel_widths=widths[0:param],
                 kernel_scales=scales[0:param],
                 kernel_shapes=['l1'] * len(scales[0:param]),

@@ -1,5 +1,5 @@
 def compute_feature_4d(
-    generator,
+    opencl_provider,
     image_gpu,
     feature_gpu,
     dx,
@@ -105,12 +105,12 @@ def compute_feature_4d(
       """
     # print(program_code)
 
-    program = generator.opencl_provider.build(program_code)
+    program = opencl_provider.build(program_code)
 
     feature_kernel = program.feature_kernel
 
     feature_kernel(
-        generator.opencl_provider.queue,
+        opencl_provider.queue,
         image_gpu.shape[1:],
         None,
         image_gpu.data,

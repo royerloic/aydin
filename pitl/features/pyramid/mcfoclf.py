@@ -1,33 +1,38 @@
 from __future__ import absolute_import, print_function
 
 import tempfile
+from math import ceil
 
 import numpy
 import numpy as np
 import psutil
 import pyopencl as cl
-from pyopencl.array import to_device, Array
+from pyopencl.array import to_device, Array, empty
 
-from pitl.features.features_1d import compute_feature_1d
-from pitl.features.features_2d import compute_feature_2d
-from pitl.features.features_3d import compute_feature_3d
-from pitl.features.features_4d import compute_feature_4d
-from pitl.util.nd import nd_range
+from pitl.features.pyramid.downscale import downscale_1d, downscale_2d
+from pitl.features.pyramid.features import (
+    collect_feature_1d,
+    collect_feature_2d,
+    collect_feature_3d,
+    collect_feature_4d,
+)
 from pitl.opencl.opencl_provider import OpenCLProvider
+from pitl.util.nd import nd_range
 
 
-class MultiscaleConvolutionalFeatures:
+class PyramidMultiscaleConvolutionalFeatures:
     """
     Multiscale convolutional feature generator.
-    Uses OpenCL to acheive very fast feature generation.
+    Uses OpenCL to acheive very fast pyramid feature generation.
 
+    #NOTE: Performance is not great, a lot of 'values' are shared across pixels because of lack of interpolation.
+    The problem is that interpolation would make J-invariance difficult to implement...
     """
 
     def __init__(
         self,
         opencl_provider=OpenCLProvider(),
         kernel_widths=[3, 3, 3, 3, 3, 3, 3, 3],
-        kernel_scales=[1, 3, 7, 15, 31, 63, 127, 255],
         kernel_shapes=None,
         kernel_reductions=None,
         exclude_center=False,
@@ -56,12 +61,11 @@ class MultiscaleConvolutionalFeatures:
         self.opencl_provider = opencl_provider
 
         self.kernel_widths = kernel_widths
-        self.kernel_scales = kernel_scales
         self.kernel_shapes = (
-            ['l2'] * len(kernel_scales) if kernel_shapes is None else kernel_shapes
+            ['l2'] * len(kernel_widths) if kernel_shapes is None else kernel_shapes
         )
         self.kernel_reductions = (
-            ['sum'] * len(kernel_scales)
+            ['sum'] * len(kernel_widths)
             if kernel_reductions is None
             else kernel_reductions
         )
@@ -82,12 +86,8 @@ class MultiscaleConvolutionalFeatures:
 
     def get_receptive_field_radius(self):
 
-        radii = max(
-            [
-                width * scale // 2
-                for width, scale in zip(self.kernel_widths, self.kernel_scales)
-            ]
-        )
+        max_scale = 2 ** len(self.kernel_widths)
+        radii = int(1.5 * max_scale)
         return radii
 
     def compute(self, image, batch_dims=None, features=None):
@@ -119,10 +119,9 @@ class MultiscaleConvolutionalFeatures:
         nb_non_batch_dim = image_dimension - nb_batch_dim
 
         image_batch = None
-        image_batch_gpu = None
+        image_pyramid_batch_gpu = []
         features = None
         feature_gpu = None
-        # features_batch = None
 
         # We iterate over batches:
         for index in np.ndindex(*(image.shape[0:nb_batch_dim])):
@@ -137,7 +136,7 @@ class MultiscaleConvolutionalFeatures:
 
             if image_batch_slice == (slice(None, None, None), slice(None, None, None)):
                 # if there is only one batch, no need to do anything...
-                image_batch = image
+                image_batch = np.array(image, copy=True, dtype=numpy.float32)
             else:
                 # Copy because image[image_batch_slice] is not necessarily contiguous and pyOpenCL does not like discontiguous arrays:
                 if image_batch is None:
@@ -151,39 +150,45 @@ class MultiscaleConvolutionalFeatures:
                     )
 
             # We move the image to the GPU. Needs to fit entirely, could be a problem for very very large images.
-            if image_batch_gpu is None:
-                # TODO: avoid GC trashing with .copy
-                image_batch_gpu = to_device(
-                    self.opencl_provider.queue, image_batch.copy()
+            if not image_pyramid_batch_gpu:
+                image_pyramid_batch_gpu.append(
+                    to_device(self.opencl_provider.queue, image_batch)
                 )
             else:
-                image_batch_gpu.set(image_batch, self.opencl_provider.queue)
+                image_pyramid_batch_gpu[0].set(image_batch, self.opencl_provider.queue)
 
             # This array on the GPU will host a single feature.
             # We will use that as temp destination for each feature generated on the GPU.
             if feature_gpu is None:
                 feature_gpu = Array(
-                    self.opencl_provider.queue, image_batch_gpu.shape, np.float32
+                    self.opencl_provider.queue,
+                    image_pyramid_batch_gpu[0].shape,
+                    np.float32,
                 )
 
             # Checking that the number of dimensions is within the bounds of what we can do:
             if nb_non_batch_dim <= 4:
+
+                # We also compute the rest of pyramid for the present batch image:
+                image_pyramid_batch_gpu = self.compute_pyramid(
+                    image_pyramid_batch_gpu, nb_levels=len(self.kernel_widths)
+                )
+
+                # We first do a dry run to compute the number of features:
                 nb_features = self.collect_features_nD(
-                    image_batch_gpu, nb_non_batch_dim
+                    image_pyramid_batch_gpu, nb_non_batch_dim
                 )
                 if self.debug_log:
                     print(f'Number of features:  {nb_features}')
 
-                # At this point we know how big is the whole feature array, so we create it (encompasses all batches)
-                # This happens only once, the first time:
                 if features is None:
+                    # At this point we know how big is the whole feature array, so we create it (encompasses all batches)
+                    # This happens only once, the first time:
                     features = self.create_feature_array(image, nb_features)
-                    # features_batch = np.zeros((nb_features,)+feature_gpu.shape, dtype=np.float32)
-                    # features_temp = np.zeros(image.shape[-1], dtype=np.float32)
 
                 # we compute one batch of features:
                 self.collect_features_nD(
-                    image_batch_gpu,
+                    image_pyramid_batch_gpu,
                     nb_non_batch_dim,
                     feature_gpu,
                     features[feature_batch_slice],
@@ -193,6 +198,9 @@ class MultiscaleConvolutionalFeatures:
                 raise Exception(
                     f'dimension above {image_dimension} for non nbatch dimensions not yet implemented!'
                 )
+
+        del feature_gpu
+        del image_pyramid_batch_gpu
 
         # Creates a view of the array in which the features are indexed by the last dimension:
         features = np.moveaxis(features, 0, -1)
@@ -207,7 +215,7 @@ class MultiscaleConvolutionalFeatures:
 
     def create_feature_array(self, image, nb_features):
         """
-        Creates a feature arra of the right size and possibly in a 'lazy' way using memory mapping.
+        Creates a feature array of the right size and possibly in a 'lazy' way using memory mapping.
 
 
         :param image: image for which features are created
@@ -247,9 +255,46 @@ class MultiscaleConvolutionalFeatures:
 
         return array
 
-    def collect_features_nD(self, image_gpu, ndim, feature_gpu=None, features=None):
+    def compute_pyramid(self, image_pyramid_batch_gpu, nb_levels):
+
+        dim = len(image_pyramid_batch_gpu[0].shape)
+
+        # We allocate all gpu arrays the first time:
+        if len(image_pyramid_batch_gpu) == 1:
+
+            input_shape = image_pyramid_batch_gpu[0].shape
+
+            scale = 2
+            for level in range(1, nb_levels):
+                output_shape = tuple(ceil(d / scale) for d in input_shape)
+
+                output = empty(
+                    self.opencl_provider.queue, shape=output_shape, dtype=numpy.float32
+                )
+                image_pyramid_batch_gpu.append(output)
+
+                scale *= 2
+
+        # we compute the pyramid:
+        for level in range(0, nb_levels - 1):
+
+            input = image_pyramid_batch_gpu[level]
+            output = image_pyramid_batch_gpu[level + 1]
+
+            if dim == 1:
+                downscale_1d(self.opencl_provider, input, output)
+            if dim == 2:
+                downscale_2d(self.opencl_provider, input, output)
+            else:
+                raise NotImplemented()
+
+        return image_pyramid_batch_gpu
+
+    def collect_features_nD(
+        self, image_pyramid_batch_gpu, ndim, feature_gpu=None, features=None
+    ):
         """
-        Computes 1D features, one by one.
+        Collects nD features, one by one.
         If features is None, it just  counts the number of features so that the right size array
         can be allocated externally and then this method is called again this time with features != None
 
@@ -268,10 +313,11 @@ class MultiscaleConvolutionalFeatures:
 
         feature = None
 
+        scale = 1
         feature_index = 0
-        for width, scale, shape, reduction in zip(
+        for image_gpu, width, shape, reduction in zip(
+            image_pyramid_batch_gpu,
             self.kernel_widths,
-            self.kernel_scales,
             self.kernel_shapes,
             self.kernel_reductions,
         ):
@@ -283,7 +329,7 @@ class MultiscaleConvolutionalFeatures:
 
             for shift in features_shifts:
 
-                if self.exclude_center and scale == 1 and shift == (0,) * ndim:
+                if self.exclude_center and shift == (0,) * ndim:
                     continue
 
                 if shape == 'l1' and sum([abs(i) for i in shift]) > radius:
@@ -300,22 +346,21 @@ class MultiscaleConvolutionalFeatures:
                         )
 
                     params = (
-                        self,
+                        self.opencl_provider,
                         image_gpu,
                         feature_gpu,
                         *[i * scale for i in shift],
-                        *(scale,) * ndim,
-                        self.exclude_center,
-                        reduction,
+                        scale,
                     )
+
                     if ndim == 1:
-                        compute_feature_1d(*params)
+                        collect_feature_1d(*params)
                     elif ndim == 2:
-                        compute_feature_2d(*params)
+                        collect_feature_2d(*params)
                     elif ndim == 3:
-                        compute_feature_3d(*params)
+                        collect_feature_3d(*params)
                     elif ndim == 4:
-                        compute_feature_4d(*params)
+                        collect_feature_4d(*params)
 
                     if feature is None:
                         feature = numpy.zeros(features.shape[1:], dtype=numpy.float32)
@@ -330,6 +375,8 @@ class MultiscaleConvolutionalFeatures:
                         raise Exception(f'NaN values occur in features!')
 
                 feature_index += 1
+
+            scale *= 2
 
         if features is not None:
             return features

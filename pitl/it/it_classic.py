@@ -2,7 +2,6 @@ import math
 import tempfile
 from functools import reduce
 from operator import mul
-from random import shuffle
 
 import numpy
 import psutil
@@ -11,7 +10,7 @@ from pitl.it.it_base import ImageTranslatorBase
 from pitl.regression.gbm import GBMRegressor
 from pitl.util.combinatorics import closest_product
 from pitl.util.nd import nd_split_slices, remove_margin_slice
-from pitl.features.mcfocl import MultiscaleConvolutionalFeatures
+from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 
 
 class ImageTranslatorClassic(ImageTranslatorBase):
@@ -184,6 +183,9 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             )
 
             margins = self.get_margins(shape, self.batch_strategy)
+
+            if self.debug:
+                print(f'We will use these margins around batches: {margins}.')
 
             batch_slices = nd_split_slices(
                 shape, self.batch_strategy, do_shuffle=batch_shuffle, margins=margins
@@ -386,8 +388,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             return inferred_image
 
         else:
-            # TODO: batch inference here...
-
             shape = input_image.shape
 
             inferred_image = numpy.zeros(shape, dtype=numpy.float32)

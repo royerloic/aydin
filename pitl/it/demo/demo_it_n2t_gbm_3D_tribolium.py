@@ -8,10 +8,11 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from tifffile import imread
 
+from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from pitl.io.datasets import downloaded_zipped_example, examples_zipped
 from pitl.it.it_classic import ImageTranslatorClassic
 from pitl.regression.gbm import GBMRegressor
-from pitl.features.mcfocl import MultiscaleConvolutionalFeatures
+from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 
 
 def demo():
@@ -63,17 +64,15 @@ def demo():
         scales = [1, 3, 7, 15, 31, 63, 127, 255]
         widths = [3, 3, 3, 3, 3, 3, 3, 3]
 
-        generator = MultiscaleConvolutionalFeatures(
-            kernel_widths=widths[:level],
-            kernel_scales=scales[:level],
-            exclude_center=False,
+        generator = FastMultiscaleConvolutionalFeatures(
+            kernel_widths=widths[:level], kernel_scales=scales[:level]
         )
 
         regressor = GBMRegressor(
             num_leaves=64,
             n_estimators=1024,
             learning_rate=0.01,
-            eval_metric='l1',
+            loss='l1',
             early_stopping_rounds=None,
         )
 

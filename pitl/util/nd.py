@@ -56,9 +56,9 @@ def nd_split_slices(array_shape, nb_slices, do_shuffle=False, margins=None):
 
         for slice_start in slice_start_range:
 
-            slice_start = max(0, slice_start - slice_margin)
-            slice_stop = min(slice_start + slice_width + slice_margin, dim_width)
-            yield outer + (slice(slice_start, slice_stop, 1),)
+            start = max(0, slice_start - slice_margin)
+            stop = min(slice_start + slice_width + slice_margin, dim_width)
+            yield outer + (slice(start, stop, 1),)
 
 
 def remove_margin_slice(array_shape, slice_with_margin, slice_without_margin):

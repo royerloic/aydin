@@ -1,5 +1,5 @@
 def compute_feature_2d(
-    generator,
+    opencl_provider,
     image_gpu,
     feature_gpu,
     dx,
@@ -78,14 +78,10 @@ def compute_feature_2d(
       """
     # print(program_code)
 
-    program = generator.opencl_provider.build(program_code)
+    program = opencl_provider.build(program_code)
 
     feature_kernel = program.feature_kernel
 
     feature_kernel(
-        generator.opencl_provider.queue,
-        image_gpu.shape,
-        None,
-        image_gpu.data,
-        feature_gpu.data,
+        opencl_provider.queue, image_gpu.shape, None, image_gpu.data, feature_gpu.data
     )
