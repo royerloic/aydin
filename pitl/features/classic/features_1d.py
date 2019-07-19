@@ -1,5 +1,11 @@
 def compute_feature_1d(
-    generator, image_gpu, feature_gpu, dx, lx, exclude_center=True, reduction='sum'
+    opencl_provider,
+    image_gpu,
+    feature_gpu,
+    dx,
+    lx,
+    exclude_center=True,
+    reduction='sum',
 ):
     """
     Compute a given feature for a displacement (dx) relative to the center pixel, and a patch size (lx)
@@ -61,14 +67,10 @@ def compute_feature_1d(
       """
     # print(program_code)
 
-    program = generator.opencl_provider.build(program_code)
+    program = opencl_provider.build(program_code)
 
     feature_kernel = program.feature_kernel
 
     feature_kernel(
-        generator.opencl_provider.queue,
-        image_gpu.shape,
-        None,
-        image_gpu.data,
-        feature_gpu.data,
+        opencl_provider.queue, image_gpu.shape, None, image_gpu.data, feature_gpu.data
     )

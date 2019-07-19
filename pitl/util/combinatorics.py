@@ -4,7 +4,7 @@ def closest_product(values, N, tol_min=0.1, tol_max=0.1):
     Given a list of integers u=[a_0, ..., a_m]  find the set of indices {i_0, ..., i_n} for that list such that the product
     u[i_0]* ... *u[i_n] is the closest to a given integer N.
 
-    This method is fast heuristic approximation that returns the closest solution within N*[tol_min,tol_max]
+    This method is pyramid heuristic approximation that returns the closest solution within N*[tol_min,tol_max]
 
     Returns indices for
     :param values:

@@ -18,11 +18,13 @@ def demo(image):
     with app_context():
 
         level = 2
-        scales = [1, 3, 7, 15, 31]
-        widths = [3, 3, 3, 3, 3]
+        scales = [1, 3, 7, 15, 31][:level]
+        widths = [3, 3, 3, 3, 3][:level]
+
+        batch_dims = (True, False, False, False)
 
         generator = FastMultiscaleConvolutionalFeatures(
-            kernel_widths=widths[:level], kernel_scales=scales[:level]
+            kernel_widths=widths, kernel_scales=scales
         )
 
         regressor = GBMRegressor(
@@ -34,8 +36,6 @@ def demo(image):
         )
 
         it = ImageTranslatorClassic(generator, regressor)
-
-        batch_dims = (False, False, False, False)
 
         start = time.time()
         it.train(image, image, batch_dims=batch_dims)
@@ -60,7 +60,7 @@ image_path = examples_single.gardner_org.get_path()
 array, metadata = io.imread(image_path)
 print(array.shape)
 array = array[:, 0:60, 270:500, 400:600]
+print(array.shape)
 array = array.astype(numpy.float32)
 array = rescale_intensity(array, in_range='image', out_range=(0, 1))
-print(array.shape)
 demo(array)

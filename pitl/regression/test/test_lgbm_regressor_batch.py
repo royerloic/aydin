@@ -9,7 +9,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from pitl.features.mcfocl import MultiscaleConvolutionalFeatures
+from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 from pitl.regression.gbm import GBMRegressor
 
 

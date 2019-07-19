@@ -9,9 +9,11 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
+from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from pitl.it.it_classic import ImageTranslatorClassic
+from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 from pitl.regression.gbm import GBMRegressor
-from pitl.features.mcfocl import MultiscaleConvolutionalFeatures
+from pitl.regression.nn.nn import NNRegressor
 
 
 def demo(image):
@@ -39,7 +41,7 @@ def demo(image):
         scales = [1, 3, 7, 15]
         widths = [7, 5, 3, 3]
 
-        generator = MultiscaleConvolutionalFeatures(
+        generator = FastMultiscaleConvolutionalFeatures(
             kernel_widths=widths,
             kernel_scales=scales,
             kernel_shapes=['l1'] * len(scales),

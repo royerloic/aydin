@@ -17,7 +17,7 @@ class RandomForrestRegressor(GBMRegressor):
         n_estimators=128,
         max_bin=512,
         learning_rate=0.05,
-        metric='l1',
+        loss='l1',
         early_stopping_rounds=5,
         verbosity=100,
     ):
@@ -27,7 +27,7 @@ class RandomForrestRegressor(GBMRegressor):
             n_estimators,
             max_bin,
             learning_rate,
-            metric,
+            loss,
             early_stopping_rounds,
             verbosity,
         )

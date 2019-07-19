@@ -1,6 +1,7 @@
 import itertools
 import os
 
+import numpy
 import pyopencl as cl
 from pyopencl._cl import get_platforms
 
@@ -32,7 +33,6 @@ class OpenCLProvider:
         )
 
     def get_filtered_device_list(self, includes=[], excludes=[], sort_by_mem_size=True):
-        valid_devices = []
 
         devices = self.get_all_devices()
         # print(platforms)
@@ -46,10 +46,62 @@ class OpenCLProvider:
         if sort_by_mem_size:
             devices = sorted(devices, key=lambda x: x.global_mem_size, reverse=True)
 
+        devices = [device for device in devices if self.test_device(device)]
+
         print(devices)
         print([device.global_mem_size for device in devices])
 
         return list(devices)
+
+    def test_device(self, device):
+
+        try:
+
+            a_np = numpy.random.rand(50000).astype(numpy.float32)
+            b_np = numpy.random.rand(50000).astype(numpy.float32)
+
+            ctx = cl.create_some_context()
+            queue = cl.CommandQueue(ctx)
+
+            mf = cl.mem_flags
+            a_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=a_np)
+            b_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b_np)
+
+            prg = cl.Program(
+                ctx,
+                """
+            __kernel void sum(
+                __global const float *a_g, __global const float *b_g, __global float *res_g)
+            {
+              int gid = get_global_id(0);
+              res_g[gid] = a_g[gid] + b_g[gid];
+            }
+            """,
+            ).build()
+
+            res_g = cl.Buffer(ctx, mf.WRITE_ONLY, a_np.nbytes)
+            prg.sum(queue, a_np.shape, None, a_g, b_g, res_g)
+
+            res_np = numpy.empty_like(a_np)
+            cl.enqueue_copy(queue, res_np, res_g)
+
+            # Check on CPU with Numpy:
+            # print(res_np - (a_np + b_np))
+            # print(numpy.linalg.norm(res_np - (a_np + b_np)))
+            assert numpy.allclose(res_np, a_np + b_np)
+
+            print(f"Device {device} _is_ operational.")
+
+            return True
+
+        except Exception as e:
+
+            print(e)
+            print(
+                f"Device {device.name} is not operational: it failed to run some basic tensor operation."
+            )
+
+            return False
 
     def build(self, program_code):
 

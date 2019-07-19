@@ -32,7 +32,7 @@ class GBMRegressor(RegressorBase):
         n_estimators=128,
         max_bin=512,
         learning_rate=0.05,
-        metric='l1',
+        loss='l1',
         early_stopping_rounds=5,
         verbosity=100,
     ):
@@ -55,7 +55,7 @@ class GBMRegressor(RegressorBase):
         self.n_estimators = n_estimators
         self.max_bin = max_bin
         self.learning_rate = learning_rate
-        self.metric = metric
+        self.metric = loss
         self.early_stopping_rounds = early_stopping_rounds
         self.verbosity = verbosity
         self.lgbmr = None
@@ -69,7 +69,6 @@ class GBMRegressor(RegressorBase):
     def reset(self):
         del self.lgbmr
         self.lgbmr = []
-        gc.collect()
 
     def _get_params(self, num_samples, batch=False):
         min_data_in_leaf = 20 + int(0.01 * (num_samples / self.num_leaves))

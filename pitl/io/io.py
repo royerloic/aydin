@@ -25,7 +25,8 @@ def imread(path):
         try:
             if is_tiff:
                 print(f"Reading file {path} as TIFF file")
-                array = pims.open(path)
+                # array = pims.open(path)
+                array = tifffile.imread(path)
             elif is_czi:
                 print(f"Reading file {path} as CZI file")
                 array = czifile.imread(path)

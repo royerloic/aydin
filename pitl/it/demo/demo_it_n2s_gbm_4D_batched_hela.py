@@ -4,11 +4,12 @@ import numpy as np
 from napari.util import app_context
 from skimage.exposure import rescale_intensity
 
+from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from pitl.io import io
 from pitl.io.datasets import examples_single
 from pitl.it.it_classic import ImageTranslatorClassic
 from pitl.regression.gbm import GBMRegressor
-from pitl.features.mcfocl import MultiscaleConvolutionalFeatures
+from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 
 
 def demo(image):
@@ -21,7 +22,9 @@ def demo(image):
         scales = [1, 3, 7, 15, 31, 63]
         widths = [3, 3, 3, 3, 3, 3]
 
-        generator = MultiscaleConvolutionalFeatures(
+        batch_dims = (True, False, False, False)
+
+        generator = FastMultiscaleConvolutionalFeatures(
             kernel_widths=widths, kernel_scales=scales, exclude_center=False
         )
 
@@ -29,14 +32,14 @@ def demo(image):
             num_leaves=128,
             n_estimators=1024,
             learning_rate=0.01,
-            eval_metric='l1',
+            loss='l1',
             early_stopping_rounds=None,
         )
 
         it = ImageTranslatorClassic(generator, regressor)
 
         start = time.time()
-        denoised = it.train(image, image, batch_dims=(True, True, False, False))
+        denoised = it.train(image, image, batch_dims=batch_dims)
         stop = time.time()
         print(f"Training: elapsed time:  {stop-start} ")
 
@@ -53,6 +56,7 @@ def demo(image):
 
 image_path = examples_single.hyman_hela.get_path()
 array, metadata = io.imread(image_path)
-image = array.astype(np.float32)
-image = rescale_intensity(image, in_range='image', out_range=(0, 1))
-demo(image)
+array = array[0:10, 15:35, 130:167, 130:177]
+array = array.astype(np.float32)
+array = rescale_intensity(array, in_range='image', out_range=(0, 1))
+demo(array)

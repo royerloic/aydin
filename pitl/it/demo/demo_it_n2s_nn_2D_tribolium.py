@@ -11,7 +11,8 @@ from tifffile import imread
 from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from pitl.io.datasets import examples_zipped
 from pitl.it.it_classic import ImageTranslatorClassic
-from pitl.regression.gbm import GBMRegressor
+from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
+from pitl.regression.nn.nn import NNRegressor
 
 
 def demo():
@@ -61,17 +62,10 @@ def demo():
         widths = [3, 3, 3, 3, 3]
 
         generator = FastMultiscaleConvolutionalFeatures(
-            kernel_widths=widths, kernel_scales=scales, exclude_center=False
+            kernel_widths=widths, kernel_scales=scales
         )
 
-        regressor = GBMRegressor(
-            loss='poisson',
-            learning_rate=0.01,
-            num_leaves=127,
-            max_bin=512,
-            n_estimators=2048,
-            early_stopping_rounds=20,
-        )
+        regressor = NNRegressor()
 
         it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)
 

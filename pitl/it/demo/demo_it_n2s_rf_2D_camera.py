@@ -9,9 +9,10 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
+from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from pitl.it.it_classic import ImageTranslatorClassic
 from pitl.regression.rf import RandomForrestRegressor
-from pitl.features.mcfocl import MultiscaleConvolutionalFeatures
+from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 
 
 def demo(image, min_level=7, max_level=100):
@@ -36,14 +37,11 @@ def demo(image, min_level=7, max_level=100):
             rescale_intensity(noisy, in_range='image', out_range=(0, 1)), name='noisy'
         )
 
-        scales = [1, 3, 7, 15, 31]
-        widths = [3, 3, 3, 3, 3]
+        scales = [1, 3, 7, 15, 31, 63, 127, 255]
+        widths = [3, 3, 3, 3, 3, 3, 3, 3]
 
-        generator = MultiscaleConvolutionalFeatures(
-            kernel_widths=widths,
-            kernel_scales=scales,
-            kernel_shapes=['l1'] * len(scales),
-            exclude_center=True,
+        generator = FastMultiscaleConvolutionalFeatures(
+            kernel_widths=widths, kernel_scales=scales
         )
 
         regressor = RandomForrestRegressor(

@@ -1,4 +1,4 @@
-from pitl.features.mcfocl import MultiscaleConvolutionalFeatures
+from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 from pitl.it.it_classic import ImageTranslatorClassic
 from pitl.regression.gbm import GBMRegressor
 
