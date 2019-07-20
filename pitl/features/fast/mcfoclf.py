@@ -1,13 +1,9 @@
-from __future__ import absolute_import, print_function
-
 import tempfile
 
 import numpy
 import numpy as np
 import psutil
 import pyopencl as cl
-from napari import Viewer
-from napari.util import app_context
 from pyopencl.array import to_device, Array
 
 from pitl.features.fast.features_1d import collect_feature_1d
@@ -191,7 +187,7 @@ class FastMultiscaleConvolutionalFeatures:
                     image_batch_gpu, image_integral_gpu_1, image_integral_gpu_2
                 )
 
-                # with app_context():
+                # with napari.gui_qt():
                 #      viewer = Viewer()
                 #      viewer.add_image(image_batch_gpu.get(), name='image')
                 #      viewer.add_image(rescale_intensity(image_integral_gpu.get(), in_range='image', out_range=(0, 1)), name='integral')
@@ -393,7 +389,7 @@ class FastMultiscaleConvolutionalFeatures:
 
                     features[feature_index] = feature
 
-                    # with app_context():
+                    # with napari.gui_qt():
                     #     viewer = Viewer()
                     #     viewer.add_image(image_gpu.get(), name='image')
                     #     viewer.add_image(feature, name='feature')

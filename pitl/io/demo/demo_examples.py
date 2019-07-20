@@ -1,4 +1,4 @@
-from napari.util import app_context
+import napari
 
 from pitl.io import io
 from pitl.io.datasets import examples_single
@@ -16,10 +16,8 @@ def demo_examples():
 
         array, metadata = io.imread(example_file_path)
 
-        from napari import ViewerApp
-
-        with app_context():
-            viewer = ViewerApp()
+        with napari.gui_qt():
+            viewer = napari.Viewer()
             viewer.add_image(array, name='image')
 
 

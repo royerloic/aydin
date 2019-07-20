@@ -2,7 +2,7 @@ import time
 from os.path import join
 
 import numpy as np
-from napari.util import app_context
+import napari
 from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
@@ -12,7 +12,6 @@ from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from pitl.io.datasets import downloaded_zipped_example, examples_zipped
 from pitl.it.it_classic import ImageTranslatorClassic
 from pitl.regression.gbm import GBMRegressor
-from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 
 
 def demo():
@@ -51,10 +50,8 @@ def demo():
         noisy_test, in_range='image', out_range=(0, 1)
     ).astype(np.float32)
 
-    from napari import Viewer
-
-    with app_context():
-        viewer = Viewer()
+    with napari.gui_qt():
+        viewer = napari.Viewer()
         viewer.add_image(image, name='image')
         viewer.add_image(noisy, name='noisy')
         viewer.add_image(image_test, name='image_test')

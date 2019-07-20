@@ -1,8 +1,7 @@
 import time
 
 import numpy as np
-from napari import Viewer
-from napari.util import app_context
+import napari
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
@@ -11,9 +10,7 @@ from skimage.util import random_noise
 
 from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from pitl.it.it_classic import ImageTranslatorClassic
-from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 from pitl.regression.gbm import GBMRegressor
-from pitl.regression.nn.nn import NNRegressor
 
 
 def demo(image):
@@ -29,8 +26,8 @@ def demo(image):
     noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
     noisy = noisy.astype(np.float32)
 
-    with app_context():
-        viewer = Viewer()
+    with napari.gui_qt():
+        viewer = napari.Viewer()
         viewer.add_image(
             rescale_intensity(image, in_range='image', out_range=(0, 1)), name='image'
         )

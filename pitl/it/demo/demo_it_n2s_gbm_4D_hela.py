@@ -1,7 +1,7 @@
 import time
 
 import numpy as np
-from napari.util import app_context
+import napari
 from skimage.exposure import rescale_intensity
 
 from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
@@ -9,14 +9,12 @@ from pitl.io import io
 from pitl.io.datasets import examples_single
 from pitl.it.it_classic import ImageTranslatorClassic
 from pitl.regression.gbm import GBMRegressor
-from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 
 
 def demo(image):
-    from napari import Viewer
 
-    with app_context():
-        viewer = Viewer()
+    with napari.gui_qt():
+        viewer = napari.Viewer()
         viewer.add_image(image, name='image')
 
         scales = [1, 3, 7, 15, 31]

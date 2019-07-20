@@ -1,8 +1,7 @@
 import math
 
 import numpy
-from napari import Viewer
-from napari.util import app_context
+import napari
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
@@ -86,8 +85,8 @@ def demo_lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, displa
     print("denoised", psnr, ssim)
 
     if display:
-        with app_context():
-            viewer = Viewer()
+        with napari.gui_qt():
+            viewer = napari.Viewer()
             viewer.add_image(
                 rescale_intensity(image, in_range='image', out_range=(0, 1)),
                 name='image',
