@@ -1,5 +1,5 @@
 import numpy as np
-from napari.util import app_context
+import napari
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
 
@@ -23,10 +23,8 @@ def demo_multiscale_convolutions_2d():
     print(features)
     print(features.shape)
 
-    from napari import ViewerApp
-
-    with app_context():
-        viewer = ViewerApp()
+    with napari.gui_qt():
+        viewer = napari.Viewer()
         layer = viewer.add_image(
             rescale_intensity(features, in_range='image', out_range=(0, 1)),
             name='image',

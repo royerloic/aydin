@@ -11,7 +11,7 @@ kiwisolver==1.1.0
 lightgbm==2.2.1
 matplotlib==3.1.0
 numpy==1.16.4
-napari==0.0.8
+napari==0.1.2
 PIMS==0.4.1
 pre-commit>=1.16.1
 psutil==5.6.3
