@@ -31,7 +31,7 @@ def demo(image):
             early_stopping_rounds=None,
         )
 
-        it = ImageTranslatorClassic(generator, regressor)
+        it = ImageTranslatorClassic(generator, regressor, normaliser='identity')
 
         batch_dims = (False, False, False, False)
 
@@ -55,8 +55,9 @@ def demo(image):
 
 # (3, 320, 865, 1014)
 image_path = examples_single.gardner_org.get_path()
-array, metadata = io.imread(image_path)
+array, metadata = io.imread(image_path, zarr_cache=False)
 print(array.shape)
+array = array.squeeze()
 array = array[:, 0:60, 270:500, 400:600]
 array = array.astype(numpy.float32)
 array = rescale_intensity(array, in_range='image', out_range=(0, 1))

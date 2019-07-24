@@ -10,11 +10,12 @@ from pitl.features.classic.features_1d import compute_feature_1d
 from pitl.features.classic.features_2d import compute_feature_2d
 from pitl.features.classic.features_3d import compute_feature_3d
 from pitl.features.classic.features_4d import compute_feature_4d
+from pitl.features.features_base import FeatureGeneratorBase
 from pitl.opencl.opencl_provider import OpenCLProvider
 from pitl.util.nd import nd_range
 
 
-class MultiscaleConvolutionalFeatures:
+class MultiscaleConvolutionalFeatures(FeatureGeneratorBase):
     """
     Multiscale convolutional feature generator.
     Uses OpenCL to acheive very pyramid feature generation.
@@ -47,6 +48,7 @@ class MultiscaleConvolutionalFeatures:
 
         """
 
+        super().__init__()
         self.check_nans = False
         self.debug_log = True
         self.debug_force_memmap = False
@@ -65,7 +67,7 @@ class MultiscaleConvolutionalFeatures:
         )
         self.exclude_center = exclude_center
 
-    def get_free_mem(self):
+    def get_available_mem(self):
         return self.opencl_provider.device.global_mem_size
 
     def get_needed_mem(self, num_elements):

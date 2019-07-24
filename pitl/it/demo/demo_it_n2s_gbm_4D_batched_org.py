@@ -33,7 +33,7 @@ def demo(image):
             early_stopping_rounds=None,
         )
 
-        it = ImageTranslatorClassic(generator, regressor)
+        it = ImageTranslatorClassic(generator, regressor, normaliser='identity')
 
         start = time.time()
         it.train(image, image, batch_dims=batch_dims)
@@ -57,7 +57,9 @@ def demo(image):
 image_path = examples_single.gardner_org.get_path()
 array, metadata = io.imread(image_path)
 print(array.shape)
-array = array[:, 0:60, 270:500, 400:600]
+array = array.squeeze()
+# array = array[:, 0:60, 270:500, 400:600]
+array = array[:, 0:60, 170:600, 300:700]
 print(array.shape)
 array = array.astype(numpy.float32)
 array = rescale_intensity(array, in_range='image', out_range=(0, 1))

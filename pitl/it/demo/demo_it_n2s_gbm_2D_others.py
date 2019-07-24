@@ -55,7 +55,7 @@ def demo(image, min_level=7, max_level=100):
             )
 
             it = ImageTranslatorClassic(
-                feature_generator=generator, regressor=regressor
+                feature_generator=generator, regressor=regressor, normaliser='identity'
             )
 
             start = time.time()
@@ -76,7 +76,6 @@ def demo(image, min_level=7, max_level=100):
                 rescale_intensity(denoised, in_range='image', out_range=(0, 1)),
                 name='denoised%d' % param,
             )
-            # viewer.add_image(rescale_intensity(denoised_predict, in_range='image', out_range=(0, 1)), name='denoised_predict%d' % param)
 
 
 array, metadata = io.imread(examples_single.generic_crowd.get_path())

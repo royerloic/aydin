@@ -64,7 +64,9 @@ def demo():
 
         regressor = NNRegressor()
 
-        it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)
+        it = ImageTranslatorClassic(
+            feature_generator=generator, regressor=regressor, normaliser='identity'
+        )
 
         start = time.time()
         denoised = it.train(noisy, image)

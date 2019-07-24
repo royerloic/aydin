@@ -68,11 +68,13 @@ def demo():
             learning_rate=0.01,
             num_leaves=127,
             max_bin=512,
-            n_estimators=2048,
+            n_estimators=320,
             early_stopping_rounds=20,
         )
 
-        it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)
+        it = ImageTranslatorClassic(
+            feature_generator=generator, regressor=regressor, normaliser='identity'
+        )
 
         start = time.time()
         denoised = it.train(noisy, image)

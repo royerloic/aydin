@@ -32,7 +32,10 @@ def demo_pitl_2D(noisy):
         kernel_shapes=['l1'] * len(scales),
         exclude_center=True,
     )
-    it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)
+    it = ImageTranslatorClassic(
+        feature_generator=generator, regressor=regressor, normaliser='identity'
+    )
+
     denoised = it.train(noisy, noisy)
 
     results = [[psnr(noisy, image), ssim(noisy, image)]]

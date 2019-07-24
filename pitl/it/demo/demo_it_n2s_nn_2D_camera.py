@@ -41,7 +41,9 @@ def demo():
     generator = FastMultiscaleConvolutionalFeatures(
         kernel_widths=widths, kernel_scales=scales
     )
-    it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)
+    it = ImageTranslatorClassic(
+        feature_generator=generator, regressor=regressor, normaliser='identity'
+    )
     denoised = it.train(noisy, noisy)
 
     elapsedtime = time.time() - start_time

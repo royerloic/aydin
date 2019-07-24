@@ -12,6 +12,9 @@ class RegressorBase(ABC):
 
         """
 
+        self.callbacks = []
+        self.monitoring_datasets = []
+
     @abstractmethod
     def reset(self):
         """

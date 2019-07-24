@@ -50,7 +50,9 @@ def demo(image, min_level=7, max_level=100):
             early_stopping_rounds=20,
         )
 
-        it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)
+        it = ImageTranslatorClassic(
+            feature_generator=generator, regressor=regressor, normaliser='identity'
+        )
 
         start = time.time()
         denoised = it.train(noisy, noisy)

@@ -195,7 +195,7 @@ def collect_feature_4d(
            }}
          }}
          """
-    print(program_code)
+    # print(program_code)
 
     program = opencl_provider.build(program_code)
 
