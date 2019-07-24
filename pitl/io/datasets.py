@@ -31,6 +31,33 @@ class examples_single(Enum):
     fmdd_hv115 = ('12C3_nW_wCFftKN0_XmGNoe-v72mp31p-', 'HV115_P0500510039.png')
     fmdd_hv110 = ('1B6WMgiaaUozgqwvHQtM0NwTUpmKuauKO', 'HV110_P0500510004.png')
 
+    # XY
+    metha_pol = (
+        '13LqFk3elalzBbdo--8dIBQRBGTvrosDo',
+        'Mehta_img_Polarization_t045_p000_z001.tif',
+    )
+    metha_ret = (
+        '1O6wfN404wSlKOoAwKck_pbjpX05qE7LH',
+        'Mehta_img_Retardance_t045_p000_z001.tif',
+    )
+    metha_tra = (
+        '1ZwOdD80EQspy5lKHEVw6s_ISf5H0kInF',
+        'Mehta_img_Transmission_t045_p000_z001.tif',
+    )
+
+    leonetti_tm7sf2 = (
+        '1HHsbZ6jyuJkIj6c7kGtsPKOgpUxo0ihw',
+        'Leonetti_p4B3_1_TM7SF2_PyProcessed_IJClean.tif',
+    )
+    leonetti_sptssa = (
+        '10kR7FSIyi7417XYTLrMJaGe3MfvMmSYA',
+        'Leonetti_p1H10_2_SPTSSA_PyProcessed_IJClean.tif',
+    )
+    leonetti_snca = (
+        '1UyF5HkZLwTaoiBf1sLHkTdw09yyCJyKO',
+        'Leonetti_p1H8_2_SNCA_PyProcessed_IJClean.tif',
+    )
+
     # XYZ
     keller_dmel = (
         '12DCAlDRSiTyGDSD7p06nk17GO3ztHg-Q',
@@ -71,6 +98,7 @@ class examples_zipped(Enum):
         return join(datasets_folder, os.path.splitext(self.value[1])[0])
 
     care_tribolium = ('1BVNU-y9NJdNzkmsZcH8-2nhdhlRd4Mcw', 'tribolium.zip')
+    unser_celegans = ('1D1I0LoA5LNsEr56kdJogik8uWN5wm2y3', 'celegans.zip')
 
 
 def download_from_gdrive(

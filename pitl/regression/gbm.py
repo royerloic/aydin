@@ -7,6 +7,7 @@ from typing import List, Union
 import lightgbm
 import numpy
 from lightgbm import Booster
+from lightgbm.callback import CallbackEnv
 
 from pitl.regression.regressor_base import RegressorBase
 
@@ -120,6 +121,21 @@ class GBMRegressor(RegressorBase):
             lightgbm.Dataset(x_valid, y_valid) if has_valid_dataset else None
         )
 
+        callbacks = []
+        if self.callbacks:
+            for callback in self.callbacks:
+
+                def lgbm_callback(env: CallbackEnv):
+                    model = env.model
+                    iteration = env.iteration
+                    callback(
+                        self,
+                        iteration=iteration,
+                        callable=lambda x: self.predict(x, model_to_use=model),
+                    )
+
+                callbacks.append(lgbm_callback)
+
         model = lightgbm.train(
             params=self._get_params(num_samples, batch=is_batch),
             init_model=None,  # self.lgbmr if is_batch else None, <-- not working...
@@ -130,6 +146,7 @@ class GBMRegressor(RegressorBase):
             else None,
             num_boost_round=self.n_estimators,
             # keep_training_booster= is_batch, <-- not working...
+            callbacks=callbacks,
         )
 
         if is_batch:
@@ -144,7 +161,7 @@ class GBMRegressor(RegressorBase):
 
         gc.collect()
 
-    def predict(self, x, batch_mode='median'):
+    def predict(self, x, batch_mode='median', model_to_use=None):
         """
         Predicts y given x by applying the learned function f: y=f(x)
         :param x:
@@ -152,10 +169,14 @@ class GBMRegressor(RegressorBase):
         :return:
         :rtype:
         """
-        if isinstance(self.lgbmr, (list,)):
+
+        if model_to_use is None:
+            model_to_use = self.lgbmr
+
+        if isinstance(model_to_use, (list,)):
             yp = None
 
-            nb_models = len(self.lgbmr)
+            nb_models = len(model_to_use)
 
             size_in_bytes = nb_models * x.size * x.itemsize
             free_mem_in_bytes = psutil.virtual_memory().free
@@ -167,7 +188,7 @@ class GBMRegressor(RegressorBase):
 
                 yp_batch_list = []
 
-                for model in self.lgbmr:
+                for model in model_to_use:
                     yp_batch = model.predict(x, num_iteration=model.best_iteration)
                     yp_batch_list.append(yp_batch)
 
@@ -176,7 +197,7 @@ class GBMRegressor(RegressorBase):
 
             else:  # or we compute the mean:
                 counter = 0
-                for model in self.lgbmr:
+                for model in model_to_use:
                     yp_batch = model.predict(x, num_iteration=model.best_iteration)
 
                     if yp is None:
@@ -191,4 +212,4 @@ class GBMRegressor(RegressorBase):
                 return yp
 
         else:
-            return self.lgbmr.predict(x, num_iteration=self.lgbmr.best_iteration)
+            return model_to_use.predict(x, num_iteration=model_to_use.best_iteration)

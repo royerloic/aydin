@@ -16,11 +16,12 @@ from pitl.features.fast.integral import (
     integral_3d,
     integral_4d,
 )
+from pitl.features.features_base import FeatureGeneratorBase
 from pitl.opencl.opencl_provider import OpenCLProvider
 from pitl.util.nd import nd_range
 
 
-class FastMultiscaleConvolutionalFeatures:
+class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
     """
     Multiscale convolutional feature generator.
     Uses OpenCL to acheive very fast integral image based feature generation.
@@ -74,7 +75,7 @@ class FastMultiscaleConvolutionalFeatures:
         )
         self.exclude_center = exclude_center
 
-    def get_free_mem(self):
+    def get_available_mem(self):
         return self.opencl_provider.device.global_mem_size
 
     def get_needed_mem(self, num_elements):

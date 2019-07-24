@@ -7,6 +7,7 @@ import psutil
 import pyopencl as cl
 from pyopencl.array import to_device, Array, empty
 
+from pitl.features.features_base import FeatureGeneratorBase
 from pitl.features.pyramid.downscale import downscale_1d, downscale_2d
 from pitl.features.pyramid.features import (
     collect_feature_1d,
@@ -18,7 +19,7 @@ from pitl.opencl.opencl_provider import OpenCLProvider
 from pitl.util.nd import nd_range
 
 
-class PyramidMultiscaleConvolutionalFeatures:
+class PyramidMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
     """
     Multiscale convolutional feature generator.
     Uses OpenCL to acheive very fast pyramid feature generation.
@@ -52,6 +53,7 @@ class PyramidMultiscaleConvolutionalFeatures:
 
         """
 
+        super().__init__()
         self.check_nans = False
         self.debug_log = True
         self.debug_force_memmap = False
@@ -69,7 +71,7 @@ class PyramidMultiscaleConvolutionalFeatures:
         )
         self.exclude_center = exclude_center
 
-    def get_free_mem(self):
+    def get_available_mem(self):
         return self.opencl_provider.device.global_mem_size
 
     def get_needed_mem(self, num_elements):

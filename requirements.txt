@@ -25,3 +25,8 @@ sentry-sdk==0.10.1
 tifffile==2019.7.2
 QDarkStyle==2.7
 vispy==0.6.0
+Keras==2.2.4
+plaidml==0.6.3
+plaidml-keras==0.6.3
+zarr==2.2.0
+numcodecs==0.5.4

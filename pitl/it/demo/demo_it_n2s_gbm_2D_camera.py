@@ -56,7 +56,7 @@ def demo(image, min_level=7, max_level=100):
             )
 
             it = ImageTranslatorClassic(
-                feature_generator=generator, regressor=regressor
+                feature_generator=generator, regressor=regressor, normaliser='identity'
             )
 
             start = time.time()

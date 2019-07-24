@@ -73,7 +73,7 @@ def demo():
             early_stopping_rounds=None,
         )
 
-        it = ImageTranslatorClassic(generator, regressor)
+        it = ImageTranslatorClassic(generator, regressor, normaliser='identity')
 
         start = time.time()
         it.train(noisy, image)

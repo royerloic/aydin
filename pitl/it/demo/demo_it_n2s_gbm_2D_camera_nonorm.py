@@ -1,6 +1,7 @@
 import time
 
-import numpy as np
+import numpy
+from napari import Viewer
 import napari
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
@@ -13,30 +14,16 @@ from pitl.it.it_classic import ImageTranslatorClassic
 from pitl.regression.gbm import GBMRegressor
 
 
-def demo(image):
+def demo(image, noisy):
     """
         Demo for self-supervised denoising using camera image with synthetic noise
     """
 
-    image = rescale_intensity(image, in_range='image', out_range=(0, 1))
-
-    intensity = 5
-    np.random.seed(0)
-    noisy = np.random.poisson(image * intensity) / intensity
-    noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
-    noisy = noisy.astype(np.float32)
-
     with napari.gui_qt():
         viewer = napari.Viewer()
-        viewer.add_image(
-            rescale_intensity(image, in_range='image', out_range=(0, 1)), name='image'
-        )
-        viewer.add_image(
-            rescale_intensity(noisy, in_range='image', out_range=(0, 1)), name='noisy'
-        )
 
-        scales = [1, 3, 7, 15]
-        widths = [7, 5, 3, 3]
+        scales = [1, 3, 7, 15, 31, 63, 127, 255]
+        widths = [3, 3, 3, 3, 3, 3, 3, 3]
 
         generator = FastMultiscaleConvolutionalFeatures(
             kernel_widths=widths,
@@ -53,12 +40,10 @@ def demo(image):
             early_stopping_rounds=20,
         )
 
-        it = ImageTranslatorClassic(
-            feature_generator=generator, regressor=regressor, normaliser='identity'
-        )
+        it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)
 
         start = time.time()
-        denoised = it.train(noisy, noisy, batch_size=100 * 1e3)
+        denoised = it.train(noisy, noisy)
         stop = time.time()
         print(f"Training: elapsed time:  {stop-start} ")
 
@@ -69,19 +54,38 @@ def demo(image):
             stop = time.time()
             print(f"inference: elapsed time:  {stop-start} ")
 
-        print("noisy", psnr(noisy, image), ssim(noisy, image))
-        print("denoised", psnr(denoised, image), ssim(denoised, image))
+        viewer.add_image(image, name='image')
+        viewer.add_image(noisy, name='noisy')
+        viewer.add_image(denoised, name='denoised')
+
+        image = image.astype(numpy.float32)
+        noisy = noisy.astype(numpy.float32)
+        denoised = denoised.astype(numpy.float32)
+
+        image = rescale_intensity(image, in_range='image', out_range=(0, 1))
+        noisy = rescale_intensity(noisy, in_range='image', out_range=(0, 1))
+        denoised = rescale_intensity(denoised, in_range='image', out_range=(0, 1))
+
+        print("noisy", psnr(image, noisy), ssim(noisy, image))
+        print("denoised", psnr(image, denoised), ssim(denoised, image))
         # print("denoised_predict", psnr(denoised_predict, image), ssim(denoised_predict, image))
 
-        viewer.add_image(
-            rescale_intensity(denoised, in_range='image', out_range=(0, 1)),
-            name='denoised',
-        )
         # viewer.add_image(rescale_intensity(denoised_predict, in_range='image', out_range=(0, 1)), name='denoised_predict%d' % param)
 
 
-demo(camera().astype(np.float32))
-# for example in examples_single.get_list():
-#     example_file_path = examples_single.get_path(*example)
-#     array, metadata = io.imread(example_file_path)
-#     demo_pitl_2D(array.astype(np.float32), min_level=5, max_level=6)
+image = camera()
+
+intensity = 5
+numpy.random.seed(0)
+noisy = image.astype(numpy.float32)
+noisy = rescale_intensity(noisy, in_range='image', out_range=(0, 1))
+noisy = numpy.random.poisson(noisy * intensity) / intensity
+noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
+noisy *= 255
+noisy = noisy.astype(numpy.uint16)
+
+
+# Both image and noisy are uint32 within the [0, 255] range...
+# Builtin normalisation should do the job...
+
+demo(image, noisy)
