@@ -46,7 +46,7 @@ class ImageWidget(QWidget):
                 layout.setRowStretch(row, 4)
                 row += 1
 
-        self.update_image()
+        self.update_image(self.image)
         self.update_title()
 
     def add_slider(self, grid, row, axis, length):
@@ -68,7 +68,10 @@ class ImageWidget(QWidget):
 
         slider.valueChanged.connect(value_changed)
 
-    def update_image(self):
+    def update_image(self, image):
+        self.image = image
+        self.point = list(0 for i in self.image.array.shape)
+        self.nbdim = len(self.image.array.shape)
 
         index = list(self.point)
         index[self.axis0] = slice(None)

@@ -31,7 +31,7 @@ class Noise2Self:
             exclude_center=True,
         )
 
-        progress_callback.emit(40)
+        progress_callback.emit(35)
         regressor = GBMRegressor(
             learning_rate=0.01,
             num_leaves=256,
@@ -39,7 +39,7 @@ class Noise2Self:
             early_stopping_rounds=20,
         )
 
-        progress_callback.emit(65)
+        progress_callback.emit(51)
         it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)
         response = it.train(noisy_image, noisy_image)
         progress_callback.emit(100)

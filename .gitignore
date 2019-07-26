@@ -112,3 +112,5 @@ data/
 .DS_Store
 
 build/osx/build/
+
+.zgroup

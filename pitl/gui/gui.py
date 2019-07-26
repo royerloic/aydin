@@ -1,15 +1,13 @@
 import sys
-import numpy as np
 
 from PyQt5.QtCore import Qt, QThreadPool
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QSplitter
 import qdarkstyle
+from PyQt5.QtWidgets import QDialog
 
-from pitl.gui.components.log_console import LogConsole
-from pitl.gui.mininap.gui.image_widget import ImageWidget
-from pitl.gui.mininap.image.napari_image import NImage
-from pitl.gui.tabs.tabs import Tabs
+from pitl.gui.pages.about import AboutPage
+from pitl.gui.pages.welcome import WelcomePage
 
 
 class App(QMainWindow):
@@ -26,39 +24,40 @@ class App(QMainWindow):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
-        self.tabs = Tabs(self, self.threadpool)
-        # self.log_console = LogConsole(self)
-        self.main_widget = QSplitter(Qt.Horizontal)
-        self.control_widget = QSplitter(Qt.Vertical)
-        self.control_widget.addWidget(self.tabs)
-        # self.control_widget.addWidget(self.log_console)
-        self.control_widget.setSizes([1, 0])
-
-        self.main_widget.addWidget(self.control_widget)
-
-        # trial mininap
-        h = 5120
-        w = 5120
-        Y, X = np.ogrid[-2.5 : 2.5 : h * 1j, -2.5 : 2.5 : w * 1j]
-        array = np.empty((h, w), dtype=np.float32)
-        array[:] = np.random.rand(h, w)
-        array[-30:] = np.linspace(0, 1, w)
-        image = NImage(array)
-        imgwin = ImageWidget(image)
-        self.main_widget.addWidget(imgwin)
+        self.main_widget = WelcomePage(self, self.threadpool)
         self.setCentralWidget(self.main_widget)
 
+        self.setupMenubar()
+
+    def setupMenubar(self):
         mainMenu = self.menuBar()
         mainMenu.setNativeMenuBar(False)
         fileMenu = mainMenu.addMenu(' &File')
-        searchMenu = mainMenu.addMenu(' &Search')
         helpMenu = mainMenu.addMenu(' &Help')
+
+        # File Menu
+        welcomePageButton = QAction('Welcome Page', self)
+        welcomePageButton.setStatusTip('Go to welcome page')
+        welcomePageButton.triggered.connect(
+            lambda: self.setCentralWidget(WelcomePage(self, self.threadpool))
+        )
+        fileMenu.addAction(welcomePageButton)
 
         exitButton = QAction(QIcon('exit24.png'), 'Exit', self)
         exitButton.setShortcut('Ctrl+Q')
         exitButton.setStatusTip('Exit application')
         exitButton.triggered.connect(self.close)
         fileMenu.addAction(exitButton)
+
+        # Help Menu
+        aboutButton = QAction('About', self)
+        aboutButton.setStatusTip('About pitl and its authors')
+        aboutButton.triggered.connect(AboutPage.showAbout)
+        helpMenu.addAction(aboutButton)
+
+    def setHeight(self, height):
+        self.height = height
+        self.setGeometry(self.left, self.top, self.width, self.height)
 
 
 def run():
