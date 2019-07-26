@@ -1,6 +1,3 @@
-import math
-import multiprocessing
-
 from pitl.regression.gbm import GBMRegressor
 
 

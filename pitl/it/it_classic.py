@@ -1,17 +1,10 @@
-import math
 import tempfile
-from functools import reduce
-from operator import mul
 
 import numpy
-import psutil
 
 from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from pitl.it.it_base import ImageTranslatorBase
 from pitl.regression.gbm import GBMRegressor
-from pitl.util.combinatorics import closest_product
-from pitl.util.nd import nd_split_slices, remove_margin_slice
-from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 
 
 class ImageTranslatorClassic(ImageTranslatorBase):
@@ -51,7 +44,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         batch_dims=None,
         batch_size=None,
         batch_shuffle=False,
-        monitoring_datasets=None,
+        monitoring_images=None,
         callbacks=None,
     ):
 
@@ -64,7 +57,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             batch_dims,
             batch_size,
             batch_shuffle,
-            monitoring_datasets,
+            monitoring_images,
             callbacks,
         )
 
@@ -93,22 +86,20 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
         return x
 
-    def _predict_from_features(self, x, input_image_shape):
+    def _predict_from_features(self, x, image_shape):
         """
             internal function that predicts y from the features x
         :param x:
         :type x:
-        :param input_image_shape:
-        :type input_image_shape:
+        :param image_shape:
+        :type image_shape:
         :param clip:
         :type clip:
         :return:
         :rtype:
         """
         yp = self.regressor.predict(x)
-        yp = numpy.clip(yp, 0, 1)
-        yp = yp.astype(numpy.float32)
-        inferred_image = yp.reshape(input_image_shape)
+        inferred_image = yp.reshape(image_shape)
         return inferred_image
 
     def _train(
@@ -118,22 +109,72 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         batch_dims,
         train_test_ratio=0.1,
         batch=False,
-        monitoring_datasets=None,
+        monitoring_images=None,
         callbacks=None,
+        callback_period=3,
     ):
         """
             Train to translate a given input image to a given output image
 
         """
 
-        # Setting monitoring dataset and callbacks:
-        self.regressor.monitoring_datasets = monitoring_datasets
-        self.regressor.callbacks = callbacks
-
+        # Compute features on main training data:
         x = self._compute_features(input_image, self.self_supervised, batch_dims)
         y = target_image.reshape(-1)
         # if self.debug:
         #   assert numpy.may_share_memory(target_image, y)
+
+        # Compute features for monitoring images:
+        if monitoring_images:
+            # Normalise monitoring images:
+            normalised_monitoring_images = [
+                self.input_normaliser.normalise(monitoring_image)
+                for monitoring_image in monitoring_images
+            ]
+            # compute features proper:
+            monitoring_images_features = [
+                self._compute_features(
+                    monitoring_image, self.self_supervised, batch_dims
+                )
+                for monitoring_image in normalised_monitoring_images
+            ]
+        else:
+            monitoring_images_features = None
+
+        # We pass these to the regressor:
+        self.regressor.monitoring_datasets = monitoring_images_features
+
+        # Setting monitoring dataset and callbacks:
+        regressor_callbacks = []
+        if callbacks:
+            for callback in callbacks:
+
+                def regressor_callback(
+                    iteration, eval_metric_value, inferred_flat_monitoring_images
+                ):
+
+                    if inferred_flat_monitoring_images:
+                        inferred_images = [
+                            y_m.reshape(image.shape)
+                            for (image, y_m) in zip(
+                                monitoring_images, inferred_flat_monitoring_images
+                            )
+                        ]
+
+                        denormalised_inferred_images = [
+                            self.target_normaliser.denormalise(inferred_image)
+                            for inferred_image in inferred_images
+                        ]
+
+                        callback(
+                            iteration, eval_metric_value, denormalised_inferred_images
+                        )
+                    else:
+                        callback(iteration, eval_metric_value, None)
+
+                regressor_callbacks.append(regressor_callback)
+
+        self.regressor.callbacks = regressor_callbacks
 
         nb_features = x.shape[-1]
         nb_entries = y.shape[0]
@@ -190,6 +231,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
         features = self._compute_features(input_image, self.self_supervised, batch_dims)
         inferred_image = self._predict_from_features(
-            features, input_image_shape=input_image.shape
+            features, image_shape=input_image.shape
         )
         return inferred_image

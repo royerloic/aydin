@@ -17,7 +17,7 @@ def demo(image):
     """
         Demo for self-supervised denoising using camera image with synthetic noise
     """
-
+    image = image.astype(np.float32)
     image = rescale_intensity(image, in_range='image', out_range=(0, 1))
 
     intensity = 5
@@ -28,15 +28,9 @@ def demo(image):
 
     with napari.gui_qt():
         viewer = napari.Viewer()
-        viewer.add_image(
-            rescale_intensity(image, in_range='image', out_range=(0, 1)), name='image'
-        )
-        viewer.add_image(
-            rescale_intensity(noisy, in_range='image', out_range=(0, 1)), name='noisy'
-        )
 
-        scales = [1, 3, 7, 15]
-        widths = [7, 5, 3, 3]
+        scales = [1, 3, 7, 15, 31, 63, 127, 255]
+        widths = [3, 3, 3, 3, 3, 3, 3, 3]
 
         generator = FastMultiscaleConvolutionalFeatures(
             kernel_widths=widths,
@@ -57,8 +51,29 @@ def demo(image):
             feature_generator=generator, regressor=regressor, normaliser='identity'
         )
 
+        size = 128
+        monitoring_image = noisy[
+            256 - size // 2 : 256 + size // 2, 256 - size // 2 : 256 + size // 2
+        ]
+
+        def callback(iter, eval_metric, images):
+            print(f"Iteration: {iter} metric: {eval_metric}")
+            print(f"images: {str(images)}")
+            if images:
+                viewer.add_image(
+                    rescale_intensity(images[0], in_range='image', out_range=(0, 1)),
+                    name='noisy',
+                )
+            pass
+
         start = time.time()
-        denoised = it.train(noisy, noisy, batch_size=100 * 1e3)
+        denoised = it.train(
+            noisy,
+            noisy,
+            callbacks=[callback],
+            # monitoring_images=[monitoring_image]
+        )
+
         stop = time.time()
         print(f"Training: elapsed time:  {stop-start} ")
 
@@ -69,10 +84,18 @@ def demo(image):
             stop = time.time()
             print(f"inference: elapsed time:  {stop-start} ")
 
-        print("noisy", psnr(noisy, image), ssim(noisy, image))
-        print("denoised", psnr(denoised, image), ssim(denoised, image))
+        denoised = rescale_intensity(denoised, in_range='image', out_range=(0, 1))
+
+        print("noisy", psnr(image, noisy), ssim(noisy, image))
+        print("denoised", psnr(image, denoised), ssim(denoised, image))
         # print("denoised_predict", psnr(denoised_predict, image), ssim(denoised_predict, image))
 
+        viewer.add_image(
+            rescale_intensity(image, in_range='image', out_range=(0, 1)), name='image'
+        )
+        viewer.add_image(
+            rescale_intensity(noisy, in_range='image', out_range=(0, 1)), name='noisy'
+        )
         viewer.add_image(
             rescale_intensity(denoised, in_range='image', out_range=(0, 1)),
             name='denoised',
@@ -80,8 +103,4 @@ def demo(image):
         # viewer.add_image(rescale_intensity(denoised_predict, in_range='image', out_range=(0, 1)), name='denoised_predict%d' % param)
 
 
-demo(camera().astype(np.float32))
-# for example in examples_single.get_list():
-#     example_file_path = examples_single.get_path(*example)
-#     array, metadata = io.imread(example_file_path)
-#     demo_pitl_2D(array.astype(np.float32), min_level=5, max_level=6)
+demo(camera())

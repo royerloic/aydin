@@ -1,13 +1,9 @@
-import os
-from enum import Enum
-
 from pitl.plaidml.plaidml_provider import PlaidMLProvider
-from pitl.plaidml.weightnorm import AdamWithWeightnorm
 
 provider = PlaidMLProvider()
 
 
-from pitl.regression.nn.models import yinyang, feed_forward
+from pitl.regression.nn.models import feed_forward
 from pitl.regression.regressor_base import RegressorBase
 
 

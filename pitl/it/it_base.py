@@ -37,8 +37,9 @@ class ImageTranslatorBase(ABC):
         batch_dims,
         train_test_ratio,
         batch=False,
-        monitoring_datasets=None,
+        monitoring_images=None,
         callbacks=None,
+        callback_period=3,
     ):
         """
 
@@ -52,8 +53,8 @@ class ImageTranslatorBase(ABC):
         :type train_test_ratio: 
         :param batch: 
         :type batch: 
-        :param monitoring_datasets: 
-        :type monitoring_datasets: 
+        :param monitoring_images:
+        :type monitoring_images:
         :param callbacks: 
         :type callbacks: 
         """
@@ -99,8 +100,9 @@ class ImageTranslatorBase(ABC):
         batch_dims=None,
         batch_size=None,
         batch_shuffle=False,
-        monitoring_datasets=None,
+        monitoring_images=None,
         callbacks=None,
+        callback_period=3,
     ):
         """
             Train to translate a given input image to a given output image
@@ -116,7 +118,11 @@ class ImageTranslatorBase(ABC):
         # Instanciates normaliser(s):
         if self.normaliser_type == 'identity':
             self.input_normaliser = IdentityNormaliser()
-            self.target_normaliser = IdentityNormaliser()
+            self.target_normaliser = (
+                self.input_normaliser
+                if self.self_supervised
+                else PercentileNormaliser()
+            )
         elif self.normaliser_type == 'percentile':
             self.input_normaliser = PercentileNormaliser()
             self.target_normaliser = (
@@ -175,8 +181,9 @@ class ImageTranslatorBase(ABC):
                 batch_dims,
                 train_test_ratio,
                 batch=False,
-                monitoring_datasets=monitoring_datasets,
+                monitoring_images=monitoring_images,
                 callbacks=callbacks,
+                callback_period=callback_period,
             )
 
             denormalised_inferred_image = self.input_normaliser.denormalise(
@@ -236,8 +243,9 @@ class ImageTranslatorBase(ABC):
                     batch_dims,
                     train_test_ratio,
                     batch=True,
-                    monitoring_datasets=monitoring_datasets,
+                    monitoring_images=monitoring_images,
                     callbacks=callbacks,
+                    callback_period=callback_period,
                 )
 
             # TODO: returned inferred image even in the batch case. Reason not to do it: might be a lot of data...
