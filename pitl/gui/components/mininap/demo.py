@@ -3,11 +3,12 @@ import sys
 import numpy as np
 from vispy import app
 
-from pitl.gui.mininap.gui.image_window import ImageWindow
-from pitl.gui.mininap.image.image_type_enum import ImageType
-from pitl.gui.mininap.image.napari_image import NImage
-from pitl.gui.mininap.napari_application import NapariApplication
-from pitl.gui.mininap.utils.example_data_utils import load_bluemarble_image
+from pitl.gui.components.mininap.gui.image_widget import ImageWidget
+from pitl.gui.components.mininap.gui.image_window import ImageWindow
+from pitl.gui.components.mininap.image.image_type_enum import ImageType
+from pitl.gui.components.mininap.image.napari_image import NImage
+from pitl.gui.components.mininap.napari_application import NapariApplication
+from pitl.gui.components.mininap.utils.example_data_utils import load_bluemarble_image
 
 app.use_app('pyqt5')
 
@@ -81,6 +82,25 @@ def open_emptymininap():
     return imgwin
 
 
+def update_image():
+    h = 512
+    w = 512
+    Y, X = np.ogrid[-2.5 : 2.5 : h * 1j, -2.5 : 2.5 : w * 1j]
+    array = np.empty((h, w), dtype=np.float32)
+    array[:] = np.random.rand(h, w)
+    array[-30:] = np.linspace(0, 1, w)
+    image = NImage(array)
+    imgwin = ImageWindow(image)
+    h = 1112
+    w = 1112
+    Y, X = np.ogrid[-2.5 : 2.5 : h * 1j, -2.5 : 2.5 : w * 1j]
+    array = np.empty((h, w), dtype=np.float32)
+    array[:] = np.random.rand(h, w)
+    array[-30:] = np.linspace(0, 1, w)
+    image = NImage(array)
+    imgwin.widget.image_canvas.image_visual.set_data(array)
+
+
 if __name__ == '__main__':
 
     # starting
@@ -89,8 +109,10 @@ if __name__ == '__main__':
     # imgwin1 = open_2Drgb()
     # imgwin2 = open_2Dsc()
 
-    imgwin3 = open_3Dsc()
-    imgwin4 = open_4dsc()
-    imgwin5 = open_emptymininap()
+    # imgwin3 = open_3Dsc()
+    # imgwin4 = open_4dsc()
+    # imgwin5 = open_emptymininap()
+
+    update_image()
 
     sys.exit(application.exec_())

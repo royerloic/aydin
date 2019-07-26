@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
 from pitl.gui.components.filepath_picker import FilePathPicker
 
 
-class Noise2TruthTab(QWidget):
+class TestN2TTab(QWidget):
     def __init__(self, parent):
         super(QWidget, self).__init__(parent)
 
