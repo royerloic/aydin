@@ -1,7 +1,7 @@
 import time
 
-import numpy
 import napari
+import numpy
 from skimage.exposure import rescale_intensity
 
 from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures

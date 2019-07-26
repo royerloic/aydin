@@ -1,11 +1,12 @@
-import gc
 import math
 import multiprocessing
-import psutil
+import time
 from typing import List, Union
 
+import gc
 import lightgbm
 import numpy
+import psutil
 from lightgbm import Booster
 from lightgbm.callback import CallbackEnv
 
@@ -59,11 +60,9 @@ class GBMRegressor(RegressorBase):
         self.verbosity = verbosity
         self.lgbmr = None
 
-        # LGBMRegressor(num_leaves=num_leaves,
-        #                            max_depth=max_depth,
-        #                            learning_rate=learning_rate,
-        #                            n_estimators=n_estimators,
-        #                            boosting_type='gbdt')
+        self.callbacks = None
+        self.monitoring_datasets = None
+        self.callback_period = 3
 
     def reset(self):
         del self.lgbmr
@@ -116,25 +115,51 @@ class GBMRegressor(RegressorBase):
         num_samples = y_train.shape[0]
         has_valid_dataset = x_valid is not None and y_valid is not None
 
-        train_dataset = lightgbm.Dataset(x_train, y_train)
+        train_dataset = lightgbm.Dataset(
+            x_train, y_train, params={'verbose': -1}, silent=True
+        )
         valid_dataset = (
-            lightgbm.Dataset(x_valid, y_valid) if has_valid_dataset else None
+            lightgbm.Dataset(x_valid, y_valid, params={'verbose': -1}, silent=True)
+            if has_valid_dataset
+            else None
         )
 
-        callbacks = []
+        self.last_callback_time_sec = -1
+
+        lgbm_callbacks = []
         if self.callbacks:
             for callback in self.callbacks:
 
                 def lgbm_callback(env: CallbackEnv):
-                    model = env.model
-                    iteration = env.iteration
-                    callback(
-                        self,
-                        iteration=iteration,
-                        callable=lambda x: self.predict(x, model_to_use=model),
-                    )
 
-                callbacks.append(lgbm_callback)
+                    iteration = env.iteration
+                    eval_metric_value = env.evaluation_result_list[0][2]
+                    current_time_sec = time.time()
+
+                    if (
+                        current_time_sec
+                        > self.last_callback_time_sec + self.callback_period
+                    ):
+                        model = env.model
+                        if self.monitoring_datasets:
+                            predicted_monitoring_datasets = [
+                                self.predict(x_m, model_to_use=model)
+                                for x_m in self.monitoring_datasets
+                            ]
+                            callback(
+                                iteration,
+                                eval_metric_value,
+                                predicted_monitoring_datasets,
+                            )
+                        else:
+                            callback(iteration, eval_metric_value, None)
+
+                        self.last_callback_time_sec = current_time_sec
+                    else:
+                        pass
+                        # print(f"Skipping callback at  iteration={iteration} ")
+
+                lgbm_callbacks.append(lgbm_callback)
 
         model = lightgbm.train(
             params=self._get_params(num_samples, batch=is_batch),
@@ -146,7 +171,8 @@ class GBMRegressor(RegressorBase):
             else None,
             num_boost_round=self.n_estimators,
             # keep_training_booster= is_batch, <-- not working...
-            callbacks=callbacks,
+            callbacks=lgbm_callbacks,
+            verbose_eval=len(lgbm_callbacks) == 0,
         )
 
         if is_batch:
@@ -161,7 +187,7 @@ class GBMRegressor(RegressorBase):
 
         gc.collect()
 
-    def predict(self, x, batch_mode='median', model_to_use=None):
+    def predict(self, x, batch_mode='median', model_to_use: Booster = None):
         """
         Predicts y given x by applying the learned function f: y=f(x)
         :param x:

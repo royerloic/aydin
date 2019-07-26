@@ -1,15 +1,15 @@
 import time
 
-import numpy as np
 import napari
+import numpy as np
 from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
+from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 from pitl.it.it_classic import ImageTranslatorClassic
 from pitl.regression.gbm import GBMRegressor
-from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 
 
 def demo(image, min_level=7, max_level=100):

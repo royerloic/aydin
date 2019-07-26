@@ -1,8 +1,7 @@
 import time
 
-import numpy
-from napari import Viewer
 import napari
+import numpy
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr

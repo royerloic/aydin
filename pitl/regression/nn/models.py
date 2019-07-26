@@ -1,8 +1,6 @@
-import keras
 from keras import layers
-from keras.layers import Input, Dense, LeakyReLU, Lambda, BatchNormalization
+from keras.layers import Input, Dense, LeakyReLU
 from keras.models import Model
-from keras_layer_normalization import LayerNormalization
 
 
 def block(input, outputs=1, layer_name=None, trainable=True):

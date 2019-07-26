@@ -1,13 +1,10 @@
-from os import access, W_OK, path
-from os.path import exists
+from os import path
 
-import dask
 import numpy
 from numpy import percentile
 
 from pitl.io import imread
 from pitl.io.datasets import examples_single
-from pitl.io.folders import get_home_folder, get_temp_folder, get_cache_folder
 from pitl.normaliser.minmax import MinMaxNormaliser
 from pitl.normaliser.percentile import PercentileNormaliser
 

@@ -1,4 +1,4 @@
-import glob
+import hashlib
 import hashlib
 import os
 import traceback
@@ -10,13 +10,10 @@ import dask
 import numcodecs
 import numpy
 import pims
-
 import skimage
 import zarr
 from czifile import czifile, CziFile
 from tifffile import tifffile, TiffFile
-from zarr import open_group
-
 
 ## Axis codes:
 #        'X' width, 'Y' height, 'S' sample, 'I' image series|page|plane,

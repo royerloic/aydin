@@ -2,11 +2,9 @@ import os
 from enum import Enum
 
 os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
-import keras
 from keras.models import Model
 from keras.layers import Input, Dense, Conv1D, BatchNormalization, Activation
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
-import numpy as np
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from keras import optimizers
 
 

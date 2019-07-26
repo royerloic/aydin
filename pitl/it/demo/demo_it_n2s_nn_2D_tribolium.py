@@ -1,8 +1,8 @@
 import time
 from os.path import join
 
-import numpy as np
 import napari
+import numpy as np
 from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim

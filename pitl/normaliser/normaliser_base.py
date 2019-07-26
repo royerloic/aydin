@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union
 
-import dask
 import numexpr
 import numpy
 

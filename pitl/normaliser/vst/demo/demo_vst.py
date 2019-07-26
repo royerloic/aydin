@@ -1,5 +1,4 @@
 # Example of using VST
-import time
 
 import napari
 import numpy
@@ -7,7 +6,6 @@ from skimage.data import camera
 from skimage.exposure import rescale_intensity
 from skimage.util import random_noise
 
-from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
 from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from pitl.it.it_classic import ImageTranslatorClassic
 from pitl.normaliser.vst.vst import vst_classical, vst_transform, vst_adaptive
