@@ -17,22 +17,23 @@ from pitl.gui.components.mininap.image.napari_image import NImage
 from pitl.gui.components.plot_canvas import PlotCanvas
 from pitl.gui.components.tabs.base_tab import BaseTab
 from pitl.gui.components.workers.worker import Worker
-from pitl.services.Noise2Self import Noise2Self
+from pitl.services.n2s import N2SService
 from pitl.util.resource import read_image_from_path
 
 
 class TestN2STab(BaseTab):
     def __init__(self, parent, threadpool):
         super(TestN2STab, self).__init__(parent)
+
         self.wizard = parent
-
-        self.setGeometry(0, 0, 700, 800)
-
         self.threadpool = threadpool
+        self.layout = None
 
-        self.inputfile_picker = self.wizard.upload_tab.inputfile_picker
-        self.outputfile_picker = self.wizard.upload_tab.outputfile_picker
+        self.input_picker = self.wizard.upload_tab.input_picker
+        self.output_picker = self.wizard.upload_tab.output_picker
 
+    def load_tab(self):
+        self.setGeometry(0, 0, 700, 800)
         self.layout = QVBoxLayout()
 
         # Buttons layout where we have run button and other functional methods
@@ -51,15 +52,10 @@ class TestN2STab(BaseTab):
         self.progress_bar = QProgressBar(self)
         buttons_layout.addWidget(self.progress_bar)
 
-        h = 512
-        w = 512
-        Y, X = np.ogrid[-2.5 : 2.5 : h * 1j, -2.5 : 2.5 : w * 1j]
-        array = np.empty((h, w), dtype=np.float32)
-        array[:] = np.random.rand(h, w)
-        array[-30:] = np.linspace(0, 1, w)
-        self.image = NImage(array)
-        self.imgwin = ImageWidget(self.image)
-        buttons_layout.addWidget(self.imgwin)
+        self.image_data = self.wizard.monitor_image
+        self.image = NImage(self.image_data)
+        self.imgwid = ImageWidget(self.image)
+        buttons_layout.addWidget(self.imgwid)
 
         # Build splitter
         def_splitter = QSplitter(Qt.Vertical)
@@ -79,26 +75,33 @@ class TestN2STab(BaseTab):
 
     def run_func(self, **kwargs):
 
-        input_path = self.inputfile_picker.lbl_text.text()
+        input_path = self.input_picker.lbl_text.text()
         noisy = read_image_from_path(input_path)
 
-        output_path = self.outputfile_picker.lbl_text.text()
+        output_path = self.output_picker.lbl_text.text()
         if len(output_path) <= 0:
             output_path = input_path[:-4] + "_denoised" + input_path[-4:]
-            self.outputfile_picker.lbl_text.setText(output_path)
+            self.output_picker.lbl_text.setText(output_path)
 
-        denoised = Noise2Self.run(noisy, kwargs['progress_callback'])
-        # self.imgwin.setParent(None)
-        self.imgwin.update_image(
-            NImage(denoised)
-        )  # THIS IS WORKING BUT CMAP IS NOT NORMAL
-        self.imgwin.set_cmap = 'gray'
-        # self.image = NImage(denoised)
-        # self.imgwin = ImageWidget(self.image)
+        n2s = N2SService(monitoring_variables_emit=self.add_to_mininap)
+        n2s.monitoring_variables = None, 0, -1
+
+        denoised = n2s.run(
+            noisy,
+            kwargs['progress_callback'],
+            monitoring_images=[self.wizard.monitor_image],
+        )
 
         imsave(output_path, denoised)
         self.run_button.setText("Re-Run")
-        self.outputfile_picker.filename = output_path
-        self.outputfile_picker.load_file()
+        self.output_picker.filename = output_path
+        self.output_picker.load_file()
         print(output_path)
         return "Done."
+
+    def add_to_mininap(self, arg):
+        image, eval_metric, iter = arg
+        self.image_data = np.dstack(
+            (self.image_data, image[0])
+        )  # Turn this into slider forming
+        self.imgwid.update_image(NImage(self.image_data))

@@ -1,4 +1,5 @@
 import tempfile
+import time
 
 import numpy
 
@@ -44,12 +45,15 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         batch_dims=None,
         batch_size=None,
         batch_shuffle=False,
+        monitoring_variables=None,
         monitoring_images=None,
-        callbacks=None,
     ):
 
         # Resetting regressor:
         self.regressor.reset()
+        # TODO: clean here
+        # print("first train: ")
+        # monitoring_variables = monitoring_variables[0], monitoring_variables[1], 3
         return super().train(
             input_image,
             target_image,
@@ -57,8 +61,8 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             batch_dims,
             batch_size,
             batch_shuffle,
+            monitoring_variables,
             monitoring_images,
-            callbacks,
         )
 
     def _get_needed_mem(self, num_elements):
@@ -109,8 +113,8 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         batch_dims,
         train_test_ratio=0.1,
         batch=False,
+        monitoring_variables=None,
         monitoring_images=None,
-        callbacks=None,
         callback_period=3,
     ):
         """
@@ -142,39 +146,56 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             monitoring_images_features = None
 
         # We pass these to the regressor:
-        self.regressor.monitoring_datasets = monitoring_images_features
+        self.monitoring_datasets = monitoring_images_features
 
-        # Setting monitoring dataset and callbacks:
-        regressor_callbacks = []
-        if callbacks:
-            for callback in callbacks:
+        # TODO: clean regressor/it varialables mixed use
+        def regressor_callback(env):
 
-                def regressor_callback(
-                    iteration, eval_metric_value, inferred_flat_monitoring_images
-                ):
+            iteration = env.iteration
+            eval_metric_value = env.evaluation_result_list[0][2]
+            current_time_sec = time.time()
 
-                    if inferred_flat_monitoring_images:
-                        inferred_images = [
-                            y_m.reshape(image.shape)
-                            for (image, y_m) in zip(
-                                monitoring_images, inferred_flat_monitoring_images
-                            )
-                        ]
-
-                        denormalised_inferred_images = [
-                            self.target_normaliser.denormalise(inferred_image)
-                            for inferred_image in inferred_images
-                        ]
-
-                        callback(
-                            iteration, eval_metric_value, denormalised_inferred_images
+            if (
+                current_time_sec
+                > self.regressor.last_callback_time_sec + self.regressor.callback_period
+            ):
+                model = env.model
+                if self.monitoring_datasets:
+                    predicted_monitoring_datasets = [
+                        self.regressor.predict(x_m, model_to_use=model)
+                        for x_m in self.monitoring_datasets
+                    ]
+                    inferred_images = [
+                        y_m.reshape(image.shape)
+                        for (image, y_m) in zip(
+                            monitoring_images, predicted_monitoring_datasets
                         )
-                    else:
-                        callback(iteration, eval_metric_value, None)
+                    ]
 
-                regressor_callbacks.append(regressor_callback)
+                    denormalised_inferred_images = [
+                        self.target_normaliser.denormalise(inferred_image)
+                        for inferred_image in inferred_images
+                    ]
 
-        self.regressor.callbacks = regressor_callbacks
+                    print(
+                        "denormalised_inferred_images: ", denormalised_inferred_images
+                    )
+                    monitoring_variables.monitoring_variables = (
+                        iteration,
+                        eval_metric_value,
+                        denormalised_inferred_images,
+                    )
+                else:
+                    monitoring_variables.monitoring_variables = (
+                        iteration,
+                        eval_metric_value,
+                        None,
+                    )
+
+                self.regressor.last_callback_time_sec = current_time_sec
+            else:
+                pass
+                print(f"Skipping callback at  iteration={iteration} ")
 
         nb_features = x.shape[-1]
         nb_entries = y.shape[0]
@@ -220,10 +241,14 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         if self.debug:
             print("Training...")
         if batch:
-            self.regressor.fit_batch(x_train, y_train, x_valid=x_test, y_valid=y_test)
+            self.regressor.fit_batch(
+                x_train, y_train, regressor_callback, x_valid=x_test, y_valid=y_test
+            )
             return None
         else:
-            self.regressor.fit(x_train, y_train, x_valid=x_test, y_valid=y_test)
+            self.regressor.fit(
+                x_train, y_train, regressor_callback, x_valid=x_test, y_valid=y_test
+            )
             inferred_image = self._predict_from_features(x, input_image.shape)
             return inferred_image
 

@@ -3,15 +3,15 @@ from pitl.it.it_classic import ImageTranslatorClassic
 from pitl.regression.gbm import GBMRegressor
 
 
-class Noise2Truth:
+class N2TService:
     scales = [1, 3, 5, 11, 21, 23, 47, 95]
     widths = [3, 3, 3, 3, 3, 3, 3, 3]
 
     def __init__(self, scales=None, widths=None):
         if scales is not None:
-            Noise2Truth.scales = scales
+            N2TService.scales = scales
         if widths is not None:
-            Noise2Truth.widths = widths
+            N2TService.widths = widths
 
     @staticmethod
     def run(noisy_image, image, noisy_test):
@@ -26,8 +26,8 @@ class Noise2Truth:
         """
 
         generator = MultiscaleConvolutionalFeatures(
-            kernel_widths=Noise2Truth.widths,
-            kernel_scales=Noise2Truth.scales,
+            kernel_widths=N2TService.widths,
+            kernel_scales=N2TService.scales,
             exclude_center=False,
         )
 

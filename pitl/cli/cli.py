@@ -1,13 +1,12 @@
 import os
 import click
 import logging
-from tqdm import tqdm
 
 import sentry_sdk
 
 from pitl.cli.progress_bar import ProgressBar
 from pitl.gui import gui
-from pitl.services.Noise2Self import Noise2Self
+from pitl.services.n2s import N2SService
 from pitl.util.resource import read_image_from_path
 from pitl.examples.demo_it_2D_cli import demo_pitl_2D
 
@@ -64,7 +63,7 @@ def noise2self(**kwargs):
     path = os.path.abspath(kwargs['path'])
     noisy = read_image_from_path(path)
     pbar = ProgressBar(total=100)
-    Noise2Self.run(noisy, pbar)
+    N2SService.run(noisy, pbar)
     pbar.close()
 
 

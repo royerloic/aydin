@@ -31,8 +31,8 @@ class SupportVectorRegressor:
         """
         self.svr = self.svr.fit(x_train, y_train)
 
-    def predict(self, x):
+    def predict(self, x, model_to_use=None):
         """
         Predicts y given x by applying the learned function f: y=f(x)
         """
-        return self.svr.predict(x)
+        return self.svr.predict(x) if model_to_use is None else model_to_use.predict(x)

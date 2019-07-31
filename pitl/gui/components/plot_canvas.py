@@ -15,6 +15,7 @@ class PlotCanvas(QWidget):
         # Add a ViewBox to let the user zoom/rotate
         self.view = self.canvas.central_widget.add_view()
         self.view.camera = 'panzoom'
+        self.view.camera.interactive = False
         self.view.camera.distance = 60
 
         N = 10
