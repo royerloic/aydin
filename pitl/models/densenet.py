@@ -15,9 +15,9 @@ from keras.layers import (
     BatchNormalization,
     Layer,
     multiply,
-    MaxPooling2D,
-    UpSampling2D,
     Activation,
+    UpSampling2D,
+    AveragePooling2D,
 )
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from keras_contrib.layers.normalization.instancenormalization import (
@@ -25,28 +25,30 @@ from keras_contrib.layers.normalization.instancenormalization import (
 )
 
 
-class Unet:
+class DenseNet:
     def __init__(
         self,
         input_dim,
-        num_lyr=3,
-        normalization=None,  # 'instance',
-        activation='ReLU',
+        #        num_lyr=3,
+        nb_lyr_db=4,  # number of layers in each dense block
+        nb_krnl_initial=32,
+        growth_rate=12,
+        nb_dblock=2,
+        normalization=None,  # 'instance' or 'batch' or None
+        activation='ReLU',  #
         supervised=False,
         shiftconv=True,
-        initial_unit=32,
         learn_rate=0.001,
         batch_size=None,
         backend=None,
     ):
 
-        """
-        Create a Unet model
+        """Create a DenseNet model
 
         3 training modes are available:
-        supervised: noisy and clean images are required
-        shiftconv: self-supervised learning with shift and conv scheme
-        non-shiftconv: self-supervised learning by masking pixels at each iteration
+        :supervised: noisy and clean images are required
+        :shiftconv: self-supervised learning with shift and conv scheme
+        :non-shiftconv: self-supervised learning by masking pixels at each iteration
 
         """
 
@@ -61,26 +63,25 @@ class Unet:
             assert backend in K.backend()
 
         self.input_dim = input_dim
-        self.num_lyr = num_lyr
+        #        self.num_lyr = num_lyr
+        self.nb_lyr_db = nb_lyr_db
+        self.growth_rate = growth_rate
+        self.nb_dblock = nb_dblock
         self.normalization = normalization  # 'instance' or 'batch'
-        self.activation = activation  # 'ReLU' or 'Leaky'
+        self.activation = activation
         self.supervised = supervised
         self.shiftconv = shiftconv
-        self.initial_unit = initial_unit
         self.lr = learn_rate
         self.batch_size = batch_size
 
-        if supervised:
-            self.shiftconv = False
-            print(
-                'Shift convolution will be turned off automatically because supervised learning was selected.'
-            )
-        # assert (
-        #     supervised != shiftconv
-        # ), 'Shift convolution scheme is only available for self-supervised learning.'
         assert (
-            np.mod(input_dim[:-1], np.repeat(2 ** num_lyr, len(input_dim[:-1]))) == 0
-        ).all(), 'Each dimension of the input image has to be a multiple of 2^num_lyr. '
+            supervised != shiftconv
+        ), 'Shift convolution scheme is only available for self-supervised learning.'
+        assert (
+            np.mod(input_dim[:-1], np.repeat(2 ** nb_dblock, len(input_dim[:-1]))) == 0
+        ).all(), (
+            'Each dimension of the input image has to be a multiple of 2^nb_dblock. '
+        )
         if supervised:
             print('Model will be created for supervised learning.')
         elif not supervised and shiftconv:
@@ -92,12 +93,12 @@ class Unet:
             ), 'Make sure the input image shape is cubic as shiftconv mode involves rotation.'
             assert (
                 np.mod(
-                    input_dim[:-1], np.repeat(2 ** (num_lyr - 1), len(input_dim[:-1]))
+                    input_dim[:-1], np.repeat(2 ** (nb_dblock - 1), len(input_dim[:-1]))
                 )
                 == 0
             ).all(), (
                 'Each dimension of the input image has to be a multiple of '
-                '2^(num_lyr-1) as shiftconv mode involvs pixel shift. '
+                '2^(nb_dblock-1) as shiftconv mode involvs pixel shift. '
             )
         elif not supervised and not shiftconv:
             print(
@@ -139,7 +140,7 @@ class Unet:
                 name=lyrname,
             )
 
-        def conv2d_bn(
+        def denselayer(
             xx,
             unit,
             shiftconv=shiftconv,
@@ -147,20 +148,32 @@ class Unet:
             act=activation,
             lyrname=None,
         ):
-            if shiftconv:
-                x1 = ZeroPadding2D(((0, 0), (1, 0)), name=lyrname + '_0pd')(xx)
-                x1 = Conv2D(unit, (3, 3), padding='same', name=lyrname + '_cv2')(x1)
-                x1 = Cropping2D(((0, 0), (0, 1)), name=lyrname + '_crp')(x1)
-            else:
-                x1 = Conv2D(unit, (3, 3), padding='same', name=lyrname + '_cv2')(xx)
             if norm == 'instance':
-                x1 = InstanceNormalization(name=lyrname + '_in')(x1)
+                xx = InstanceNormalization(name=lyrname + '_in1')(xx)
             elif norm == 'batch':
-                x1 = BatchNormalization(name=lyrname + '_bn')(x1)
+                xx = BatchNormalization(name=lyrname + '_bn1')(xx)
             if act == 'ReLU':
-                return Activation('relu', name=lyrname + '_relu')(x1)
+                x1 = Activation('relu', name=lyrname + '_relu1')(xx)
             else:
-                return LeakyReLU(alpha=0.1, name=lyrname + '_lrel')(x1)
+                x1 = LeakyReLU(alpha=0.1, name=lyrname + '_lrel1')(xx)
+
+            x1 = Conv2D(unit, (1, 1), padding='same', name=lyrname + '_cv1')(x1)
+            if norm == 'instance':
+                x1 = InstanceNormalization(name=lyrname + '_in2')(x1)
+            elif norm == 'batch':
+                x1 = BatchNormalization(name=lyrname + '_bn2')(x1)
+            if act == 'ReLU':
+                x1 = Activation('relu', name=lyrname + '_relu2')(x1)
+            else:
+                x1 = LeakyReLU(alpha=0.1, name=lyrname + '_lrel2')(x1)
+
+            if shiftconv:
+                x1 = ZeroPadding2D(((0, 0), (2, 0)), name=lyrname + '_0pd')(x1)
+                x1 = Conv2D(unit, (3, 3), padding='same', name=lyrname + '_cv2')(x1)
+                x1 = Cropping2D(((0, 0), (0, 2)), name=lyrname + '_crp')(x1)
+            else:
+                x1 = Conv2D(unit, (3, 3), padding='same', name=lyrname + '_cv2')(x1)
+            return x1
 
         def conv2d_bn_noshift(
             xx, unit, norm=normalization, act=activation, lyrname=None
@@ -175,15 +188,6 @@ class Unet:
             else:
                 return LeakyReLU(alpha=0.1, name=lyrname + '_lrel')(x1)
 
-        def mxpooling_down(xx, shiftconv=shiftconv, lyrname=None):
-            if shiftconv:
-                x1 = ZeroPadding2D(((0, 0), (1, 0)), name=lyrname + '_0pd')(xx)
-                x1 = Cropping2D(((0, 0), (0, 1)), name=lyrname + '_crp')(x1)
-            else:
-                x1 = xx
-            x1 = MaxPooling2D((2, 2), name=lyrname + '_mpl')(x1)
-            return x1
-
         class Maskout(Layer):  # A layer that mutiply mask with image
             def __init__(self, output_dim=None, **kwargs):
                 self.output_dim = output_dim
@@ -195,13 +199,75 @@ class Unet:
 
             def call(self, x, training=None):
                 assert isinstance(x, list)
-
                 return K.in_train_phase(multiply(x), x[0], training=training)
 
             def compute_output_shape(self, input_shape):
                 assert isinstance(input_shape, list)
                 shape_a, shape_b = input_shape
                 return shape_a
+
+        def denseblock(
+            x,
+            nb_lyr_db,
+            nb_filter,
+            growth_rate=12,
+            shiftconv=shiftconv,
+            norm=normalization,
+            act=activation,
+            lyrname=None,
+        ):
+            list_lyr = [x]
+            for i in range(nb_lyr_db):
+                x = denselayer(
+                    x,
+                    nb_lyr_db,
+                    shiftconv=shiftconv,
+                    norm=norm,
+                    act=act,
+                    lyrname=lyrname + f'_l{i}',
+                )
+                list_lyr.append(x)
+                x = Concatenate(axis=-1, name=lyrname + f'_cnc{i}')(list_lyr)
+                nb_filter += growth_rate
+            return x, nb_filter
+
+        def pooling(
+            xx,
+            nb_filter,
+            shiftconv=shiftconv,
+            norm=normalization,
+            act=activation,
+            lyrname=None,
+        ):
+            if norm == 'instance':
+                xx = InstanceNormalization(name=lyrname + '_in1')(xx)
+            elif norm == 'batch':
+                xx = BatchNormalization(name=lyrname + '_bn1')(xx)
+            if act == 'ReLU':
+                x1 = Activation('relu', name=lyrname + '_relu')(xx)
+            else:
+                x1 = LeakyReLU(alpha=0.1, name=lyrname + '_lrel')(xx)
+            x1 = Conv2D(nb_filter, (1, 1), padding='same', name=lyrname + '_cv1')(x1)
+
+            if shiftconv:
+                x1 = ZeroPadding2D(((0, 0), (2, 0)), name=lyrname + '_0pd2')(x1)
+                x1 = Cropping2D(((0, 0), (0, 2)), name=lyrname + '_crp2')(x1)
+
+            x1 = AveragePooling2D((2, 2), strides=(2, 2), name=lyrname + '_apl')(x1)
+            return x1
+
+        def upscaling(xx, nb_filter, norm=normalization, act=activation, lyrname=None):
+            if norm == 'instance':
+                xx = InstanceNormalization(name=lyrname + '_in')(xx)
+            elif norm == 'batch':
+                xx = BatchNormalization(name=lyrname + '_bn')(xx)
+            if act == 'ReLU':
+                xx = Activation('relu', name=lyrname + '_relu')(xx)
+            else:
+                xx = LeakyReLU(alpha=0.1, name=lyrname + '_lrel')(xx)
+            x1 = Conv2D(nb_filter, (1, 1), padding='same', name=lyrname + '_cv1')(xx)
+            x1 = UpSampling2D((2, 2), interpolation='nearest', name=lyrname + '_up')(x1)
+            return x1
 
         # Generate a model
         input_lyr = Input(self.input_dim, name='input')
@@ -217,38 +283,58 @@ class Unet:
         else:
             x = input_lyr
 
-        skiplyr = [x]
-        for i in range(num_lyr):
-            x = conv2d_bn(
-                x,
-                initial_unit,  # initial_unit * (i+1), # * 2**i,  #
-                shiftconv,
-                normalization,
-                lyrname=f'enc{i}',
-            )
-            x = mxpooling_down(x, shiftconv, lyrname=f'enc{i}pl')
-            if i != num_lyr - 1:
-                skiplyr.append(x)
+        x = Conv2D(nb_krnl_initial, (3, 3), padding='same', name='initialconv')(x)
 
-        x = conv2d_bn(
-            x, initial_unit, shiftconv, normalization, lyrname='bottm'  # * num_lyr,
+        # Dense blocks in Encoder
+        for b in range(nb_dblock):
+            x, nb_filter = denseblock(
+                x,
+                nb_lyr_db,
+                nb_krnl_initial,
+                growth_rate,
+                shiftconv=shiftconv,
+                norm=normalization,
+                act=activation,
+                lyrname=f'Enc_b{b}',
+            )
+            x = pooling(
+                x,
+                nb_filter,
+                shiftconv=shiftconv,
+                norm=normalization,
+                act=activation,
+                lyrname=f'Enc_t{b}',
+            )
+        # Bottle neck of autoencoder
+        x = denselayer(
+            x, nb_lyr_db, shiftconv, normalization, act=activation, lyrname='bottm'
         )
 
-        for i in range(num_lyr):
-            x = UpSampling2D((2, 2), interpolation='nearest', name=f'up{i}')(x)
-            x = Concatenate(name=f'cnct{i}')([x, skiplyr.pop()])
-            x = conv2d_bn(
+        # Dense blocks in Decoder
+        for b in range(nb_dblock):
+            x, nb_filter = denseblock(
                 x,
-                initial_unit * 2,  # * (num_lyr - i), # * 2 ** (num_lyr - i),  #
-                shiftconv,
-                normalization,
-                lyrname=f'dec{i}',
+                nb_lyr_db,
+                nb_filter,
+                growth_rate,
+                shiftconv=shiftconv,
+                norm=normalization,
+                act=activation,
+                lyrname=f'Dec_b{b}',
+            )
+            x = upscaling(
+                x, nb_filter, norm=normalization, act=activation, lyrname=f'Dec_t{b}'
             )
 
-        # Shift the center pixel
-        if shiftconv:
-            x = ZeroPadding2D(((0, 0), (1, 0)), name='shiftc_pd')(x)
-            x = Cropping2D(((0, 0), (0, 1)), name='shiftc_crp')(x)
+        # The last normalization layer
+        if normalization == 'instance':
+            x = InstanceNormalization(name='last_in1')(x)
+        elif normalization == 'batch':
+            x = BatchNormalization(name='last_bn1')(x)
+        if activation == 'ReLU':
+            x = Activation('relu', name='last_relu')(x)
+        else:
+            x = LeakyReLU(alpha=0.1, name='last_lrel')(x)
 
         # Rotation & stack for the output
         if shiftconv:
@@ -262,8 +348,8 @@ class Unet:
             x = Concatenate(name='cnct_last', axis=-1)(
                 [output0, output1, output2, output3]
             )
-            x = conv2d_bn_noshift(x, initial_unit * 2 * 4, lyrname='last1')
-            x = conv2d_bn_noshift(x, initial_unit, lyrname='last2')
+            x = conv2d_bn_noshift(x, nb_filter * 2 * 4, lyrname='last1')
+            x = conv2d_bn_noshift(x, nb_filter, lyrname='last2')
 
         x = Conv2D(1, (1, 1), padding='same', name='last0', activation='linear')(x)
 
@@ -278,11 +364,10 @@ class Unet:
         self,
         input_img,
         target_img=None,
-        mask_shape=None,  # tuple, e.g. (5,5)
+        mask_shape=None,
         num_epoch=500,
         EStop_patience=5,
         ReduceLR_patience=3,
-        min_delta=1e-5,
     ):
         def masker(batch_vol, i, mask_shape):
             i = i % np.prod(mask_shape)
@@ -298,15 +383,8 @@ class Unet:
             while True:
                 for i in range(np.prod(mask_shape)):
                     mask = masker(batch_vol, i, mask_shape)
-                    masknega = np.broadcast_to(
-                        np.expand_dims(np.expand_dims(mask, 0), 3), image.shape
-                    )
-                    train_img = (
-                        np.broadcast_to(
-                            np.expand_dims(np.expand_dims(~mask, 0), 3), image.shape
-                        )
-                        * image
-                    )
+                    masknega = np.expand_dims(np.expand_dims(mask, 0), 3)
+                    train_img = np.expand_dims(np.expand_dims(~mask, 0), 3) * image
                     target_img = masknega * image
                     yield {
                         'input': train_img,
@@ -315,7 +393,7 @@ class Unet:
 
         EStop = EarlyStopping(
             monitor='loss',
-            min_delta=min_delta,
+            min_delta=1e-5,
             patience=EStop_patience,
             verbose=1,
             mode='auto',
@@ -325,7 +403,6 @@ class Unet:
             factor=0.1,
             verbose=1,
             patience=ReduceLR_patience,
-            min_delta=min_delta,
             mode='auto',
             min_lr=1e-8,
         )
@@ -348,7 +425,7 @@ class Unet:
             )
         else:
             history = self.model.fit_generator(
-                maskedgen(self.input_dim[:-1], mask_shape, input_img),
+                maskedgen(self.input_dim, mask_shape, input_img),
                 epochs=num_epoch,
                 steps_per_epoch=np.prod(mask_shape),
                 callbacks=[EStop, ReduceLR],
@@ -356,12 +433,7 @@ class Unet:
         return history
 
     def predict(self, input_img, batch_size=None):
-        if not self.shiftconv and not self.supervised:
-            return self.model.predict(
-                [input_img, np.ones(input_img.shape)], batch_size=batch_size, verbose=1
-            )
-        else:
-            return self.model.predict(input_img, batch_size=batch_size, verbose=1)
+        return self.model.predict(input_img, batch_size=batch_size, verbose=1)
 
     def summary(self):
         return self.model.summary()
