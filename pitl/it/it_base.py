@@ -37,8 +37,8 @@ class ImageTranslatorBase(ABC):
         batch_dims,
         train_test_ratio,
         batch=False,
+        monitoring_variables=None,
         monitoring_images=None,
-        callbacks=None,
         callback_period=3,
     ):
         """
@@ -100,8 +100,8 @@ class ImageTranslatorBase(ABC):
         batch_dims=None,
         batch_size=None,
         batch_shuffle=False,
+        monitoring_variables=None,
         monitoring_images=None,
-        callbacks=None,
         callback_period=3,
     ):
         """
@@ -181,8 +181,8 @@ class ImageTranslatorBase(ABC):
                 batch_dims,
                 train_test_ratio,
                 batch=False,
+                monitoring_variables=monitoring_variables,
                 monitoring_images=monitoring_images,
-                callbacks=callbacks,
                 callback_period=callback_period,
             )
 
@@ -243,8 +243,8 @@ class ImageTranslatorBase(ABC):
                     batch_dims,
                     train_test_ratio,
                     batch=True,
+                    monitoring_variables=monitoring_variables,
                     monitoring_images=monitoring_images,
-                    callbacks=callbacks,
                     callback_period=callback_period,
                 )
 

@@ -9,8 +9,10 @@ class FilePathPicker(QWidget):
     Alternatively set up dragging and dropping of image files onto the widget
     """
 
-    def __init__(self, lbl):
-        super(FilePathPicker, self).__init__()
+    def __init__(self, parent, lbl, file_ready=None):
+        super(FilePathPicker, self).__init__(parent)
+        self.parent = parent
+        self.file_ready = file_ready
         self.filename = None
 
         # Button that allows loading of images
@@ -62,6 +64,7 @@ class FilePathPicker(QWidget):
             pixmap = QPixmap(self.filename)
             pixmap = pixmap.scaled(200, 200, Qt.KeepAspectRatio)
             self.lbl.setPixmap(pixmap)
+            self.file_ready.emit()
         else:
             raise Exception("Selected item is not a file...")
 

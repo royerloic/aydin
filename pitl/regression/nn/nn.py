@@ -117,13 +117,16 @@ class NNRegressor(RegressorBase):
             callbacks=[self.EStop, self.ReduceLR],
         )
 
-    def predict(self, x):
+    def predict(self, x, model_to_use=None):
         """
         Predicts y given x by applying the learned function f: y=f(x)
+        :param model_to_use:
         :param x:
         :type x:
         :return:
         :rtype:
         """
         x = x.reshape(self.x_shape)
-        return self.nnreg.predict(x)
+        return (
+            self.nnreg.predict(x) if model_to_use is None else model_to_use.predict(x)
+        )

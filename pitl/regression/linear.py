@@ -31,8 +31,10 @@ class LinearRegressor:
         """
         self.linear = self.linear.fit(x_train, y_train)
 
-    def predict(self, x):
+    def predict(self, x, model_to_use=None):
         """
         Predicts y given x by applying the learned function f: y=f(x)
         """
-        return self.linear.predict(x)
+        return (
+            self.linear.predict(x) if model_to_use is None else model_to_use.predict(x)
+        )

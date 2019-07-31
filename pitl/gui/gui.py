@@ -4,7 +4,6 @@ from PyQt5.QtCore import Qt, QThreadPool
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QSplitter
 import qdarkstyle
-from PyQt5.QtWidgets import QDialog
 
 from pitl.gui.pages.about import AboutPage
 from pitl.gui.pages.welcome import WelcomePage

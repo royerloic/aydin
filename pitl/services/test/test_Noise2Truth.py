@@ -5,7 +5,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from ..Noise2Truth import Noise2Truth
+from ..n2t import N2TService
 
 
 # TODO: Check with loic if this test makes sense
@@ -26,7 +26,7 @@ def test_run():
     noisy_test = noisy_test.astype(np.float32)
 
     # Call the Noise2Self service
-    n2t = Noise2Truth()
+    n2t = N2TService()
     denoised_image = n2t.run(noisy_image, image, noisy_test)
 
     # Check if denoised image satisfies some checks

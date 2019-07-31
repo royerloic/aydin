@@ -8,9 +8,8 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
-from pitl.it.it_classic import ImageTranslatorClassic
-from pitl.regression.gbm import GBMRegressor
+from pitl.cli.progress_bar import ProgressBar
+from pitl.services.n2s import N2SService
 
 
 def demo(image):
@@ -32,57 +31,39 @@ def demo(image):
         scales = [1, 3, 7, 15, 31, 63, 127, 255]
         widths = [3, 3, 3, 3, 3, 3, 3, 3]
 
-        generator = FastMultiscaleConvolutionalFeatures(
-            kernel_widths=widths,
-            kernel_scales=scales,
-            kernel_shapes=['l1'] * len(scales),
-            exclude_center=True,
-        )
-
-        regressor = GBMRegressor(
-            learning_rate=0.01,
-            num_leaves=127,
-            max_bin=512,
-            n_estimators=2048,
-            early_stopping_rounds=20,
-        )
-
-        it = ImageTranslatorClassic(
-            feature_generator=generator, regressor=regressor, normaliser='identity'
-        )
-
         size = 128
         monitoring_image = noisy[
             256 - size // 2 : 256 + size // 2, 256 - size // 2 : 256 + size // 2
         ]
 
-        def callback(iter, eval_metric, images):
+        def emit_func(arg):
+            print(arg)
+            image, eval_metric, iter = arg
             print(f"Iteration: {iter} metric: {eval_metric}")
-            print(f"images: {str(images)}")
-            if images:
+            # print(f"images: {str(images)}")
+            print("image: ", image[0])
+            if image[0] is not None:
                 viewer.add_image(
-                    rescale_intensity(images[0], in_range='image', out_range=(0, 1)),
+                    rescale_intensity(image[0], in_range='image', out_range=(0, 1)),
                     name='noisy',
                 )
-            pass
+
+        n2s = N2SService(scales, widths, emit_func)
+        n2s.monitoring_variables = None, 0, -1
 
         start = time.time()
-        denoised = it.train(
-            noisy,
-            noisy,
-            callbacks=[callback],
-            # monitoring_images=[monitoring_image]
-        )
+        pbar = ProgressBar(total=100)
+        denoised = n2s.run(noisy, pbar, monitoring_images=[monitoring_image])
+        pbar.close()
+        # denoised = it.train(
+        #     noisy,
+        #     noisy,
+        #     callbacks=[callback],
+        #     # monitoring_images=[monitoring_image]
+        # )
 
         stop = time.time()
         print(f"Training: elapsed time:  {stop-start} ")
-
-        if denoised is None:
-            # in case of batching we have to do this:
-            start = time.time()
-            denoised = it.translate(noisy)
-            stop = time.time()
-            print(f"inference: elapsed time:  {stop-start} ")
 
         denoised = rescale_intensity(denoised, in_range='image', out_range=(0, 1))
 

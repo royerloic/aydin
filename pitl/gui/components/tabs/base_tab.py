@@ -34,3 +34,6 @@ class BaseTab(QWidget):
         # Finalize base layout
         self.base_layout.addLayout(self.wizard_ops_layout)
         self.setLayout(self.base_layout)
+
+    def load_tab(self):
+        pass

@@ -5,7 +5,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from ..Noise2Self import Noise2Self
+from ..n2s import n2sService
 
 
 def test_run():
@@ -19,7 +19,7 @@ def test_run():
     noisy_image = noisy_image.astype(np.float32)
 
     # Call the Noise2Self service
-    n2s = Noise2Self()
+    n2s = n2sService()
     denoised_image = n2s.run(noisy_image, progress_callback)
 
     # Check if denoised image satisfies some checks
