@@ -298,15 +298,8 @@ class Unet:
             while True:
                 for i in range(np.prod(mask_shape)):
                     mask = masker(batch_vol, i, mask_shape)
-                    masknega = np.broadcast_to(
-                        np.expand_dims(np.expand_dims(mask, 0), 3), image.shape
-                    )
-                    train_img = (
-                        np.broadcast_to(
-                            np.expand_dims(np.expand_dims(~mask, 0), 3), image.shape
-                        )
-                        * image
-                    )
+                    masknega = np.expand_dims(np.expand_dims(mask, 0), 3)
+                    train_img = np.expand_dims(np.expand_dims(~mask, 0), 3) * image
                     target_img = masknega * image
                     yield {
                         'input': train_img,
