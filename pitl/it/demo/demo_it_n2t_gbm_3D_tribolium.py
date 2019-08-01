@@ -2,6 +2,7 @@ import time
 from os.path import join
 
 import napari
+import numpy
 import numpy as np
 from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
@@ -12,11 +13,20 @@ from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from pitl.io.datasets import downloaded_zipped_example, examples_zipped
 from pitl.it.it_classic import ImageTranslatorClassic
 from pitl.regression.gbm import GBMRegressor
+from pitl.regression.nn.nn import NNRegressor
+
+
+def n(image):
+    return rescale_intensity(
+        image.astype(numpy.float32), in_range='image', out_range=(0, 1)
+    )
 
 
 def demo():
     """
         Demo for supervised denoising using CARE's tribolium example -- full 3D.
+
+        Note: not working well...
 
     """
 
@@ -25,30 +35,22 @@ def demo():
     image = imread(
         join(examples_zipped.care_tribolium.get_path(), 'tribolium_train_GT_stack.tif')
     ).astype(np.float32)
-    image = rescale_intensity(image, in_range='image', out_range=(0, 1)).astype(
-        np.float32
-    )[:, 200:600, 200:400]
+    image = n(image).astype(np.float32)[:, 200:600, 200:400]
 
     noisy = imread(
         join(examples_zipped.care_tribolium.get_path(), 'tribolium_train_low_stack.tif')
     ).astype(np.float32)
-    noisy = rescale_intensity(noisy, in_range='image', out_range=(0, 1)).astype(
-        np.float32
-    )[:, 200:600, 200:400]
+    noisy = n(noisy).astype(np.float32)[:, 200:600, 200:400]
 
     image_test = imread(
         join(examples_zipped.care_tribolium.get_path(), 'tribolium_test_GT_stack.tif')
     ).astype(np.float32)
-    image_test = rescale_intensity(
-        image_test, in_range='image', out_range=(0, 1)
-    ).astype(np.float32)
+    image_test = n(image_test).astype(np.float32)
 
     noisy_test = imread(
         join(examples_zipped.care_tribolium.get_path(), 'tribolium_test_low_stack.tif')
     ).astype(np.float32)
-    noisy_test = rescale_intensity(
-        noisy_test, in_range='image', out_range=(0, 1)
-    ).astype(np.float32)
+    noisy_test = n(noisy_test).astype(np.float32)
 
     with napari.gui_qt():
         viewer = napari.Viewer()
@@ -57,21 +59,8 @@ def demo():
         viewer.add_image(image_test, name='image_test')
         viewer.add_image(noisy_test, name='noisy_test')
 
-        level = 4
-        scales = [1, 3, 7, 15, 31, 63, 127, 255]
-        widths = [3, 3, 3, 3, 3, 3, 3, 3]
-
-        generator = FastMultiscaleConvolutionalFeatures(
-            kernel_widths=widths[:level], kernel_scales=scales[:level]
-        )
-
-        regressor = GBMRegressor(
-            num_leaves=64,
-            n_estimators=1024,
-            learning_rate=0.01,
-            loss='l1',
-            early_stopping_rounds=None,
-        )
+        generator = FastMultiscaleConvolutionalFeatures(max_features=20)
+        regressor = GBMRegressor()
 
         it = ImageTranslatorClassic(generator, regressor, normaliser='identity')
 
@@ -98,14 +87,8 @@ def demo():
             ssim(denoised_test, image_test),
         )
 
-        viewer.add_image(
-            rescale_intensity(denoised, in_range='image', out_range=(0, 1)),
-            name='denoised',
-        )
-        viewer.add_image(
-            rescale_intensity(denoised_test, in_range='image', out_range=(0, 1)),
-            name='test_denoised',
-        )
+        viewer.add_image(n(denoised), name='denoised')
+        viewer.add_image(n(denoised_test), name='test_denoised')
 
 
 demo()

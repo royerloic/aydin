@@ -79,7 +79,7 @@ def analyse(input_path):
         elif is_tiff:
             print(f"Analysing file {input_path} as TIFF file")
 
-            metadata.format = 'tif'
+            metadata.format = 'tiff'
 
             with TiffFile(input_path) as tif:
 
@@ -284,8 +284,8 @@ def imread(input_path, zarr_cache=False):
         except Exception as error:
             print(error)
             print(traceback.format_exc())
-            print(f"Reading file {input_path} using pims")
-            array = pims.open(input_path)
+            print(f"Reading file {input_path} using backup plan")
+            array = skimage.io.imread(input_path)
     except Exception as error:
         print(error)
         print(traceback.format_exc())

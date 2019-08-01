@@ -1,3 +1,4 @@
+from math import ceil
 from random import shuffle
 
 
@@ -6,6 +7,21 @@ def nd_range(start, stop, dims):
         yield ()
         return
     for outer in nd_range(start, stop, dims - 1):
+        for inner in range(start, stop):
+            yield outer + (inner,)
+
+
+def nd_range_radii(radii):
+    if not radii:
+        yield ()
+        return
+
+    for outer in nd_range_radii(radii[:-1]):
+
+        radius = radii[-1]
+        start = -radius
+        stop = +radius + 1
+
         for inner in range(start, stop):
             yield outer + (inner,)
 
@@ -46,7 +62,7 @@ def nd_split_slices(array_shape, nb_slices, do_shuffle=False, margins=None):
     ):
 
         n = nb_slices[-1]
-        slice_width = int(round(dim_width / n))
+        slice_width = int(ceil(dim_width / n))
         slice_margin = margins[-1]
 
         slice_start_range = list(range(0, dim_width, slice_width))

@@ -9,6 +9,7 @@ import psutil
 from pitl.normaliser.identity import IdentityNormaliser
 from pitl.normaliser.minmax import MinMaxNormaliser
 from pitl.normaliser.percentile import PercentileNormaliser
+from pitl.offcore.offcore import offcore_array
 from pitl.util.combinatorics import closest_product
 from pitl.util.nd import nd_split_slices, remove_margin_slice
 
@@ -149,6 +150,9 @@ class ImageTranslatorBase(ABC):
         if batch_dims is None:
             batch_dims = (False,) * len(input_image.shape)
 
+        # Sanity check when not default batch dims:
+        assert len(batch_dims) == len(input_image.shape)
+
         # We compute the ideal number of batches and whether there is enough memory:
         ideal_number_of_batches, is_enough_memory = self._get_number_of_batches(
             batch_size, input_image
@@ -165,7 +169,7 @@ class ImageTranslatorBase(ABC):
             # array = np.zeros(shape, dtype=np.float32)
 
             # In that case the batch strategy is None:
-            self.batch_strategy = None
+            batch_strategy = None
 
             # 'Last minute' normalisation:
             normalised_input_image = self.input_normaliser.normalise(input_image)
@@ -219,6 +223,10 @@ class ImageTranslatorBase(ABC):
 
             # We iterate through each batch and do training:
             for slice_tuple in batch_slices:
+
+                if self.debug:
+                    print(f"Current batch slice: {slice_tuple}")
+
                 input_image_batch = input_image[slice_tuple]
 
                 if self.self_supervised:
@@ -299,12 +307,14 @@ class ImageTranslatorBase(ABC):
 
         # This is the ideal number of batches so that we partition just enough:
         ideal_number_of_batches = max(
-            1, int(math.ceil(dataset_size_in_bytes // effective_batch_size))
+            2, int(math.ceil(dataset_size_in_bytes // effective_batch_size))
         )
 
         return ideal_number_of_batches, is_enough_memory
 
-    def translate(self, input_image, batch_dims=None, batch_size=None):
+    def translate(
+        self, input_image, translated_image=None, batch_dims=None, batch_size=None
+    ):
         """
         Translates an input image into an output image according to the learned function.
         :param input_image:
@@ -324,11 +334,17 @@ class ImageTranslatorBase(ABC):
         if batch_dims is None:
             batch_dims = (False,) * len(input_image.shape)
 
+        # Sanity check when not default batch dims:
+        assert len(batch_dims) == len(input_image.shape)
+
         # Input image shape:
         shape = input_image.shape
 
         # We prepare the translated image:
-        translated_image = numpy.zeros(shape, dtype=numpy.float32)
+        if translated_image is None:
+            translated_image = offcore_array(
+                shape, dtype=self.target_normaliser.original_dtype
+            )
 
         # We compute the parameters for batching (can be different than from training!):
         ideal_number_of_batches, is_enough_memory = self._get_number_of_batches(
@@ -365,13 +381,15 @@ class ImageTranslatorBase(ABC):
             # batch slice objects (with and without margins):
 
             batch_slices_margins = nd_split_slices(
-                shape, self.batch_strategy, margins=margins
+                shape, batch_strategy, margins=margins
             )
-            batch_slices = nd_split_slices(shape, self.batch_strategy)
+            batch_slices = nd_split_slices(shape, batch_strategy)
 
             for slice_margin_tuple, slice_tuple in zip(
                 batch_slices_margins, batch_slices
             ):
+                if self.debug:
+                    print(f"Current batch slice: {slice_tuple}")
 
                 # We first extract the batch image:
                 input_image_batch = input_image[slice_margin_tuple]

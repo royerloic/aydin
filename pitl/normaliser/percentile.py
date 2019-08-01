@@ -10,10 +10,10 @@ class PercentileNormaliser(NormaliserBase):
 
     """
 
-    percent: int
+    percent: float
 
     def __init__(
-        self, percent: int = 1, clip=True, leave_as_float=False, epsilon=1e-21
+        self, percent: float = 0.001, clip=True, leave_as_float=False, epsilon=1e-21
     ):
         """
         Constructs a normaliser
@@ -27,11 +27,11 @@ class PercentileNormaliser(NormaliserBase):
 
         self.original_dtype = array.dtype
 
+        p = self.percent
+
         if hasattr(array, '__dask_keys__'):
-            self.rmin = dask.array.percentile(array.flatten(), self.percent).compute()
-            self.rmax = dask.array.percentile(
-                array.flatten(), 100 - self.percent
-            ).compute()
+            self.rmin = dask.array.percentile(array.flatten(), 100 * p).compute()
+            self.rmax = dask.array.percentile(array.flatten(), 100 - 100 * p).compute()
         else:
-            self.rmin = numpy.percentile(array, self.percent)
-            self.rmax = numpy.percentile(array, 100 - self.percent)
+            self.rmin = numpy.percentile(array, 100 * p)
+            self.rmax = numpy.percentile(array, 100 - 100 * p)

@@ -1,3 +1,7 @@
+import numpy
+from pyopencl import cltypes
+
+
 def collect_feature_4d(
     opencl_provider,
     image_gpu,
@@ -12,6 +16,7 @@ def collect_feature_4d(
     lz,
     lw,
     exclude_center=True,
+    mean: float = 0,
     optimisation=True,
 ):
     """
@@ -43,7 +48,7 @@ def collect_feature_4d(
     if optimisation and lx == 1 and ly == 1 and lz == 1 and lw == 1:
         program_code = f"""
 
-        __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature)
+        __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature, float mean)
          {{
 
            const int x = get_global_id(2);
@@ -69,7 +74,7 @@ def collect_feature_4d(
     else:
         program_code = f"""
 
-         __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature)
+         __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature, float mean)
          {{
 
            const int x = get_global_id(2);
@@ -183,12 +188,15 @@ def collect_feature_4d(
                const float value15 = x15<0||y15<0||z15<0||w15<0 ? 0.0f : integral[i15];
                const float value16 = {"image[i]" if exclude_center else "0.0f"};
     
+               const float adj = {lx*ly*lz*lw-1 if exclude_center else lx*ly*lz*lw}*mean;
+    
                const float value = (+1*(value15)
                                     -1*(value7+value11+value13+value14)
                                     +1*(value3+value5+value6+value9+value10+value12)
                                     -1*(value1+value2+value4+value8)
                                     +1*value0
-                                    -value16) * {1.0 / (lx * ly * lz * lw)};
+                                    -value16
+                                    +adj) * {1.0 / (lx * ly * lz * lw)};
     
 
                feature[i] = value;
@@ -208,6 +216,7 @@ def collect_feature_4d(
         image_gpu.data,
         integral_image_gpu.data,
         feature_gpu.data,
+        mean if isinstance(mean, numpy.ndarray) else cltypes.float(mean),
     )
 
     pass

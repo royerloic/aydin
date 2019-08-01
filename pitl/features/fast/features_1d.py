@@ -1,3 +1,7 @@
+import numpy
+from pyopencl import cltypes
+
+
 def collect_feature_1d(
     opencl_provider,
     image_gpu,
@@ -6,6 +10,7 @@ def collect_feature_1d(
     dx,
     lx,
     exclude_center=True,
+    mean: float = 0,
     optimisation=True,
 ):
     """
@@ -25,7 +30,7 @@ def collect_feature_1d(
     if optimisation and lx == 1:
         program_code = f"""
 
-        __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature)
+        __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature, float mean)
          {{
            const int x = get_global_id(0);
 
@@ -41,7 +46,7 @@ def collect_feature_1d(
     else:
         program_code = f"""
 
-      __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature)
+      __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature, float mean)
       {{
         int x = get_global_id(0);
 
@@ -57,7 +62,9 @@ def collect_feature_1d(
         const float value1 = x1<0 ? 0.0f : integral[i1];
         const float value2 = {"image[i]" if exclude_center else "0.0f"};
 
-        const float value = (value1-value0-value2)*{1.0 / lx};
+        const float adj = {lx-1 if exclude_center else lx}*mean;
+
+        const float value = (value1-value0-value2+adj)*{1.0 / lx};
 
 
         feature[i] = value;
@@ -76,4 +83,5 @@ def collect_feature_1d(
         image_gpu.data,
         integral_image_gpu.data,
         feature_gpu.data,
+        mean if isinstance(mean, numpy.ndarray) else cltypes.float(mean),
     )

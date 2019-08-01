@@ -3,7 +3,7 @@ from pitl.plaidml.plaidml_provider import PlaidMLProvider
 provider = PlaidMLProvider()
 
 
-from pitl.regression.nn.models import feed_forward
+from pitl.regression.nn.models import feed_forward, yinyang2, back_feed
 from pitl.regression.regressor_base import RegressorBase
 
 
@@ -19,7 +19,14 @@ class NNRegressor(RegressorBase):
 
     nnreg: Model
 
-    def __init__(self, max_epochs=1024, learning_rate=0.01, depth=16, loss='l1'):
+    def __init__(
+        self,
+        max_epochs=1024,
+        learning_rate=0.02,
+        early_stopping_rounds=5,
+        depth=16,
+        loss='l1',
+    ):
         """
         Constructs a LightGBM regressor.
 
@@ -48,14 +55,19 @@ class NNRegressor(RegressorBase):
         self.nnreg = None
 
         self.EStop = EarlyStopping(
-            monitor='val_loss', min_delta=0.0001, patience=4, verbose=1, mode='auto'
+            monitor='val_loss',
+            min_delta=0.0001,
+            patience=early_stopping_rounds,
+            verbose=1,
+            mode='auto',
+            restore_best_weights=True,
         )
 
         self.ReduceLR = ReduceLROnPlateau(
             monitor='val_loss',
-            factor=0.1,
+            factor=0.5,
             verbose=1,
-            patience=4,
+            patience=max(1, early_stopping_rounds // 2),
             mode='auto',
             min_lr=1e-9,
         )
@@ -86,12 +98,14 @@ class NNRegressor(RegressorBase):
 
         """
 
+        # TODO: parameter should be number_of_batches instead of batch, so the code here knows roughly what is happening above.
+
         nb_training_entries = x_train.shape[0]
         feature_dim = x_train.shape[-1]
 
         if self.nnreg is None:
 
-            model = feed_forward(feature_dim, self.depth)
+            model = feed_forward(feature_dim, depth=self.depth)
             self.x_shape = (-1, feature_dim)
             self.y_shape = (-1, 1)
 
@@ -108,12 +122,22 @@ class NNRegressor(RegressorBase):
         x_valid = x_valid.reshape(*self.x_shape)
         y_valid = y_valid.reshape(*self.y_shape)
 
+        # The bigger the batch size the faster training in terms of time per epoch,
+        # but small batches are also better for convergence (inherent batch noise).
+        # We make sure that we have at least about 1000 items per batch for small images,
+        # which is a good minimum. For larger datasets we get bigger batches which is fine.
+        batch_size = max(1, x_train.shape[0] // 256)
+
+        if self.debug_log:
+            print(f"Batch size: {batch_size}")
+            print(f"Starting training...")
+
         self.nnreg.fit(
             x_train,
             y_train,
             validation_data=(x_valid, y_valid),
             epochs=10 if batch else self.max_epochs,
-            batch_size=min(1024, nb_training_entries),
+            batch_size=min(batch_size, nb_training_entries),
             callbacks=[self.EStop, self.ReduceLR],
         )
 
@@ -126,7 +150,17 @@ class NNRegressor(RegressorBase):
         :return:
         :rtype:
         """
+
+        # TODO: batch size should also be limited based on VRAM size...
+        batch_size = max(1, x.shape[0] // 256)
+
+        if self.debug_log:
+            print(f"Batch size: {batch_size}")
+
+        if self.debug_log:
+            print(f"Predicting. features shape = {x.shape}")
+
         x = x.reshape(self.x_shape)
         return (
-            self.nnreg.predict(x) if model_to_use is None else model_to_use.predict(x)
+            self.nnreg.predict(x, batch_size=batch_size) if model_to_use is None else model_to_use.predict(x, batch_size=batch_size)
         )

@@ -9,8 +9,8 @@ def demo_examples():
         ....
     """
 
-    for example in examples_single.get_list():
-        example_file_path = examples_single.get_path(*example)
+    for example in examples_single:
+        example_file_path = example.get_path()
 
         # print(f"Trying to open and make sense of file {example_file_path}")
 

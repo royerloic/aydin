@@ -1,5 +1,6 @@
 import math
 import multiprocessing
+import time
 from typing import List, Union
 
 import gc
@@ -27,14 +28,16 @@ class GBMRegressor(RegressorBase):
 
     def __init__(
         self,
-        num_leaves=63,
-        n_estimators=128,
+        num_leaves=127,
+        n_estimators=2048,
         max_bin=512,
-        learning_rate=0.05,
+        learning_rate=0.01,
         loss='l1',
         early_stopping_rounds=5,
         verbosity=100,
+        compute_load=0.8,
     ):
+
         """
         Constructs a LightGBM regressor.
 
@@ -57,6 +60,8 @@ class GBMRegressor(RegressorBase):
         self.metric = loss
         self.early_stopping_rounds = early_stopping_rounds
         self.verbosity = verbosity
+        self.compute_load = compute_load
+
         self.lgbmr = None
 
         self.callbacks = None
@@ -86,7 +91,7 @@ class GBMRegressor(RegressorBase):
             "max_bin": self.max_bin,
             # "min_data_in_leaf": min_data_in_leaf,
             "subsample_for_bin": 200000,
-            "num_threads": multiprocessing.cpu_count() // 2,
+            "num_threads": max(1, int(self.compute_load * multiprocessing.cpu_count())),
             "metric": self.metric,
             'verbosity': -1,  # self.verbosity
             "bagging_freq": 1,
