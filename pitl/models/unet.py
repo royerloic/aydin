@@ -294,17 +294,28 @@ class Unet:
             mask = mask[: batch_vol[0], : batch_vol[1]]
             return mask
 
-        def maskedgen(batch_vol, mask_shape, image):
+        def maskedgen(batch_vol, mask_shape, image, batch_size):
             while True:
-                for i in range(np.prod(mask_shape)):
-                    mask = masker(batch_vol, i, mask_shape)
-                    masknega = np.expand_dims(np.expand_dims(mask, 0), 3)
-                    train_img = np.expand_dims(np.expand_dims(~mask, 0), 3) * image
-                    target_img = masknega * image
-                    yield {
-                        'input': train_img,
-                        'input_msk': masknega.astype(np.float32),
-                    }, target_img
+                for j in range(np.ceil(image.shape[0] / batch_size).astype(int)):
+                    image_batch = image[j * batch_size : (j + 1) * batch_size, ...]
+                    for i in range(np.prod(mask_shape)):
+                        mask = masker(batch_vol, i, mask_shape)
+                        masknega = np.broadcast_to(
+                            np.expand_dims(np.expand_dims(mask, 0), 3),
+                            image_batch.shape,
+                        )
+                        train_img = (
+                            np.broadcast_to(
+                                np.expand_dims(np.expand_dims(~mask, 0), 3),
+                                image_batch.shape,
+                            )
+                            * image_batch
+                        )
+                        target_img = masknega * image_batch
+                        yield {
+                            'input': train_img,
+                            'input_msk': masknega.astype(np.float32),
+                        }, target_img
 
         EStop = EarlyStopping(
             monitor='loss',
@@ -341,9 +352,10 @@ class Unet:
             )
         else:
             history = self.model.fit_generator(
-                maskedgen(self.input_dim[:-1], mask_shape, input_img),
+                maskedgen(self.input_dim[:-1], mask_shape, input_img, self.batch_size),
                 epochs=num_epoch,
-                steps_per_epoch=np.prod(mask_shape),
+                steps_per_epoch=np.prod(mask_shape)
+                * np.ceil(input_img.shape[0] / self.batch_size).astype(int),
                 callbacks=[EStop, ReduceLR],
             )
         return history
