@@ -32,10 +32,10 @@ class examples_single(Enum):
     fmdd_hv110 = ('1B6WMgiaaUozgqwvHQtM0NwTUpmKuauKO', 'HV110_P0500510004.png')
 
     # XY
-    metha_pol = (
-        '13LqFk3elalzBbdo--8dIBQRBGTvrosDo',
-        'Mehta_img_Polarization_t045_p000_z001.tif',
-    )
+    # metha_pol = (
+    #     '13LqFk3elalzBbdo--8dIBQRBGTvrosDo',
+    #     'Mehta_img_Polarization_t045_p000_z001.tif',
+    # )
     metha_ret = (
         '1O6wfN404wSlKOoAwKck_pbjpX05qE7LH',
         'Mehta_img_Retardance_t045_p000_z001.tif',

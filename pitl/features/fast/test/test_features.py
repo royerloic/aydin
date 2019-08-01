@@ -12,14 +12,15 @@ from pitl.opencl.opencl_provider import OpenCLProvider
 
 
 def test_collect_feature_1d():
-    n = 13
+    n = 32 * 32 * 32 * 32 + 1
 
     opencl_provider = OpenCLProvider()
 
     # def collect_feature_1d(opencl_provider, image_gpu, integral_image_gpu, feature_gpu, dx, lx, exclude_center=True):
 
     image_o = numpy.random.rand(n).astype(numpy.float32)
-    image_i = image_o.cumsum()
+    mean = image_o.sum() / image_o.size
+    image_i = (image_o - mean).cumsum()
 
     image_o_gpu = pyopencl.array.to_device(opencl_provider.queue, image_o)
     image_i_gpu = pyopencl.array.to_device(opencl_provider.queue, image_i)
@@ -34,27 +35,25 @@ def test_collect_feature_1d():
         1,
         exclude_center=False,
         optimisation=False,
+        mean=mean,
     )
 
-    is_equal = numpy.abs(feature_gpu.get() - image_o) < 0.001
+    max_abs_error = numpy.max(numpy.abs(feature_gpu.get() - image_o))
 
-    # pprint(is_equal)
-    # pprint(image_o)
-    # pprint(feature_gpu.get())
-
-    assert numpy.all(is_equal)
+    print(f"Max absolute error: {max_abs_error}")
 
 
 def test_collect_feature_2d():
-    w = 3
-    h = 7
+    w = 32 + 1
+    h = 32 + 3
 
     opencl_provider = OpenCLProvider()
 
     # def collect_feature_2d(opencl_provider, image_gpu, integral_image_gpu, feature_gpu, dx, lx, exclude_center=True):
 
     image_o = numpy.random.rand(h, w).astype(numpy.float32)
-    image_i = image_o.cumsum(axis=1).cumsum(axis=0)
+    mean = image_o.sum() / image_o.size
+    image_i = (image_o - mean).cumsum(axis=1).cumsum(axis=0)
 
     image_o_gpu = pyopencl.array.to_device(opencl_provider.queue, image_o)
     image_i_gpu = pyopencl.array.to_device(opencl_provider.queue, image_i)
@@ -71,28 +70,26 @@ def test_collect_feature_2d():
         1,
         exclude_center=False,
         optimisation=False,
+        mean=mean,
     )
 
-    is_equal = numpy.abs(feature_gpu.get() - image_o) < 0.001
+    max_abs_error = numpy.max(numpy.abs(feature_gpu.get() - image_o))
 
-    # pprint(is_equal)
-    # pprint(image_o)
-    # pprint(feature_gpu.get())
-
-    assert numpy.all(is_equal)
+    print(f"Max absolute error: {max_abs_error}")
 
 
 def test_collect_feature_3d():
-    w = 3
-    h = 7
-    d = 5
+    w = 32 + 1
+    h = 32 * 32 + 3
+    d = 32 + 5
 
     opencl_provider = OpenCLProvider()
 
     # def collect_feature_2d(opencl_provider, image_gpu, integral_image_gpu, feature_gpu, dx, lx, exclude_center=True):
 
     image_o = numpy.random.rand(d, h, w).astype(numpy.float32)
-    image_i = image_o.cumsum(axis=2).cumsum(axis=1).cumsum(axis=0)
+    mean = image_o.sum() / image_o.size
+    image_i = (image_o - mean).cumsum(axis=2).cumsum(axis=1).cumsum(axis=0)
 
     image_o_gpu = pyopencl.array.to_device(opencl_provider.queue, image_o)
     image_i_gpu = pyopencl.array.to_device(opencl_provider.queue, image_i)
@@ -111,29 +108,29 @@ def test_collect_feature_3d():
         1,
         exclude_center=False,
         optimisation=False,
+        mean=mean,
     )
 
-    is_equal = numpy.abs(feature_gpu.get() - image_o) < 0.001
+    max_abs_error = numpy.max(numpy.abs(feature_gpu.get() - image_o))
 
-    pprint(is_equal)
-    pprint(image_o)
-    pprint(feature_gpu.get())
-
-    assert numpy.all(is_equal)
+    print(f"Max absolute error: {max_abs_error}")
 
 
 def test_collect_feature_4d():
-    w = 3
-    h = 7
-    d = 5
-    e = 2
+    w = 32 + 1
+    h = 32 + 3
+    d = 32 + 5
+    e = 32 + 7
 
     opencl_provider = OpenCLProvider()
 
     # def collect_feature_2d(opencl_provider, image_gpu, integral_image_gpu, feature_gpu, dx, lx, exclude_center=True):
 
     image_o = numpy.random.rand(e, d, h, w).astype(numpy.float32)
-    image_i = image_o.cumsum(axis=3).cumsum(axis=2).cumsum(axis=1).cumsum(axis=0)
+    mean = image_o.sum() / image_o.size
+    image_i = (
+        (image_o - mean).cumsum(axis=3).cumsum(axis=2).cumsum(axis=1).cumsum(axis=0)
+    )
 
     image_o_gpu = pyopencl.array.to_device(opencl_provider.queue, image_o)
     image_i_gpu = pyopencl.array.to_device(opencl_provider.queue, image_i)
@@ -154,11 +151,9 @@ def test_collect_feature_4d():
         1,
         exclude_center=False,
         optimisation=False,
+        mean=mean,
     )
-    is_equal = numpy.abs(feature_gpu.get() - image_o) < 0.001
 
-    pprint(is_equal)
-    pprint(image_o)
-    pprint(feature_gpu.get())
+    max_abs_error = numpy.max(numpy.abs(feature_gpu.get() - image_o))
 
-    assert numpy.all(is_equal)
+    print(f"Max absolute error: {max_abs_error}")

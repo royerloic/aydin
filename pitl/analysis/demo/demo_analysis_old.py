@@ -8,7 +8,7 @@ from skimage.color import rgb2gray
 from skimage.draw import circle, circle_perimeter, line_aa
 from skimage.io import imread
 
-from pitl.analysis.analysis import correlation, correlation_distance
+from pitl.analysis.correlation import correlation, correlation_distance
 
 
 def discs(shape=(512, 512), radius=10, num=512, fill=True, image=None):
@@ -168,50 +168,6 @@ def lines_example():
     print("lines3  %d,%d " % correlation_distance(lines3))
 
 
-def cells_example():
-    cells = imread("../../../../data/examples_single/HV115_P0500510002.png")
-    plt.imshow(cells)
-    plt.show()
-
-    plt.plot(correlation(cells)[0][:plot_length], label='y')
-    plt.plot(correlation(cells)[1][:plot_length], label='x')
-    plt.legend()
-    plt.show()
-
-    print("cells  %d,%d " % correlation_distance(cells))
-
-
-def dmel_example():
-    cells = imread(
-        "../../../../data/examples_single/SPC0_TM0132_CM0_CM1_CHN00_CHN01.fusedStack.tif"
-    )
-
-    plt.imshow(cells[50, :, :])
-    plt.show()
-
-    plt.plot(correlation(cells)[0][:plot_length], label='z')
-    plt.plot(correlation(cells)[1][:plot_length], label='y')
-    plt.plot(correlation(cells)[2][:plot_length], label='x')
-    plt.legend()
-    plt.show()
-
-    print("dmel  %d,%d,%d " % correlation_distance(cells))
-
-
-def singlecell_example():
-    singlecell = imread("../../../../data/examples_single/Example-noisy1.png")
-
-    plt.imshow(singlecell[50, :, :])
-    plt.show()
-
-    plt.plot(correlation(singlecell)[0][:plot_length], label='y')
-    plt.plot(correlation(singlecell)[1][:plot_length], label='x')
-    plt.legend()
-    plt.show()
-
-    print("singlecell  %d,%d,%d " % correlation_distance(singlecell))
-
-
 noise_example()
 camera_example()
 astronaut_example()
@@ -219,5 +175,3 @@ clock_example()
 coins_example()
 discs_example()
 lines_example()
-cells_example()
-dmel_example()

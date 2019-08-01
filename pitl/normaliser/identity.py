@@ -26,10 +26,7 @@ class IdentityNormaliser(NormaliserBase):
         :param array: array to normaliser
         :type array: ndarray
         """
-        if array.dtype != numpy.float32:
-            array = array.astype(numpy.float32)
-
-        return array
+        return super().normalise(array)
 
     def denormalise(self, array):
         """
@@ -38,7 +35,4 @@ class IdentityNormaliser(NormaliserBase):
         :type array: ndarray
         """
 
-        if not self.leave_as_float and self.original_dtype != array.dtype:
-            array = array.astype(self.original_dtype)
-
-        return array
+        return super().denormalise(array)

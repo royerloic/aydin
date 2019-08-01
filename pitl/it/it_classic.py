@@ -5,6 +5,7 @@ import numpy
 
 from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from pitl.it.it_base import ImageTranslatorBase
+from pitl.offcore.offcore import offcore_array
 from pitl.regression.gbm import GBMRegressor
 
 
@@ -145,7 +146,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         else:
             monitoring_images_features = None
 
-        # We pass these to the regressor:
         self.monitoring_datasets = monitoring_images_features
 
         # TODO: clean regressor/it varialables mixed use
@@ -214,18 +214,15 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         # in the splitting of train and test sets. The features are the heavy part, so that's what we map:
         # x_train, y_train, x_test, y_test = (None,) * 4
 
-        if isinstance(x, numpy.memmap):
-            temp_file = tempfile.TemporaryFile()
-            x_train = numpy.memmap(
-                temp_file,
-                dtype=numpy.float32,
-                mode='w+',
-                shape=((nb_entries - test_size), nb_features),
-            )
-        else:
-            x_train = numpy.zeros(
-                ((nb_entries - test_size), nb_features), dtype=numpy.float
-            )
+        # if isinstance(x, numpy.memmap):
+        #     x_train,  = offcore_array(dtype=numpy.float32,
+        #                             shape=((nb_entries - test_size), nb_features),
+        #     )
+        # else:
+        x_train = numpy.zeros(
+            ((nb_entries - test_size), nb_features), dtype=numpy.float
+        )
+
         y_train = numpy.zeros((nb_entries - test_size,), dtype=numpy.float)
         x_test = numpy.zeros((test_size, nb_features), dtype=numpy.float)
         y_test = numpy.zeros((test_size,), dtype=numpy.float)

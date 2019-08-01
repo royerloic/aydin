@@ -1,3 +1,7 @@
+import numpy
+from pyopencl import cltypes
+
+
 def collect_feature_2d(
     opencl_provider,
     image_gpu,
@@ -8,6 +12,7 @@ def collect_feature_2d(
     lx,
     ly,
     exclude_center=True,
+    mean: float = 0,
     optimisation=True,
 ):
     """
@@ -29,7 +34,7 @@ def collect_feature_2d(
     if optimisation and lx == 1 and ly == 1:
         program_code = f"""
 
-        __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature)
+        __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature, float mean)
          {{
            const int x = get_global_id(1);
            const int y = get_global_id(0);
@@ -47,7 +52,7 @@ def collect_feature_2d(
     else:
         program_code = f"""
 
-      __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature)
+      __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature, float mean)
       {{
 
         const int x = get_global_id(1);
@@ -75,8 +80,14 @@ def collect_feature_2d(
         const float value2 = x2<0||y2<0 ? 0.0f : integral[i2];
         const float value3 = x3<0||y3<0 ? 0.0f : integral[i3];
         const float value4 = {"image[i]" if exclude_center else "0.0f"};
+        
+        const float adj = {lx*ly-1 if exclude_center else lx*ly}*mean;
 
-        const float value = (value3-value2-value1+value0-value4)*{1.0 / (lx * ly)};
+        const float value = (value3
+                            -value2-value1
+                            +value0
+                            -value4
+                            +adj)*{1.0 / (lx * ly)};
 
 
         feature[i] = value;
@@ -95,6 +106,7 @@ def collect_feature_2d(
         image_gpu.data,
         integral_image_gpu.data,
         feature_gpu.data,
+        mean if isinstance(mean, numpy.ndarray) else cltypes.float(mean),
     )
 
     pass

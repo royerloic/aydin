@@ -9,6 +9,7 @@ from pitl.io import io
 from pitl.io.datasets import examples_single
 from pitl.it.it_classic import ImageTranslatorClassic
 from pitl.regression.gbm import GBMRegressor
+from pitl.regression.nn.nn import NNRegressor
 
 
 def demo(image):
@@ -26,13 +27,7 @@ def demo(image):
             kernel_widths=widths, kernel_scales=scales, exclude_center=False
         )
 
-        regressor = GBMRegressor(
-            num_leaves=128,
-            n_estimators=1024,
-            learning_rate=0.01,
-            loss='l1',
-            early_stopping_rounds=None,
-        )
+        regressor = NNRegressor()
 
         it = ImageTranslatorClassic(generator, regressor, normaliser='identity')
 

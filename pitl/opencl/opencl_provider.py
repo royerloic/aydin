@@ -103,11 +103,16 @@ class OpenCLProvider:
 
             return False
 
-    def build(self, program_code):
+    def build(self, program_code, disable_opts=False):
 
         if program_code in self.program_cache:
             return self.program_cache[program_code]
         else:
-            program = cl.Program(self.context, program_code).build()
+            options = []
+
+            if disable_opts:
+                options.append("-cl-opt-disable")
+
+            program = cl.Program(self.context, program_code).build(options=options)
             self.program_cache[program_code] = program
             return program

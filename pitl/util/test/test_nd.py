@@ -6,6 +6,7 @@ from pitl.util.nd import (
     nd_loop,
     nd_split_slices,
     remove_margin_slice,
+    nd_range_radii,
 )
 
 
@@ -15,6 +16,18 @@ def test_nd_range():
     assert (
         str(list(nd_range(-1, 1, 3)))
         == "[(-1, -1, -1), (-1, -1, 0), (-1, 0, -1), (-1, 0, 0), (0, -1, -1), (0, -1, 0), (0, 0, -1), (0, 0, 0)]"
+    )
+
+
+def test_nd_range_radii():
+
+    radii = (1, 2)
+
+    print(str(list(nd_range_radii(radii))))
+
+    assert (
+        str(list(nd_range_radii(radii)))
+        == "[(-1, -2), (-1, -1), (-1, 0), (-1, 1), (-1, 2), (0, -2), (0, -1), (0, 0), (0, 1), (0, 2), (1, -2), (1, -1), (1, 0), (1, 1), (1, 2)]"
     )
 
 
