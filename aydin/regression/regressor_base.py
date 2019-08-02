@@ -29,6 +29,8 @@ class RegressorBase(ABC):
         self.callbacks = []
         self.monitoring_datasets = []
 
+        self.num_features = None
+
     @abstractmethod
     def reset(self):
         """
@@ -43,7 +45,7 @@ class RegressorBase(ABC):
         :param y_test:
         :type y_test: y test values
         """
-        raise NotImplementedError()
+        self.num_features = None
 
     @abstractmethod
     def fit_batch(

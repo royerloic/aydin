@@ -87,7 +87,7 @@ def collect_feature_2d(
                             -value2-value1
                             +value0
                             -value4
-                            +adj)*{1.0 / (lx * ly)};
+                            +adj)*(1.0f / ((x1-x0+1) * (y1-y0+1)));
 
 
         feature[i] = value;

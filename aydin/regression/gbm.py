@@ -144,6 +144,7 @@ class GBMRegressor(RegressorBase):
     ):
 
         num_samples = y_train.shape[0]
+        self.num_features = x_train.shape[-1]
         has_valid_dataset = x_valid is not None and y_valid is not None
 
         train_dataset = lightgbm.Dataset(
@@ -193,6 +194,10 @@ class GBMRegressor(RegressorBase):
         :return:
         :rtype:
         """
+
+        # We check that we get the right number of features.
+        # If not, most likely the batch_dims are set wrong...
+        assert self.num_features == x.shape[-1]
 
         if model_to_use is None:
             model_to_use = self.lgbmr

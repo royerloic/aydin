@@ -203,7 +203,6 @@ class ImageTranslatorBase(ABC):
 
             # Ok, now we can start iterating through the batches:
             # strategy is a list in which each integer is the number of chunks per dimension.
-
             batch_strategy = self._get_batching_strategy(
                 batch_dims, ideal_number_of_batches, shape
             )
@@ -346,9 +345,6 @@ class ImageTranslatorBase(ABC):
         ideal_number_of_batches, is_enough_memory = self._get_number_of_batches(
             batch_size, input_image
         )
-        batch_strategy = self._get_batching_strategy(
-            batch_dims, ideal_number_of_batches, shape
-        )
 
         if (batch_size is None) and is_enough_memory:
             # We did not batch during training so we can directly translate:
@@ -368,6 +364,11 @@ class ImageTranslatorBase(ABC):
 
         else:
             # We do need to do batch training because of a lack of memory or because a small batch size was requested:
+
+            # We get the batch strategy:
+            batch_strategy = self._get_batching_strategy(
+                batch_dims, ideal_number_of_batches, shape
+            )
 
             # First we compute the margins:
             margins = self._get_margins(shape, batch_strategy)

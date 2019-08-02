@@ -128,20 +128,35 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         nb_batch_dim = sum([(1 if i else 0) for i in batch_dims])
         nb_non_batch_dim = image_dimension - nb_batch_dim
 
+        if self.debug_log:
+            print(
+                f'Axis permutation for batch-dim consolidation during feature gen: {axes_permutation}'
+            )
+            print(
+                f'Number of batch dim: {nb_batch_dim}, number of non batch dim: {nb_non_batch_dim}'
+            )
+
         # Set default aspect ratio based on image dimension:
         if features_aspect_ratio is None:
             features_aspect_ratio = (1,) * image_dimension
         assert len(features_aspect_ratio) == image_dimension
         features_aspect_ratio = list(features_aspect_ratio)
 
-        # Permutate aspect ratio:
+        if self.debug_log:
+            print(f'Feature aspect ratio: {features_aspect_ratio}')
 
+        # Permutate aspect ratio:
         features_aspect_ratio = tuple(
             features_aspect_ratio[axis] for axis in axes_permutation
         )
 
         # and we only keep the non-batch dimensions aspect ratio values:
         features_aspect_ratio = features_aspect_ratio[-nb_non_batch_dim:]
+
+        if self.debug_log:
+            print(
+                f'Feature aspect ratio after permutation and selection: {features_aspect_ratio}'
+            )
 
         # Initialise some variables:
         image_batch = None
@@ -153,28 +168,33 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         # We iterate over batches:
         for index in np.ndindex(*(image.shape[0:nb_batch_dim])):
 
+            # Image batch slice:
             image_batch_slice = (*index, *(slice(None),) * nb_non_batch_dim)
+
+            # Feature batch slice:
             feature_batch_slice = (
                 slice(None),
                 *index,
                 *(slice(None),) * nb_non_batch_dim,
             )
-            # print(image_batch_slice)
 
-            if image_batch_slice == (slice(None, None, None), slice(None, None, None)):
-                # if there is only one batch, no need to do anything...
-                image_batch = np.array(image, copy=True, dtype=numpy.float32)
+            if self.debug_log:
+                print(f'Index: {index}')
+                print(f'Image batch slice: {image_batch_slice}')
+                print(f'Feature batch slice: {feature_batch_slice}')
+
+            # Little simplification:
+            if image_batch_slice == (slice(None, None, None),) * nb_non_batch_dim:
+                image_batch_slice = numpy.s_[...]
+
+            # Copy because image[image_batch_slice] is not necessarily contiguous and pyOpenCL does not like discontiguous arrays:
+            if image_batch is None:
+                image_batch = np.array(
+                    image[image_batch_slice], copy=True, dtype=numpy.float32
+                )
             else:
-                # Copy because image[image_batch_slice] is not necessarily contiguous and pyOpenCL does not like discontiguous arrays:
-                if image_batch is None:
-                    image_batch = np.array(
-                        image[image_batch_slice], copy=True, dtype=numpy.float32
-                    )
-                else:
-                    # Here we need to explicitly transfer values without creating an instance!
-                    numpy.copyto(
-                        image_batch, image[image_batch_slice], casting='unsafe'
-                    )
+                # Here we need to explicitly transfer values without creating an instance!
+                numpy.copyto(image_batch, image[image_batch_slice], casting='unsafe')
 
             # We move the image to the GPU. Needs to fit entirely, could be a problem for very very large images.
             if image_batch_gpu is None:
@@ -189,7 +209,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                     self.opencl_provider.queue, image_batch_gpu.shape, np.float32
                 )
 
-                # we also allocate the integral images:
+                # we also allocate the needed integral images gpu storage:
                 image_integral_gpu_1 = Array(
                     self.opencl_provider.queue, image_batch_gpu.shape, np.float32
                 )
@@ -245,7 +265,9 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         del feature_gpu
         del image_batch_gpu
 
-        # Creates a view of the array in which the features are indexed by the last dimension:
+        # 'collect_fesatures_nD' puts the feature vector in axis 0.
+        # The following line creates a view of the array
+        # in which the features are indexed by the last dimension instead:
         features = np.moveaxis(features, 0, -1)
 
         # computes the inverse permutation from the permutation use to consolidate batch dimensions:
@@ -254,6 +276,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         ] + [image_dimension]
 
         # permutates dimensions back:
+        image = numpy.transpose(image, axes=axes_inverse_permutation[:-1])
         features = numpy.transpose(features, axes=axes_inverse_permutation)
 
         return features
@@ -386,6 +409,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             for shift in features_shifts:
 
                 # There is no point in collecting features bigger than the image itself:
+                # Note: this is not a good idea: number of features varies image size which causes trouble.
                 if (width * scale // 2) > max(image_gpu.shape):
                     break
 
