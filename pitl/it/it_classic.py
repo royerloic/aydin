@@ -22,6 +22,8 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         feature_generator=FastMultiscaleConvolutionalFeatures(),
         regressor=GBMRegressor(),
         normaliser='percentile',
+        analyse_correlation=False,
+        monitor=None,
     ):
         """
 
@@ -30,7 +32,9 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         :param regressor:
         :type regressor:
         """
-        super().__init__(normaliser)
+        super().__init__(
+            normaliser, analyse_correlation=analyse_correlation, monitor=monitor
+        )
 
         self.feature_generator = feature_generator
         self.regressor = regressor
@@ -46,7 +50,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         batch_dims=None,
         batch_size=None,
         batch_shuffle=False,
-        monitoring_variables=None,
         monitoring_images=None,
     ):
 
@@ -62,7 +65,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             batch_dims,
             batch_size,
             batch_shuffle,
-            monitoring_variables,
             monitoring_images,
         )
 
@@ -83,10 +85,25 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         :rtype:
         """
         if self.debug:
-            print("Computing features ")
+            print(f"Computing features ")
 
         self.feature_generator.exclude_center = exclude_center
-        features = self.feature_generator.compute(image, batch_dims)
+
+        if self.correlation:
+            max_length = max(self.correlation)
+            features_aspect_ratio = tuple(
+                length / max_length for length in self.correlation
+            )
+
+            if self.debug:
+                print(f"Features aspect ratio: {features_aspect_ratio} ")
+        else:
+            features_aspect_ratio = None
+
+        # image, batch_dims=None, features_aspect_ratio=None, features=None
+        features = self.feature_generator.compute(
+            image, batch_dims=batch_dims, features_aspect_ratio=features_aspect_ratio
+        )
         x = features.reshape(-1, features.shape[-1])
 
         return x
@@ -114,7 +131,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         batch_dims,
         train_test_ratio=0.1,
         batch=False,
-        monitoring_variables=None,
         monitoring_images=None,
         callback_period=3,
     ):
@@ -160,7 +176,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                 > self.regressor.last_callback_time_sec + self.regressor.callback_period
             ):
                 model = env.model
-                if self.monitoring_datasets:
+                if self.monitoring_datasets and self.monitor:
                     predicted_monitoring_datasets = [
                         self.regressor.predict(x_m, model_to_use=model)
                         for x_m in self.monitoring_datasets
@@ -177,25 +193,18 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                         for inferred_image in inferred_images
                     ]
 
-                    print(
-                        "denormalised_inferred_images: ", denormalised_inferred_images
-                    )
-                    monitoring_variables.monitoring_variables = (
+                    self.monitor.variables = (
                         iteration,
                         eval_metric_value,
                         denormalised_inferred_images,
                     )
-                else:
-                    monitoring_variables.monitoring_variables = (
-                        iteration,
-                        eval_metric_value,
-                        None,
-                    )
+                elif self.monitor:
+                    self.monitor.variables = (iteration, eval_metric_value, None)
 
                 self.regressor.last_callback_time_sec = current_time_sec
             else:
                 pass
-                print(f"Skipping callback at  iteration={iteration} ")
+                # print(f"Iteration={iteration} metric value: {eval_metric_value} ")
 
         nb_features = x.shape[-1]
         nb_entries = y.shape[0]
@@ -239,12 +248,20 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             print("Training...")
         if batch:
             self.regressor.fit_batch(
-                x_train, y_train, regressor_callback, x_valid=x_test, y_valid=y_test
+                x_train,
+                y_train,
+                x_valid=x_test,
+                y_valid=y_test,
+                regressor_callback=regressor_callback,
             )
             return None
         else:
             self.regressor.fit(
-                x_train, y_train, regressor_callback, x_valid=x_test, y_valid=y_test
+                x_train,
+                y_train,
+                x_valid=x_test,
+                y_valid=y_test,
+                regressor_callback=regressor_callback,
             )
             inferred_image = self._predict_from_features(x, input_image.shape)
             return inferred_image

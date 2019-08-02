@@ -1,4 +1,5 @@
 from pitl.plaidml.plaidml_provider import PlaidMLProvider
+from pitl.regression.nn.callback import NNCallback
 
 provider = PlaidMLProvider()
 
@@ -54,7 +55,7 @@ class NNRegressor(RegressorBase):
 
         self.nnreg = None
 
-        self.EStop = EarlyStopping(
+        self.early_stopping = EarlyStopping(
             monitor='val_loss',
             min_delta=0.0001,
             patience=early_stopping_rounds,
@@ -63,7 +64,7 @@ class NNRegressor(RegressorBase):
             restore_best_weights=True,
         )
 
-        self.ReduceLR = ReduceLROnPlateau(
+        self.reduce_learning_rate = ReduceLROnPlateau(
             monitor='val_loss',
             factor=0.5,
             verbose=1,
@@ -72,16 +73,29 @@ class NNRegressor(RegressorBase):
             min_lr=1e-9,
         )
 
+        self.keras_callback = NNCallback()
+
     def reset(self):
 
         del self.nnreg
         self.nnreg = None
 
-    def fit_batch(self, x_train, y_train, x_valid=None, y_valid=None):
+    def fit_batch(
+        self, x_train, y_train, x_valid=None, y_valid=None, regressor_callback=None
+    ):
 
-        self._fit(x_train, y_train, x_valid, y_valid, batch=True)
+        self._fit(
+            x_train,
+            y_train,
+            x_valid,
+            y_valid,
+            batch=True,
+            regressor_callback=regressor_callback,
+        )
 
-    def fit(self, x_train, y_train, x_valid, y_valid):
+    def fit(
+        self, x_train, y_train, x_valid=None, y_valid=None, regressor_callback=None
+    ):
         """
         Fits function y=f(x) given training pairs (x_train, y_train).
         Stops when performance stops improving on the test dataset: (x_test, y_test).
@@ -89,9 +103,18 @@ class NNRegressor(RegressorBase):
         """
 
         self.nnreg = None
-        self._fit(x_train, y_train, x_valid, y_valid, batch=False)
+        self._fit(
+            x_train,
+            y_train,
+            x_valid,
+            y_valid,
+            batch=False,
+            regressor_callback=regressor_callback,
+        )
 
-    def _fit(self, x_train, y_train, x_valid, y_valid, batch=False):
+    def _fit(
+        self, x_train, y_train, x_valid, y_valid, batch=False, regressor_callback=None
+    ):
         """
         Fits function y=f(x) given training pairs (x_train, y_train).
         Stops when performance stops improving on the test dataset: (x_test, y_test).
@@ -132,13 +155,19 @@ class NNRegressor(RegressorBase):
             print(f"Batch size: {batch_size}")
             print(f"Starting training...")
 
+        self.keras_callback.regressor_callback = regressor_callback
+
         self.nnreg.fit(
             x_train,
             y_train,
             validation_data=(x_valid, y_valid),
             epochs=10 if batch else self.max_epochs,
             batch_size=min(batch_size, nb_training_entries),
-            callbacks=[self.EStop, self.ReduceLR],
+            callbacks=[
+                self.early_stopping,
+                self.reduce_learning_rate,
+                self.keras_callback,
+            ],
         )
 
     def predict(self, x, model_to_use=None):
@@ -162,5 +191,7 @@ class NNRegressor(RegressorBase):
 
         x = x.reshape(self.x_shape)
         return (
-            self.nnreg.predict(x, batch_size=batch_size) if model_to_use is None else model_to_use.predict(x, batch_size=batch_size)
+            self.nnreg.predict(x, batch_size=batch_size)
+            if model_to_use is None
+            else model_to_use.predict(x, batch_size=batch_size)
         )

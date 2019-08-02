@@ -1,4 +1,18 @@
+import collections
 from abc import ABC, abstractmethod
+
+
+RegressorCallbackTuple = collections.namedtuple(
+    "RegressorCallbackEnv",
+    [
+        "model",
+        "params",
+        "iteration",
+        "begin_iteration",
+        "end_iteration",
+        "evaluation_result_list",
+    ],
+)
 
 
 class RegressorBase(ABC):
@@ -33,7 +47,7 @@ class RegressorBase(ABC):
 
     @abstractmethod
     def fit_batch(
-        self, x_train, y_train, monitoring_variables, x_valid=None, y_valid=None
+        self, x_train, y_train, x_valid=None, y_valid=None, regressor_callback=None
     ):
         """
         Fits function y=f(x) given training pairs (x_train, y_train).
@@ -42,7 +56,7 @@ class RegressorBase(ABC):
         This method can be called multiple times with different batches.
         To reset the regressor call reset()
 
-        :param monitoring_variables:
+
         :param x_train: x training values
         :type x_train:
         :param y_train: y training values
@@ -51,11 +65,12 @@ class RegressorBase(ABC):
         :type x_valid:
         :param y_valid:  y validation values
         :type y_valid:
+        :param monitoring_variables:
         """
         raise NotImplementedError()
 
     @abstractmethod
-    def fit(self, x_train, y_train, monitoring_variables, x_valid, y_valid):
+    def fit(self, x_train, y_train, x_valid, y_valid, regressor_callback=None):
         """
         Fits function y=f(x) given training pairs (x_train, y_train).
         Stops when performance stops improving on the test dataset: (x_test, y_test).

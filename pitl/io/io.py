@@ -2,6 +2,7 @@ import hashlib
 import hashlib
 import os
 import traceback
+from contextlib import contextmanager
 from os import path
 from os.path import join
 from pathlib import Path
@@ -13,7 +14,7 @@ import pims
 import skimage
 import zarr
 from czifile import czifile, CziFile
-from tifffile import tifffile, TiffFile
+from tifffile import tifffile, TiffFile, memmap
 
 ## Axis codes:
 #        'X' width, 'Y' height, 'S' sample, 'I' image series|page|plane,
@@ -296,3 +297,14 @@ def imread(input_path, zarr_cache=False):
     # array = numpy.squeeze(array)
 
     return (array, metadata)
+
+
+@contextmanager
+def imwrite(output_path, shape, dtype):
+    array = memmap(output_path, shape=shape, dtype=dtype)
+    try:
+        yield array
+        array.flush()
+    finally:
+
+        del array

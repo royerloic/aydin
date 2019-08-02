@@ -1,3 +1,4 @@
+import tempfile
 from os import path
 from os.path import join
 
@@ -7,7 +8,7 @@ import numpy
 from pitl.io import io
 from pitl.io.datasets import examples_single, examples_zipped
 from pitl.io.folders import get_temp_folder
-from pitl.io.io import convert_to_zarr, cache_as_zarr, imread
+from pitl.io.io import convert_to_zarr, cache_as_zarr, imread, imwrite
 
 
 def test_analysis():
@@ -99,3 +100,28 @@ def test_opening_examples():
             )
         else:
             print(f"Cannot open dataset: {example[1]}")
+
+
+def test_imwrite():
+
+    input_path = examples_single.janelia_flybrain.get_path()
+
+    assert path.exists(input_path)
+
+    array, metadata = imread(input_path, zarr_cache=False)
+
+    temp_file = join(get_temp_folder(), "test_imwrite.tif")
+
+    # We use a generator that takes care of everything:
+    with imwrite(temp_file, shape=array.shape, dtype=array.dtype) as tiff_array:
+
+        # We copy here the file
+        print("Writting file...")
+        tiff_array[...] = array
+
+    print("Done...")
+
+    print("Reading back...")
+    array2, _ = imread(temp_file)
+
+    assert numpy.all(array == array2)

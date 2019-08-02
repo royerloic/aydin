@@ -4,84 +4,9 @@ import numpy
 import scipy
 
 
-def correlation(image, nb_samples=1024, max_length=256, smooth=True):
+def correlation_distance(input_image, target_image=None, method='firstmin'):
 
-    shape = image.shape
-    nb_dim = len(shape)
-
-    corr_list = []
-
-    for dim in range(nb_dim):
-
-        dim_length = shape[dim]
-
-        if dim_length >= 3:
-
-            max_length_dim = min(dim_length, max_length)
-
-            corr_samples_list = []
-            counter = 0
-
-            for sample in range(nb_samples):
-                slice_list = list(random.randrange(0, shape[i]) for i in range(nb_dim))
-
-                pos = random.randrange(0, 1 + shape[dim] - max_length_dim)
-                slice_list[dim] = slice(pos, pos + max_length_dim, 1)
-
-                line_array = image[tuple(slice_list)]
-
-                line_array = line_array.astype(numpy.float)
-
-                line_array = line_array - (line_array.sum() / line_array.shape[0])
-
-                corr = numpy.correlate(line_array, line_array, mode='full')
-                corr = corr[corr.size // 2 :]
-
-                if corr[0] <= 0:
-                    continue
-
-                # corr = numpy.abs(corr)
-
-                corr_samples_list.append(corr)
-
-                counter += 1
-
-            if len(corr_samples_list) > 0:
-                corr_samples_stack = numpy.stack(corr_samples_list)
-                corr_avg = numpy.median(corr_samples_stack, axis=0)
-
-                # corr_avg = corr_avg / numpy.sum(corr_avg)
-
-                if smooth and corr_avg.size >= 3:
-                    corr_avg[1:] = numpy.convolve(
-                        corr_avg, numpy.ones(3) / 3.0, mode='same'
-                    )[1:]
-                    corr_avg[1:] = numpy.convolve(
-                        corr_avg, numpy.ones(3) / 3.0, mode='same'
-                    )[1:]
-                    corr_avg[1:] = scipy.signal.medfilt(corr_avg, kernel_size=3)[1:]
-                    corr_avg[1:] = scipy.signal.medfilt(corr_avg, kernel_size=5)[1:]
-                    corr_avg[1:] = scipy.signal.medfilt(corr_avg, kernel_size=7)[1:]
-                    # corr_avg[1:] = numpy.convolve(corr_avg, numpy.ones(3) / 3.0, mode='same')[1:]
-                    # corr_avg[1:] = numpy.convolve(corr_avg, numpy.ones(3) / 3.0, mode='same')[1:]
-                    # corr_avg = numpy.convolve(corr_avg, numpy.ones(3) / 3.0, mode='same')
-
-                corr_avg = corr_avg / corr_avg[0]
-            else:
-                corr_avg = None
-
-        else:
-            # Dimension is way too short:
-            corr_avg = None
-
-        corr_list.append(corr_avg)
-
-    return tuple(corr_list)
-
-
-def correlation_distance(image, method='firstmin'):
-
-    correlation_curves_list = correlation(image)
+    correlation_curves_list = correlation(input_image, target_image)
 
     correlation_distances_list = []
 
@@ -125,3 +50,100 @@ def correlation_distance(image, method='firstmin'):
                 correlation_distances_list.append(min_distance)
 
     return tuple(correlation_distances_list)
+
+
+def correlation(
+    input_image, target_image=None, nb_samples=4 * 1024, max_length=256, smooth=True
+):
+
+    # Determine image(s)  shape:
+    shape = input_image.shape
+
+    # Initialise target image if  None:
+    if target_image is None:
+        target_image = input_image
+
+    # Makes sure that the images have the same shape:
+    if not input_image is target_image:
+        assert input_image.shape == target_image.shape
+
+    # Number of dimensions:
+    nb_dim = len(shape)
+
+    # This list will contain the correlation vectors for each and every dimension:
+    corr_list = []
+
+    # We iterate for each dimension:
+    for dim in range(nb_dim):
+
+        dim_length = shape[dim]
+
+        if dim_length >= 3:
+
+            max_length_dim = min(dim_length, max_length)
+
+            corr_samples_list = []
+            counter = 0
+
+            for sample in range(nb_samples):
+                slice_list = list(random.randrange(0, shape[i]) for i in range(nb_dim))
+
+                pos = random.randrange(0, 1 + shape[dim] - max_length_dim)
+                slice_list[dim] = slice(pos, pos + max_length_dim, 1)
+
+                line_array_input = input_image[tuple(slice_list)]
+                line_array_target = target_image[tuple(slice_list)]
+
+                line_array_input = line_array_input.astype(numpy.float)
+                line_array_target = line_array_target.astype(numpy.float)
+
+                line_array_input = line_array_input - (
+                    line_array_input.sum() / line_array_input.shape[0]
+                )
+                line_array_target = line_array_target - (
+                    line_array_target.sum() / line_array_target.shape[0]
+                )
+
+                corr = numpy.correlate(line_array_input, line_array_target, mode='full')
+                corr = corr[corr.size // 2 :]
+
+                if corr[0] <= 0:
+                    continue
+
+                # corr = numpy.abs(corr)
+
+                corr_samples_list.append(corr)
+
+                counter += 1
+
+            if len(corr_samples_list) > 0:
+                corr_samples_stack = numpy.stack(corr_samples_list)
+                corr_avg = numpy.median(corr_samples_stack, axis=0)
+
+                # corr_avg = corr_avg / numpy.sum(corr_avg)
+
+                if smooth and corr_avg.size >= 3:
+                    corr_avg[1:] = numpy.convolve(
+                        corr_avg, numpy.ones(3) / 3.0, mode='same'
+                    )[1:]
+                    corr_avg[1:] = numpy.convolve(
+                        corr_avg, numpy.ones(3) / 3.0, mode='same'
+                    )[1:]
+                    corr_avg[1:] = scipy.signal.medfilt(corr_avg, kernel_size=3)[1:]
+                    corr_avg[1:] = scipy.signal.medfilt(corr_avg, kernel_size=5)[1:]
+                    corr_avg[1:] = scipy.signal.medfilt(corr_avg, kernel_size=7)[1:]
+                    # corr_avg[1:] = numpy.convolve(corr_avg, numpy.ones(3) / 3.0, mode='same')[1:]
+                    # corr_avg[1:] = numpy.convolve(corr_avg, numpy.ones(3) / 3.0, mode='same')[1:]
+                    # corr_avg = numpy.convolve(corr_avg, numpy.ones(3) / 3.0, mode='same')
+
+                corr_avg = corr_avg / corr_avg[0]
+            else:
+                corr_avg = None
+
+        else:
+            # Dimension is way too short:
+            corr_avg = None
+
+        corr_list.append(corr_avg)
+
+    return tuple(corr_list)
