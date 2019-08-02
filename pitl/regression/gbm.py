@@ -64,7 +64,6 @@ class GBMRegressor(RegressorBase):
 
         self.lgbmr = None
 
-        self.callbacks = None
         self.monitoring_datasets = None
         self.callback_period = 3
 
@@ -109,23 +108,39 @@ class GBMRegressor(RegressorBase):
         return params
 
     def fit_batch(
-        self, x_train, y_train, regressor_callback, x_valid=None, y_valid=None
+        self, x_train, y_train, x_valid=None, y_valid=None, regressor_callback=None
     ):
-        self._fit(x_train, y_train, regressor_callback, x_valid, y_valid, is_batch=True)
 
-    def fit(self, x_train, y_train, regressor_callback, x_valid=None, y_valid=None):
         self._fit(
-            x_train, y_train, regressor_callback, x_valid, y_valid, is_batch=False
+            x_train,
+            y_train,
+            x_valid,
+            y_valid,
+            is_batch=True,
+            regressor_callback=regressor_callback,
+        )
+
+    def fit(
+        self, x_train, y_train, x_valid=None, y_valid=None, regressor_callback=None
+    ):
+
+        self._fit(
+            x_train,
+            y_train,
+            x_valid,
+            y_valid,
+            is_batch=False,
+            regressor_callback=regressor_callback,
         )
 
     def _fit(
         self,
         x_train,
         y_train,
-        regressor_callback,
         x_valid=None,
         y_valid=None,
         is_batch=False,
+        regressor_callback=None,
     ):
 
         num_samples = y_train.shape[0]
@@ -152,8 +167,8 @@ class GBMRegressor(RegressorBase):
             else None,
             num_boost_round=self.n_estimators,
             # keep_training_booster= is_batch, <-- not working...
-            callbacks=[regressor_callback],
-            verbose_eval=len([regressor_callback]) == 0,
+            callbacks=[] if regressor_callback is None else [regressor_callback],
+            verbose_eval=regressor_callback is None,
         )
 
         if is_batch:

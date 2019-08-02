@@ -16,15 +16,9 @@ def demo(image):
 
     with napari.gui_qt():
 
-        level = 3
-        scales = [1, 3, 7, 15, 31][:level]
-        widths = [3, 3, 3, 3, 3][:level]
-
         batch_dims = (True, False, False, False)
 
-        generator = FastMultiscaleConvolutionalFeatures(
-            kernel_widths=widths, kernel_scales=scales
-        )
+        generator = FastMultiscaleConvolutionalFeatures(max_features=30)
 
         regressor = NNRegressor()
 
@@ -53,8 +47,8 @@ image_path = examples_single.gardner_org.get_path()
 array, metadata = io.imread(image_path)
 print(array.shape)
 array = array.squeeze()
-# array = array[:, 0:60, 270:500, 400:600]
-array = array[:, 0:60, 170:600, 300:700]
+array = array[:, 0:60, 270:500, 400:600]
+# array = array[:, 0:60, 170:600, 300:700]
 print(array.shape)
 array = array.astype(numpy.float32)
 array = rescale_intensity(array, in_range='image', out_range=(0, 1))

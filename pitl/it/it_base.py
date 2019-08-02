@@ -6,6 +6,7 @@ from operator import mul
 import numpy
 import psutil
 
+from pitl.analysis.correlation import correlation_distance
 from pitl.normaliser.identity import IdentityNormaliser
 from pitl.normaliser.minmax import MinMaxNormaliser
 from pitl.normaliser.percentile import PercentileNormaliser
@@ -20,7 +21,9 @@ class ImageTranslatorBase(ABC):
 
     """
 
-    def __init__(self, normaliser='percentile'):
+    def __init__(
+        self, normaliser='percentile', analyse_correlation=False, monitor=None
+    ):
         """
 
         """
@@ -29,6 +32,8 @@ class ImageTranslatorBase(ABC):
         self.debug = True
         self.models = []
         self.self_supervised = None
+        self.analyse_correlation = analyse_correlation
+        self.monitor = monitor
 
     @abstractmethod
     def _train(
@@ -38,27 +43,9 @@ class ImageTranslatorBase(ABC):
         batch_dims,
         train_test_ratio,
         batch=False,
-        monitoring_variables=None,
         monitoring_images=None,
         callback_period=3,
     ):
-        """
-
-        :param input_image: 
-        :type input_image: 
-        :param target_image: 
-        :type target_image: 
-        :param batch_dims: 
-        :type batch_dims: 
-        :param train_test_ratio: 
-        :type train_test_ratio: 
-        :param batch: 
-        :type batch: 
-        :param monitoring_images:
-        :type monitoring_images:
-        :param callbacks: 
-        :type callbacks: 
-        """
         pass
 
     @abstractmethod
@@ -101,7 +88,6 @@ class ImageTranslatorBase(ABC):
         batch_dims=None,
         batch_size=None,
         batch_shuffle=False,
-        monitoring_variables=None,
         monitoring_images=None,
         callback_period=3,
     ):
@@ -115,6 +101,18 @@ class ImageTranslatorBase(ABC):
 
         # If we use the same image for input and ouput then we are in a self-supervised setting:
         self.self_supervised = input_image is target_image
+
+        if self.debug:
+            print(f'Training is self-supervised.')
+
+        # Analyse the input image correlation structure:
+        if self.analyse_correlation:
+            self.correlation = correlation_distance(input_image, target_image)
+
+            if self.debug:
+                print(f'Correlation structure of the image: {self.correlation}.')
+        else:
+            self.correlation = None
 
         # Instanciates normaliser(s):
         if self.normaliser_type == 'identity':
@@ -185,7 +183,6 @@ class ImageTranslatorBase(ABC):
                 batch_dims,
                 train_test_ratio,
                 batch=False,
-                monitoring_variables=monitoring_variables,
                 monitoring_images=monitoring_images,
                 callback_period=callback_period,
             )
@@ -251,7 +248,6 @@ class ImageTranslatorBase(ABC):
                     batch_dims,
                     train_test_ratio,
                     batch=True,
-                    monitoring_variables=monitoring_variables,
                     monitoring_images=monitoring_images,
                     callback_period=callback_period,
                 )

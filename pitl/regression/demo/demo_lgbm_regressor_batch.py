@@ -8,7 +8,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from pitl.features.classic.mcfocl import MultiscaleConvolutionalFeatures
+from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from pitl.regression.gbm import GBMRegressor
 
 
@@ -25,7 +25,7 @@ def demo_lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, displa
     scales = [1, 3, 7, 15]
     widths = [3, 3, 3, 3]
 
-    generator = MultiscaleConvolutionalFeatures(
+    generator = FastMultiscaleConvolutionalFeatures(
         kernel_widths=widths,
         kernel_scales=scales,
         kernel_shapes=['l1'] * len(scales),

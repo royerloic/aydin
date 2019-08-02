@@ -135,9 +135,13 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         features_aspect_ratio = list(features_aspect_ratio)
 
         # Permutate aspect ratio:
+
         features_aspect_ratio = tuple(
             features_aspect_ratio[axis] for axis in axes_permutation
         )
+
+        # and we only keep the non-batch dimensions aspect ratio values:
+        features_aspect_ratio = features_aspect_ratio[-nb_non_batch_dim:]
 
         # Initialise some variables:
         image_batch = None

@@ -1,4 +1,5 @@
 import time
+from os.path import join
 
 import napari
 import numpy
@@ -7,6 +8,8 @@ from skimage.exposure import rescale_intensity
 from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from pitl.io import io
 from pitl.io.datasets import examples_single
+from pitl.io.folders import get_temp_folder
+from pitl.io.io import imwrite
 from pitl.it.it_classic import ImageTranslatorClassic
 from pitl.offcore.offcore import offcore_array
 from pitl.regression.gbm import GBMRegressor
@@ -20,7 +23,7 @@ def demo():
     array, metadata = io.imread(image_path)
     print(array.shape)
     array = array.squeeze()
-    array = array[1]
+    array = array[0]
 
     train = array  # full
     # train = array[100:200, 200:600, 300:700]
@@ -39,16 +42,9 @@ def demo():
         viewer.add_image(train, name='train')
         viewer.add_image(whole, name='image')
 
-        level = 4
-        scales = [1, 3, 7, 15, 31][:level]
-        widths = [3, 3, 3, 3, 3][:level]
+        batch_dims = (False,) * len(array.shape)
 
-        batch_dims = (False, False, False)
-
-        generator = FastMultiscaleConvolutionalFeatures(
-            kernel_widths=widths, kernel_scales=scales
-        )
-
+        generator = FastMultiscaleConvolutionalFeatures(max_features=20)
         regressor = NNRegressor()
 
         it = ImageTranslatorClassic(generator, regressor, normaliser='percentile')
@@ -58,13 +54,29 @@ def demo():
         stop = time.time()
         print(f"Training: elapsed time:  {stop-start} ")
 
-        denoised = offcore_array(whole.shape, whole.dtype)
+        output_file = join(get_temp_folder(), "result.tiff")
 
-        start = time.time()
-        denoised = it.translate(whole, translated_image=denoised, batch_dims=batch_dims)
-        stop = time.time()
-        print(f"inference train: elapsed time:  {stop-start} ")
-        viewer.add_image(denoised, name='denoised')
+        print(f"Output file: {output_file}")
+
+        # We write the stack to a temp file:
+        with imwrite(output_file, whole.shape, whole.dtype) as denoised_tiff:
+
+            # denoised = offcore_array(whole.shape, whole.dtype)
+
+            start = time.time()
+            denoised = it.translate(
+                whole, translated_image=denoised_tiff, batch_dims=batch_dims
+            )
+            stop = time.time()
+
+            # print(f"Writing to file: {output_file} ")
+            # denoised_tiff[...] = denoised[...]
+
+            print(f"Inference: elapsed time:  {stop-start} ")
+            viewer.add_image(denoised, name='denoised')
 
 
 demo()
+
+
+# TODO: Problem when train and inference images are of different size! Make a test!
