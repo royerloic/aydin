@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 echo "removing old files..."
 rm -rf build
 rm -rf dist
@@ -5,7 +6,7 @@ rm -rf dist
 
 echo "building app..."
 #onefile
-pyinstaller -w -F -y --clean pitl.spec
+pyinstaller -w -F -y --clean aydin.spec
 
 
 # echo "creating the dmg..."

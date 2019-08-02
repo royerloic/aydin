@@ -20,7 +20,7 @@ When suggesting a feature, make sure to:
 
 ## Filing a bug report
 
-If you're having trouble with PITL, reach us please.
+If you're having trouble with `aydin`, reach us please.
 
 Be as detailed as possible, and be ready to answer questions when we get back to you. Make sure you:
 
@@ -79,4 +79,4 @@ Above all else, we hope you enjoy yourself, learn things and make and share grea
 
 Happy hacking!
 
--- PITL team
+-- `aydin` team
