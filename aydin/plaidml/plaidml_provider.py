@@ -29,7 +29,7 @@ class PlaidMLProvider:
 
         return devices
 
-    def get_filtered_device_list(self, includes=[], excludes=[], sort_by_mem_size=True):
+    def get_filtered_device_list(self, includes=[], excludes=[]):
 
         devices = self.get_all_devices()
         # print(platforms)
@@ -57,6 +57,8 @@ class PlaidMLProvider:
         filtered_devices = self.get_filtered_device_list(includes, excludes)
 
         best_device_name = opencl.device.name
+        self.device_max_mem = opencl.device.global_mem_size
+
         filtered_device_names = [
             device.description.decode() for device in filtered_devices
         ]
@@ -70,7 +72,7 @@ class PlaidMLProvider:
             if device.description.decode() == best_match:
                 return device
 
-        return None
+        return filtered_devices[0]
 
     def test_device(self, device):
 

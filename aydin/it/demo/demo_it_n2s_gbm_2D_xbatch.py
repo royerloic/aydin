@@ -1,6 +1,7 @@
 import time
 
 import napari
+import numpy
 import numpy as np
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
@@ -13,12 +14,19 @@ from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 
 
-def demo(image, min_level=7, max_level=100):
+def n(image):
+    return rescale_intensity(
+        image.astype(numpy.float32), in_range='image', out_range=(0, 1)
+    )
+
+
+def demo():
     """
         Demo for self-supervised denoising using camera image with synthetic noise
     """
 
-    image = rescale_intensity(image, in_range='image', out_range=(0, 1))
+    image = camera().astype(np.float32)
+    image = n(image)
 
     intensity = 5
     np.random.seed(0)
@@ -28,41 +36,25 @@ def demo(image, min_level=7, max_level=100):
 
     with napari.gui_qt():
         viewer = napari.Viewer()
-        viewer.add_image(
-            rescale_intensity(image, in_range='image', out_range=(0, 1)), name='image'
-        )
-        viewer.add_image(
-            rescale_intensity(noisy, in_range='image', out_range=(0, 1)), name='noisy'
-        )
+        viewer.add_image(n(image), name='image')
+        viewer.add_image(n(noisy), name='noisy')
 
-        scales = [1, 3, 7, 15, 31, 63, 127, 255]
-        widths = [3, 3, 3, 3, 3, 3, 3, 3]
-
-        generator = FastMultiscaleConvolutionalFeatures(
-            kernel_widths=widths,
-            kernel_scales=scales,
-            kernel_shapes=['l1'] * len(scales),
-            exclude_center=True,
-        )
-
-        regressor = GBMRegressor(
-            learning_rate=0.01,
-            num_leaves=256,
-            n_estimators=2048,
-            early_stopping_rounds=20,
-        )
+        generator = FastMultiscaleConvolutionalFeatures()
+        regressor = GBMRegressor()
 
         it = ImageTranslatorClassic(
             feature_generator=generator, regressor=regressor, normaliser='identity'
         )
 
+        batch_dims = (True, False)
+
         start = time.time()
-        it.train(noisy, noisy, batch_dims=(False, True))
+        it.train(noisy, noisy, batch_dims=batch_dims)
         stop = time.time()
         print(f"Training: elapsed time:  {stop-start} ")
 
         start = time.time()
-        denoised = it.translate(noisy, batch_dims=(False, True))
+        denoised = it.translate(noisy, batch_dims=batch_dims)
         stop = time.time()
         print(f"inference: elapsed time:  {stop-start} ")
 
@@ -70,11 +62,8 @@ def demo(image, min_level=7, max_level=100):
         print("denoised", psnr(denoised, image), ssim(denoised, image))
         # print("denoised_predict", psnr(denoised_predict, image), ssim(denoised_predict, image))
 
-        viewer.add_image(
-            rescale_intensity(denoised, in_range='image', out_range=(0, 1)),
-            name='denoised',
-        )
+        viewer.add_image(n(denoised), name='denoised')
         # viewer.add_image(rescale_intensity(denoised_predict, in_range='image', out_range=(0, 1)), name='denoised_predict%d' % param)
 
 
-demo(camera().astype(np.float32), min_level=7)
+demo()

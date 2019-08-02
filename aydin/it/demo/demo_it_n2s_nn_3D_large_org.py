@@ -23,7 +23,7 @@ def demo():
     array, metadata = io.imread(image_path)
     print(array.shape)
     array = array.squeeze()
-    array = array[0]
+    array = array[2]
 
     train = array  # full
     # train = array[100:200, 200:600, 300:700]
