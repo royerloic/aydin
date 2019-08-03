@@ -12,8 +12,7 @@ from PyQt5.QtWidgets import (
     QPlainTextEdit,
 )
 
-from aydin.gui.components.mininap.gui.image_widget import ImageWidget
-from aydin.gui.components.mininap.image.napari_image import NImage
+from aydin.gui.components.mininap import Viewer
 from aydin.gui.components.plot_canvas import PlotCanvas
 from aydin.gui.components.tabs.base_tab import BaseTab
 from aydin.gui.components.workers.worker import Worker
@@ -53,9 +52,9 @@ class TestN2STab(BaseTab):
         buttons_layout.addWidget(self.progress_bar)
 
         self.image_data = self.wizard.monitor_image
-        self.image = NImage(self.image_data)
-        self.imgwid = ImageWidget(self.image)
-        buttons_layout.addWidget(self.imgwid)
+        self.viewer = Viewer(show=False)
+        self.viewer.add_image(self.image_data)
+        buttons_layout.addWidget(self.viewer.window.qt_viewer)
 
         # Build splitter
         def_splitter = QSplitter(Qt.Vertical)

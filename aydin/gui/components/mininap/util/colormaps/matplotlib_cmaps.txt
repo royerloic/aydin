@@ -1,0 +1,10 @@
+viridis
+magma
+inferno
+plasma
+gray
+hsv
+twilight
+twilight_shifted
+gist_earth
+PiYG
