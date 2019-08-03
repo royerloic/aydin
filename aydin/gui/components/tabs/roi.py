@@ -2,8 +2,7 @@ import numpy as np
 from PyQt5.QtWidgets import QWidget, QPushButton, QVBoxLayout, QLabel
 from vispy.visuals.transforms import STTransform
 
-from aydin.gui.components.mininap.gui.image_widget import ImageWidget
-from aydin.gui.components.mininap.image.napari_image import NImage
+from aydin.gui.components.mininap import Viewer
 from aydin.gui.components.tabs.base_tab import BaseTab
 from aydin.util.resource import read_image_from_path
 
@@ -20,18 +19,18 @@ class ROIPage(BaseTab):
         # Get the image size and visual and canvas size
         image_size = tuple(
             np.squeeze(
-                self.imgwin.image_canvas.view.camera.viewbox.get_scene_bounds()[:2]
+                self.viewer.window.qt_viewer.view.camera.viewbox.get_scene_bounds()[:2]
             )[:, 1]
         )
-        imagevisual = self.imgwin.image_canvas.scene.node_transform(
-            self.imgwin.image_canvas.image_visual
+        transform = self.viewer.layers[0]._node.canvas.scene.node_transform(
+            self.viewer.layers[0]._node
         )
-        w, h = self.imgwin.image_canvas.size
+        w, h = self.viewer.window.qt_viewer.canvas.size
 
         # compute distance of image to top left and bottom right corners
         to_top_left, to_bottom_right = (
-            imagevisual.map([0, 0])[:2],
-            imagevisual.map([w, h])[:2],
+            transform.map([0, 0])[:2],
+            transform.map([w, h])[:2],
         )
         scaled_canvas_width, scaled_canvas_height = (
             -1 * (to_top_left[0]) + to_bottom_right[0],
@@ -75,9 +74,9 @@ class ROIPage(BaseTab):
         self.layout = QVBoxLayout()
 
         # Setup mininap with passed image
-        self.image = NImage(self.image_data)
-        self.imgwin = ImageWidget(self.image)
-        self.layout.addWidget(self.imgwin)
+        self.viewer = Viewer(show=False)
+        self.viewer.add_image(self.image_data)
+        self.layout.addWidget(self.viewer.window.qt_viewer)
 
         # Add buttons to take snapshot of view
         self.snap_button = QPushButton("Snap")
