@@ -39,7 +39,7 @@ def demo():
         viewer.add_image(n(image), name='image')
         viewer.add_image(n(noisy), name='noisy')
 
-        generator = FastMultiscaleConvolutionalFeatures()
+        generator = FastMultiscaleConvolutionalFeatures(max_level=10)
         regressor = GBMRegressor()
 
         it = ImageTranslatorClassic(
@@ -57,6 +57,10 @@ def demo():
         denoised = it.translate(noisy, batch_dims=batch_dims)
         stop = time.time()
         print(f"inference: elapsed time:  {stop-start} ")
+
+        image = numpy.clip(image, 0, 1)
+        noisy = numpy.clip(noisy, 0, 1)
+        denoised = numpy.clip(denoised, 0, 1)
 
         print("noisy", psnr(noisy, image), ssim(noisy, image))
         print("denoised", psnr(denoised, image), ssim(denoised, image))

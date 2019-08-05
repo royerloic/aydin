@@ -6,7 +6,7 @@ class SupportVectorRegressor:
     Support Vector Regressor.
 
     Note: Way too slow when non-linear, nearly useless...
-    When using linear much faster, but does not performa better than straight linear regression...
+    When using linear much faster, but does not perform better than straight linear regression...
 
 
     """
@@ -23,12 +23,28 @@ class SupportVectorRegressor:
         else:
             self.svr = SVR(gamma='scale')
 
-    def fit(self, x_train, y_train, x_valid=None, y_valid=None):
+    def progressive(self):
+        return False
+
+    def reset(self):
+        pass
+
+    def fit(
+        self,
+        x_train,
+        y_train,
+        x_valid=None,
+        y_valid=None,
+        is_batch=False,
+        regressor_callback=None,
+    ):
         """
         Fits function y=f(x) given training pairs (x_train, y_train).
         Stops when performance stops improving on the test dataset: (x_test, y_test).
 
         """
+        if is_batch:
+            raise NotImplemented("Batch training not het implemented!")
         self.svr = self.svr.fit(x_train, y_train)
 
     def predict(self, x, model_to_use=None):

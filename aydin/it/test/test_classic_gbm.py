@@ -31,7 +31,7 @@ def test_it_classic_gbm():
     noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
     noisy = noisy.astype(numpy.float32)
 
-    generator = FastMultiscaleConvolutionalFeatures(max_features=50)
+    generator = FastMultiscaleConvolutionalFeatures()
     regressor = GBMRegressor()
 
     it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)

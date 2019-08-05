@@ -39,7 +39,7 @@ def demo():
         viewer.add_image(n(image), name='image')
         viewer.add_image(n(noisy), name='noisy')
 
-        generator = FastMultiscaleConvolutionalFeatures(max_features=50)
+        generator = FastMultiscaleConvolutionalFeatures()
         regressor = GBMRegressor()
 
         it = ImageTranslatorClassic(

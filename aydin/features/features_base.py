@@ -13,36 +13,15 @@ class FeatureGeneratorBase(ABC):
         """
 
     @abstractmethod
-    def get_available_mem(self):
-        """
-        Returns available memory for feature generation
-        :return: available memory in bytes
-        :rtype: int
-        """
-        raise NotImplemented()
-
-    @abstractmethod
-    def get_needed_mem(self, num_elements):
-        """
-        Returns the amount of memory needed to generate features for an image of given size
-        :param num_elements: number of elements (voxels)
-        :type num_elements: int
-        :return: memory needed in bytes
-        :rtype: int
-        """
-        raise NotImplemented()
-
-    @abstractmethod
-    def is_enough_memory(self, num_elements):
+    def is_enough_memory(self, array):
         """
         Returns true if there is enough memory to generate features
-        :param num_elements: number of elements (voxels)
-        :type num_elements: int
+        :param array: image (voxels)
         """
         raise NotImplemented()
 
     @abstractmethod
-    def get_receptive_field_radius(self):
+    def get_receptive_field_radius(self, nb_dim):
         """
         Returns the receptive field radius in pixels.
         :return: receptive field radius in pixels.

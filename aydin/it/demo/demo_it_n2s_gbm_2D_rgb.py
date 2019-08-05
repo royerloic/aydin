@@ -39,22 +39,8 @@ def demo(image: np.ndarray):
         viewer.add_image(n(image), name='image', multichannel=True)
         viewer.add_image(n(noisy), name='noisy', multichannel=True)
 
-        scales = [1, 3, 7, 15, 31, 63, 127, 255]
-        widths = [3, 3, 3, 3, 3, 3, 3, 3]
-
-        generator = FastMultiscaleConvolutionalFeatures(
-            kernel_widths=widths,
-            kernel_scales=scales,
-            kernel_shapes=['l1'] * len(scales),
-            exclude_center=True,
-        )
-
-        regressor = GBMRegressor(
-            learning_rate=0.01,
-            num_leaves=512,
-            n_estimators=2048,
-            early_stopping_rounds=20,
-        )
+        generator = FastMultiscaleConvolutionalFeatures()
+        regressor = GBMRegressor()
 
         it = ImageTranslatorClassic(
             feature_generator=generator, regressor=regressor, normaliser='identity'

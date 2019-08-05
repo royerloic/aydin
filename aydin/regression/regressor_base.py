@@ -26,13 +26,17 @@ class RegressorBase(ABC):
 
         """
 
-        self.callbacks = []
-        self.monitoring_datasets = []
-
-        self.num_features = None
+    @property
+    @abstractmethod
+    def progressive(self) -> bool:
+        """
+        A regressor is progressive if it supports training through multiple epochs.
+        If that is teh case, the properties: max_epochs and patience should be defined.
+        """
+        raise NotImplementedError()
 
     @abstractmethod
-    def reset(self):
+    def reset(self) -> None:
         """
         resets the regressor to a blank state.
 
@@ -45,34 +49,18 @@ class RegressorBase(ABC):
         :param y_test:
         :type y_test: y test values
         """
-        self.num_features = None
-
-    @abstractmethod
-    def fit_batch(
-        self, x_train, y_train, x_valid=None, y_valid=None, regressor_callback=None
-    ):
-        """
-        Fits function y=f(x) given training pairs (x_train, y_train).
-        Stops when performance stops improving on the validation dataset: (x_valid, y_valid).
-
-        This method can be called multiple times with different batches.
-        To reset the regressor call reset()
-
-
-        :param x_train: x training values
-        :type x_train:
-        :param y_train: y training values
-        :type y_train:
-        :param x_valid:  x validation values
-        :type x_valid:
-        :param y_valid:  y validation values
-        :type y_valid:
-        :param monitoring_variables:
-        """
         raise NotImplementedError()
 
     @abstractmethod
-    def fit(self, x_train, y_train, x_valid, y_valid, regressor_callback=None):
+    def fit(
+        self,
+        x_train,
+        y_train,
+        x_valid,
+        y_valid,
+        is_batch=False,
+        regressor_callback=None,
+    ):
         """
         Fits function y=f(x) given training pairs (x_train, y_train).
         Stops when performance stops improving on the test dataset: (x_test, y_test).

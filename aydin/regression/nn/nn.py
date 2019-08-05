@@ -1,3 +1,10 @@
+from os.path import join
+
+import gc
+import numpy
+import random
+
+from aydin.io.folders import get_temp_folder
 from aydin.plaidml.plaidml_provider import PlaidMLProvider
 from aydin.regression.nn.callback import NNCallback
 
@@ -9,7 +16,7 @@ from aydin.regression.nn.models import feed_forward, yinyang2, back_feed
 from aydin.regression.regressor_base import RegressorBase
 
 
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from keras import optimizers, Model
 
 
@@ -19,15 +26,10 @@ class NNRegressor(RegressorBase):
 
     """
 
-    nnreg: Model
+    model: Model
 
     def __init__(
-        self,
-        max_epochs=1024,
-        learning_rate=0.02,
-        early_stopping_rounds=5,
-        depth=16,
-        loss='l1',
+        self, max_epochs=1024, learning_rate=0.001, patience=10, depth=16, loss='l1'
     ):
         """
         Constructs a LightGBM regressor.
@@ -40,62 +42,49 @@ class NNRegressor(RegressorBase):
         :type learning_rate:
         :param eval_metric:
         :type eval_metric:
-        :param early_stopping_rounds:
-        :type early_stopping_rounds:
+        :param patience:
+        :type patience:
         """
 
         self.debug_log = True
 
         self.max_epochs = max_epochs
         self.learning_rate = learning_rate
+        self.patience = patience
         self.depth = depth
 
         loss = 'mae' if loss == 'l1' else loss
         loss = 'mse' if loss == 'l2' else loss
         self.loss = loss
 
-        self.nnreg = None
+        self.model = None
 
-        self.early_stopping = EarlyStopping(
-            monitor='val_loss',
-            min_delta=0.0001,
-            patience=early_stopping_rounds,
-            verbose=1,
-            mode='auto',
-            restore_best_weights=True,
-        )
+        self.reset()
 
-        self.reduce_learning_rate = ReduceLROnPlateau(
-            monitor='val_loss',
-            factor=0.5,
-            verbose=1,
-            patience=max(1, early_stopping_rounds // 2),
-            mode='auto',
-            min_lr=1e-9,
-        )
-
-        self.keras_callback = NNCallback()
+    def progressive(self):
+        return False
 
     def reset(self):
 
-        del self.nnreg
-        self.nnreg = None
+        del self.model
+        self.model = None
 
-    def fit_batch(
-        self, x_train, y_train, x_valid=None, y_valid=None, regressor_callback=None
-    ):
-
-        self._fit(
-            x_train,
-            y_train,
-            x_valid,
-            y_valid,
-            batch=True,
-            regressor_callback=regressor_callback,
+        self.model_file_path = join(
+            get_temp_folder(),
+            f"aydin_nn_keras_model_file_{random.randint(0, 1e16)}.hdf5",
+        )
+        self.checkpoint = ModelCheckpoint(
+            self.model_file_path, monitor='val_loss', verbose=1, save_best_only=True
         )
 
     def fit(
-        self, x_train, y_train, x_valid=None, y_valid=None, regressor_callback=None
+        self,
+        x_train,
+        y_train,
+        x_valid,
+        y_valid,
+        is_batch=False,
+        regressor_callback=None,
     ):
         """
         Fits function y=f(x) given training pairs (x_train, y_train).
@@ -103,28 +92,49 @@ class NNRegressor(RegressorBase):
 
         """
 
-        self.nnreg = None
-        self._fit(
-            x_train,
-            y_train,
-            x_valid,
-            y_valid,
-            batch=False,
-            regressor_callback=regressor_callback,
-        )
+        # First we make sure that the arrays are of a type supported:
+        def assert_type(array):
+            assert (
+                (array.dtype == numpy.float64)
+                or (array.dtype == numpy.float32)
+                or (array.dtype == numpy.uint16)
+                or (array.dtype == numpy.uint8)
+            )
 
-    def _fit(
-        self, x_train, y_train, x_valid, y_valid, batch=False, regressor_callback=None
-    ):
-        """
-        Fits function y=f(x) given training pairs (x_train, y_train).
-        Stops when performance stops improving on the test dataset: (x_test, y_test).
+        assert_type(x_train)
+        assert_type(y_train)
+        assert_type(x_valid)
+        assert_type(y_valid)
 
-        """
+        # Types have to be consistent between train and valid sets:
+        assert x_train.dtype is x_valid.dtype
+        assert y_train.dtype is y_valid.dtype
 
-        # TODO: parameter should be number_of_batches instead of batch, so the code here knows roughly what is happening above.
+        # In case the y dtype does not match the x dtype, we rescale and cast y:
+        if numpy.issubdtype(x_train.dtype, numpy.integer) and numpy.issubdtype(
+            y_train.dtype, numpy.floating
+        ):
 
-        # Get the number of entriefeatures from the array shape:
+            # We remember the original type of y:
+            self.original_y_dtype = y_train.dtype
+
+            if x_train.dtype == numpy.uint8:
+                y_train *= 255
+                y_train = y_train.astype(numpy.uint8)
+                y_valid *= 255
+                y_valid = y_valid.astype(numpy.uint8)
+                self.original_y_scale = 1 / 255.0
+
+            elif x_train.dtype == numpy.uint16:
+                y_train *= 255 * 255
+                y_train = y_train.astype(numpy.uint16)
+                y_valid *= 255 * 255
+                y_valid = y_valid.astype(numpy.uint16)
+                self.original_y_scale = 1 / (255.0 * 255.0)
+        else:
+            self.original_y_dtype = None
+
+        # Get the number of entries and features from the array shape:
         nb_training_entries = x_train.shape[0]
         feature_dim = x_train.shape[-1]
 
@@ -133,17 +143,16 @@ class NNRegressor(RegressorBase):
         y_shape = (-1, 1)
 
         # Initialise model if not done yet:
-        if self.nnreg is None:
+        if self.model is None:
 
-            model = feed_forward(feature_dim, depth=self.depth)
+            self.model = feed_forward(feature_dim, depth=self.depth)
 
             if self.debug_log:
-                print(f"Number of parameters in model: {model.count_params()}")
-                print(f"Summary: \n {model.summary()}")
+                print(f"Number of parameters in model: {self.model.count_params()}")
+                # print(f"Summary: \n {self.model.summary()}")
 
             opt = optimizers.Adam(lr=self.learning_rate, decay=0.00001)
-            model.compile(optimizer=opt, loss=self.loss)
-            self.nnreg = model
+            self.model.compile(optimizer=opt, loss=self.loss)
 
         # Reshape arrays:
         x_train = x_train.reshape(x_shape)
@@ -161,23 +170,66 @@ class NNRegressor(RegressorBase):
             print(f"Batch size: {batch_size}")
             print(f"Starting training...")
 
-        # Set Keras callback:
+        # Effective number of epochs:
+        effective_number_of_epochs = 2 if is_batch else self.max_epochs
+
+        # Here is the list of callbacks:
+        callbacks = []
+
+        # Set upstream callback:
+        self.keras_callback = NNCallback()
         self.keras_callback.regressor_callback = regressor_callback
+        callbacks.append(self.keras_callback)
+
+        # Set standard callbacks:
+        self.early_stopping = EarlyStopping(
+            monitor='val_loss',
+            min_delta=0.000001 if is_batch else 0.0001,
+            patience=2 if is_batch else self.patience,
+            verbose=1,
+            mode='auto',
+            restore_best_weights=True,
+        )
+        callbacks.append(self.early_stopping)
+
+        self.reduce_learning_rate = ReduceLROnPlateau(
+            monitor='val_loss',
+            factor=0.5,
+            verbose=1,
+            patience=1 if is_batch else max(1, self.patience // 2),
+            mode='auto',
+            min_lr=1e-9,
+        )
+        callbacks.append(self.reduce_learning_rate)
+
+        callbacks.append(self.checkpoint)
+
+        # x_train = x_train.astype(numpy.float64)
+        # y_train = y_train.astype(numpy.float64)
+        # x_valid = x_valid.astype(numpy.float64)
+        # y_valid = y_valid.astype(numpy.float64)
 
         # Training happens here:
-        self.nnreg.fit(
+        train_history = self.model.fit(
             x_train,
             y_train,
             validation_data=(x_valid, y_valid),
-            epochs=10 if batch else self.max_epochs,
+            epochs=effective_number_of_epochs,
             batch_size=min(batch_size, nb_training_entries),
             shuffle=True,
-            callbacks=[
-                self.early_stopping,
-                self.reduce_learning_rate,
-                self.keras_callback,
-            ],
+            verbose=2,  # 0 if is_batch else 1,
+            callbacks=callbacks,
         )
+
+        # Reload the best weights:
+        self.model.load_weights(self.model_file_path)
+
+        loss = train_history.history['loss']
+        val_loss = train_history.history['val_loss'][0]
+
+        gc.collect()
+
+        return val_loss
 
     def predict(self, x, model_to_use=None):
         """
@@ -211,9 +263,14 @@ class NNRegressor(RegressorBase):
             print(f"Predicting. features shape = {x.shape}")
 
         yp = (
-            self.nnreg.predict(x, batch_size=batch_size)
+            self.model.predict(x, batch_size=batch_size)
             if model_to_use is None
             else model_to_use.predict(x, batch_size=batch_size)
         )
+
+        # We cast back  yp to teh correct type and range:
+        if not self.original_y_dtype is None:
+            yp = yp.astype(self.original_y_dtype)
+            yp *= self.original_y_scale
 
         return yp

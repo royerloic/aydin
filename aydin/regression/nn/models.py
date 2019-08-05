@@ -1,6 +1,6 @@
 from keras import layers
 from keras.initializers import VarianceScaling, RandomNormal
-from keras.layers import Input, Dense, LeakyReLU, PReLU, ReLU
+from keras.layers import Input, Dense, LeakyReLU, PReLU, ReLU, GaussianNoise
 from keras.models import Model
 
 
@@ -84,16 +84,19 @@ def feed_forward_width(feature_dim, width=None, depth=16):
     return model
 
 
-def feed_forward(feature_dim, depth=16):
+def feed_forward(feature_dim, depth=16, noise=0.0001):
 
     width = feature_dim
 
     input = Input(shape=(feature_dim,), name='input')
 
-    outputs = []
-    outputs.append(input)
+    if noise == 0:
+        x = input
+    else:
+        x = GaussianNoise(noise)(input)
 
-    x = input
+    outputs = []
+    outputs.append(x)
 
     for d in range(0, depth):
         x = block(x, outputs=width, layer_name=f'fc{d}')

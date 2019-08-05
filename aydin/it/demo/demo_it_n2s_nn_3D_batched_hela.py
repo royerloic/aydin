@@ -18,14 +18,9 @@ def demo(image):
         viewer = napari.Viewer()
         viewer.add_image(image, name='image')
 
-        scales = [1, 3, 7, 15, 31, 63]
-        widths = [3, 3, 3, 3, 3, 3]
-
         batch_dims = (True, False, False, False)
 
-        generator = FastMultiscaleConvolutionalFeatures(
-            kernel_widths=widths, kernel_scales=scales, exclude_center=False
-        )
+        generator = FastMultiscaleConvolutionalFeatures(max_level=5)
 
         regressor = NNRegressor()
 

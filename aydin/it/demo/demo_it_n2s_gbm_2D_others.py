@@ -14,7 +14,7 @@ from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 
 
-def demo(image, min_level=7, max_level=100):
+def demo(image):
     """
         Demo for self-supervised denoising using camera image with synthetic noise
     """
@@ -36,50 +36,35 @@ def demo(image, min_level=7, max_level=100):
             rescale_intensity(noisy, in_range='image', out_range=(0, 1)), name='noisy'
         )
 
-        scales = [1, 3, 7, 15, 31, 63, 127, 255]
-        widths = [3, 3, 3, 3, 3, 3, 3, 3]
+        generator = FastMultiscaleConvolutionalFeatures()
+        regressor = GBMRegressor()
 
-        for param in range(min_level, min(max_level, len(scales)), 1):
-            generator = FastMultiscaleConvolutionalFeatures(
-                kernel_widths=widths[0:param],
-                kernel_scales=scales[0:param],
-                kernel_shapes=['l1'] * len(scales[0:param]),
-                exclude_center=True,
-            )
+        it = ImageTranslatorClassic(
+            feature_generator=generator, regressor=regressor, normaliser='identity'
+        )
 
-            regressor = GBMRegressor(
-                learning_rate=0.01,
-                num_leaves=256,
-                n_estimators=2048,
-                early_stopping_rounds=20,
-            )
+        start = time.time()
+        denoised = it.train(noisy, noisy)
+        stop = time.time()
+        print(f"Training: elapsed time:  {stop-start} ")
 
-            it = ImageTranslatorClassic(
-                feature_generator=generator, regressor=regressor, normaliser='identity'
-            )
+        # start = time.time()
+        # denoised = it.translate(noisy)
+        # stop = time.time()
+        # print(f"inference: elapsed time:  {stop-start} ")
 
-            start = time.time()
-            denoised = it.train(noisy, noisy)
-            stop = time.time()
-            print(f"Training: elapsed time:  {stop-start} ")
+        print("noisy", psnr(noisy, image), ssim(noisy, image))
+        print("denoised", psnr(denoised, image), ssim(denoised, image))
+        # print("denoised_predict", psnr(denoised_predict, image), ssim(denoised_predict, image))
 
-            # start = time.time()
-            # denoised = it.translate(noisy)
-            # stop = time.time()
-            # print(f"inference: elapsed time:  {stop-start} ")
-
-            print("noisy", psnr(noisy, image), ssim(noisy, image))
-            print("denoised", psnr(denoised, image), ssim(denoised, image))
-            # print("denoised_predict", psnr(denoised_predict, image), ssim(denoised_predict, image))
-
-            viewer.add_image(
-                rescale_intensity(denoised, in_range='image', out_range=(0, 1)),
-                name='denoised%d' % param,
-            )
+        viewer.add_image(
+            rescale_intensity(denoised, in_range='image', out_range=(0, 1)),
+            name='denoised',
+        )
 
 
 array, metadata = io.imread(examples_single.generic_crowd.get_path())
-demo(array.astype(np.float32), min_level=5, max_level=6)
+demo(array.astype(np.float32))
 
 array, metadata = io.imread(examples_single.generic_mandrill.get_path())
-demo(array.astype(np.float32), min_level=5, max_level=6)
+demo(array.astype(np.float32))

@@ -2,6 +2,7 @@ import math
 from abc import ABC, abstractmethod
 from functools import reduce
 from operator import mul
+from statistics import median, mean
 
 import numpy
 import psutil
@@ -41,8 +42,8 @@ class ImageTranslatorBase(ABC):
         input_image,
         target_image,
         batch_dims,
-        train_test_ratio,
-        batch=False,
+        train_test_ratio=0.1,
+        is_batch=False,
         monitoring_images=None,
         callback_period=3,
     ):
@@ -59,26 +60,27 @@ class ImageTranslatorBase(ABC):
         pass
 
     @abstractmethod
-    def get_receptive_field_radius(self):
+    def get_receptive_field_radius(self, nb_dim):
         """
-        Returns the receptive field radoius in voxels
-        """
-        pass
-
-    @abstractmethod
-    def _get_needed_mem(self, size):
-        """
-        Returns the memory needed (can be CPU, GPU or other) given an image of given size.
-        :param size: size of image in voxels
+        Returns the receptive field radius in voxels
         """
         pass
 
     @abstractmethod
-    def _get_available_mem(self):
+    def is_enough_memory(self, array):
         """
-        Returns the memory available (can be CPU, GPU or other).
+        Returns the memory needed (can be CPU, GPU or other) given an image.
+        :param array: image
         """
         pass
+
+    @abstractmethod
+    def limit_epochs(self, max_epochs: int) -> int:
+        """
+        Returns a modified max epochs if nescessary.
+        :param max_epochs: max epochs to be changes
+        """
+        return max_epochs
 
     def train(
         self,
@@ -90,6 +92,9 @@ class ImageTranslatorBase(ABC):
         batch_shuffle=False,
         monitoring_images=None,
         callback_period=3,
+        patience=3,
+        patience_epsilon=0.000001,
+        max_epochs=1024,
     ):
         """
             Train to translate a given input image to a given output image
@@ -182,7 +187,7 @@ class ImageTranslatorBase(ABC):
                 normalised_target_image,
                 batch_dims,
                 train_test_ratio,
-                batch=False,
+                is_batch=False,
                 monitoring_images=monitoring_images,
                 callback_period=callback_period,
             )
@@ -210,46 +215,91 @@ class ImageTranslatorBase(ABC):
             # How large the margins need to be to account for the receptive field:
             margins = self._get_margins(shape, batch_strategy)
             if self.debug:
-                print(f'We will use these margins around batches: {margins}.')
+                print(
+                    f'Batch margins: {margins}, receptive field: {self.get_receptive_field_radius(len(shape))}.'
+                )
 
             # We compute the slices objects to cut the input and target images into batches:
-            batch_slices = nd_split_slices(
-                shape, batch_strategy, do_shuffle=batch_shuffle, margins=margins
+            batch_slices = list(
+                nd_split_slices(
+                    shape, batch_strategy, do_shuffle=batch_shuffle, margins=margins
+                )
             )
 
-            # We iterate through each batch and do training:
-            for slice_tuple in batch_slices:
+            # Here is the current best valisation loss:
+            best_validation_loss = math.inf
+
+            # Patience counter:
+            patience_counter = 0
+
+            # We keep track of losses for each batch:
+            batch_val_losses = []
+
+            # Subclasses can decide to limit the number of epochs, possibly to a single one:
+            max_epochs = self.limit_epochs(max_epochs)
+
+            # We iterate through epochs:
+            for epoch in range(0, max_epochs):
 
                 if self.debug:
-                    print(f"Current batch slice: {slice_tuple}")
+                    print(f'########### EPOCH: {epoch}/{max_epochs}.')
 
-                input_image_batch = input_image[slice_tuple]
+                # We iterate through each batch and do training:
+                for slice_tuple in batch_slices:
 
-                if self.self_supervised:
-                    target_image_batch = input_image_batch
-                else:
-                    target_image_batch = target_image[slice_tuple]
+                    if self.debug:
+                        print(f"Current batch slice: {slice_tuple}")
 
-                # 'Last minute' normalisation:
-                normalised_input_image_batch = self.input_normaliser.normalise(
-                    input_image_batch
-                )
-                if self.self_supervised:
-                    normalised_target_image_batch = normalised_input_image_batch
-                else:
-                    normalised_target_image_batch = self.target_normaliser.normalise(
-                        target_image_batch
+                    input_image_batch = input_image[slice_tuple]
+
+                    if self.self_supervised:
+                        target_image_batch = input_image_batch
+                    else:
+                        target_image_batch = target_image[slice_tuple]
+
+                    # 'Last minute' normalisation:
+                    normalised_input_image_batch = self.input_normaliser.normalise(
+                        input_image_batch
+                    )
+                    if self.self_supervised:
+                        normalised_target_image_batch = normalised_input_image_batch
+                    else:
+                        normalised_target_image_batch = self.target_normaliser.normalise(
+                            target_image_batch
+                        )
+
+                    validation_loss = self._train(
+                        normalised_input_image_batch,
+                        normalised_target_image_batch,
+                        batch_dims,
+                        train_test_ratio,
+                        is_batch=True,
+                        monitoring_images=monitoring_images,
+                        callback_period=callback_period,
                     )
 
-                self._train(
-                    normalised_input_image_batch,
-                    normalised_target_image_batch,
-                    batch_dims,
-                    train_test_ratio,
-                    batch=True,
-                    monitoring_images=monitoring_images,
-                    callback_period=callback_period,
-                )
+                    batch_val_losses.append(validation_loss)
+
+                # We compute the median loss for all batches:
+                current_validation_loss = median(batch_val_losses)
+
+                if self.debug:
+                    print(
+                        f'Current validation loss: {current_validation_loss} (best is {best_validation_loss}).'
+                    )
+
+                if current_validation_loss < best_validation_loss:
+                    best_validation_loss = current_validation_loss
+                else:
+                    patience_counter += 1
+
+                if self.debug:
+                    print(f'Patience counter: {patience_counter}')
+
+                if patience_counter > patience:
+                    if self.debug:
+                        print(f'We ran out of patience... Training aborted.')
+                    break
 
             # TODO: returned inferred image even in the batch case. Reason not to do it: might be a lot of data...
 
@@ -257,33 +307,20 @@ class ImageTranslatorBase(ABC):
 
     def _get_number_of_batches(self, batch_size, input_image):
 
-        # Compute the data and auxiliary data sizes:
-        dataset_size_in_bytes = (input_image.size * input_image.itemsize) * (
+        # Compute the data data sizes:
+        dataset_size_in_bytes = (input_image.size * 4) * (
             1 if self.self_supervised else 2
         )
-        auxiliary_data_size_in_bytes = self._get_needed_mem(input_image.size)
 
         # Obtain free memory:
         free_cpu_mem_in_bytes = psutil.virtual_memory().free
-        free_aux_mem_in_bytes = self._get_available_mem()
         if self.debug:
-            print(f'Dataset is {(dataset_size_in_bytes / 1E6)} MB.')
-            print(
-                f'  and {(auxiliary_data_size_in_bytes / 1E6)} MB of auxiliary storage needed.'
-            )
+            print(f'Dataset is {(dataset_size_in_bytes / 1E6)} MB. (as float!)')
+
             print(f'There is {int(free_cpu_mem_in_bytes / 1E6)} MB of free CPU memory')
-            print(
-                f'There is {int(free_aux_mem_in_bytes / 1E6)} MB of free aux memory (typ. GPU)'
-            )
-        # We specify how much more free memory we need compared to the size of the data we need to allocate:
-        # This is to give us some room. In the case of feature generation, it seems that GPU mem fragmentation prevents
-        # us from allocating really big chunks...
-        cpu_loading_factor = 1.2
-        aux_loading_factor = 10.0
-        # We compute batch sizes based on available, free and load factors:
-        cpu_batch_size = free_cpu_mem_in_bytes // cpu_loading_factor
-        aux_batch_size = free_aux_mem_in_bytes // aux_loading_factor
-        max_batch_size = min(cpu_batch_size, aux_batch_size)
+
+        is_enough_memory, max_batch_size = self.is_enough_memory(input_image)
+
         if batch_size is None:
             # No forcing of batch size requested, so we proceed with the calculated value:
             effective_batch_size = max_batch_size
@@ -294,11 +331,6 @@ class ImageTranslatorBase(ABC):
             if self.debug:
                 print(f'Batch size has been forced: {(batch_size / 1E6)} MB.')
             effective_batch_size = min(batch_size, max_batch_size)
-        # Do we have enough memory overall?
-        is_enough_memory = (
-            dataset_size_in_bytes <= effective_batch_size
-            and auxiliary_data_size_in_bytes <= effective_batch_size
-        )
 
         # This is the ideal number of batches so that we partition just enough:
         ideal_number_of_batches = max(
@@ -521,7 +553,7 @@ class ImageTranslatorBase(ABC):
 
         # We compute the margin from the receptive field but limit it to 33% of the tile size:
         margins = tuple(
-            min(self.get_receptive_field_radius(), (dim // split) // 3)
+            min(self.get_receptive_field_radius(len(shape)), (dim // split) // 3)
             for (dim, split) in zip(shape, batch_strategy)
         )
         # We only need margins if we split a dimension:

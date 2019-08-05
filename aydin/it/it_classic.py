@@ -4,6 +4,7 @@ import time
 import numpy
 
 from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.features_base import FeatureGeneratorBase
 from aydin.it.it_base import ImageTranslatorBase
 from aydin.offcore.offcore import offcore_array
 from aydin.regression.gbm import GBMRegressor
@@ -16,6 +17,8 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         Using classic ML (feature generation + regression)
 
     """
+
+    feature_generator: FeatureGeneratorBase
 
     def __init__(
         self,
@@ -39,8 +42,8 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         self.feature_generator = feature_generator
         self.regressor = regressor
 
-    def get_receptive_field_radius(self):
-        return self.feature_generator.get_receptive_field_radius()
+    def get_receptive_field_radius(self, nb_dim):
+        return self.feature_generator.get_receptive_field_radius(nb_dim)
 
     def train(
         self,
@@ -51,10 +54,19 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         batch_size=None,
         batch_shuffle=False,
         monitoring_images=None,
+        callback_period=3,
+        patience=3,
+        patience_epsilon=0.000001,
+        max_epochs=1024,
     ):
 
         # Resetting regressor:
         self.regressor.reset()
+
+        if self.regressor.progressive:
+            self.regressor.max_epochs = max_epochs
+            self.regressor.patience = patience
+
         # TODO: clean here
         # print("first train: ")
         # monitoring_variables = monitoring_variables[0], monitoring_variables[1], 3
@@ -66,13 +78,17 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             batch_size,
             batch_shuffle,
             monitoring_images,
+            callback_period,
+            patience,
+            patience_epsilon,
         )
 
-    def _get_needed_mem(self, num_elements):
-        return self.feature_generator.get_needed_mem(num_elements)
+    def is_enough_memory(self, array):
+        return self.feature_generator.is_enough_memory(array)
 
-    def _get_available_mem(self):
-        return self.feature_generator.get_available_mem()
+    def limit_epochs(self, max_epochs: int) -> int:
+        # If the regressor is not progressive (supports training through multiple epochs) then we limit epochs to 1
+        return max_epochs if self.regressor.progressive else 1
 
     def _compute_features(self, image, exclude_center, batch_dims):
         """
@@ -101,9 +117,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             features_aspect_ratio = None
 
         # image, batch_dims=None, features_aspect_ratio=None, features=None
-        features = self.feature_generator.compute(
-            image, batch_dims=batch_dims, features_aspect_ratio=features_aspect_ratio
-        )
+        features = self.feature_generator.compute(image, batch_dims=batch_dims)
         x = features.reshape(-1, features.shape[-1])
 
         return x
@@ -120,7 +134,15 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         :return:
         :rtype:
         """
+
+        # Predict using regressor:
         yp = self.regressor.predict(x)
+
+        # We make sure that we have the result in float type, but make _sure_ to avoid copying data:
+        if yp.dtype != numpy.float32 and yp.dtype != numpy.float64:
+            yp = yp.astype(numpy.float32, copy=False)
+
+        # We reshape the array:
         inferred_image = yp.reshape(image_shape)
         return inferred_image
 
@@ -130,7 +152,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         target_image,
         batch_dims,
         train_test_ratio=0.1,
-        batch=False,
+        is_batch=False,
         monitoring_images=None,
         callback_period=3,
     ):
@@ -219,22 +241,11 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         numpy.random.shuffle(train_indices)
         test_indices = numpy.logical_not(train_indices)
 
-        # we allocate memory for the new arrays taking into account that we might need to use memory mapped files
-        # in the splitting of train and test sets. The features are the heavy part, so that's what we map:
-        # x_train, y_train, x_test, y_test = (None,) * 4
-
-        # if isinstance(x, numpy.memmap):
-        #     x_train,  = offcore_array(dtype=numpy.float32,
-        #                             shape=((nb_entries - test_size), nb_features),
-        #     )
-        # else:
-        x_train = numpy.zeros(
-            ((nb_entries - test_size), nb_features), dtype=numpy.float
-        )
-
-        y_train = numpy.zeros((nb_entries - test_size,), dtype=numpy.float)
-        x_test = numpy.zeros((test_size, nb_features), dtype=numpy.float)
-        y_test = numpy.zeros((test_size,), dtype=numpy.float)
+        # Allocate arrays:
+        x_train = numpy.zeros(((nb_entries - test_size), nb_features), dtype=x.dtype)
+        y_train = numpy.zeros((nb_entries - test_size,), dtype=y.dtype)
+        x_test = numpy.zeros((test_size, nb_features), dtype=x.dtype)
+        y_test = numpy.zeros((test_size,), dtype=y.dtype)
 
         # train data
         numpy.copyto(x_train, x[train_indices])
@@ -246,21 +257,23 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
         if self.debug:
             print("Training...")
-        if batch:
-            self.regressor.fit_batch(
+        if is_batch:
+            validation_loss = self.regressor.fit(
                 x_train,
                 y_train,
                 x_valid=x_test,
                 y_valid=y_test,
+                is_batch=True,
                 regressor_callback=regressor_callback,
             )
-            return None
+            return validation_loss
         else:
             self.regressor.fit(
                 x_train,
                 y_train,
                 x_valid=x_test,
                 y_valid=y_test,
+                is_batch=False,
                 regressor_callback=regressor_callback,
             )
             inferred_image = self._predict_from_features(x, input_image.shape)

@@ -36,14 +36,14 @@ def demo():
 
     start_time = time.time()
 
-    generator = FastMultiscaleConvolutionalFeatures()
+    generator = FastMultiscaleConvolutionalFeatures(dtype=numpy.uint8)
     regressor = NNRegressor()
 
     it = ImageTranslatorClassic(
         feature_generator=generator, regressor=regressor, normaliser='identity'
     )
 
-    denoised = it.train(noisy, noisy, max_epochs=50, patience=20)
+    denoised = it.train(noisy, noisy, max_epochs=15, patience=20)
 
     elapsedtime = time.time() - start_time
     print(f"time elapsed: {elapsedtime} s")

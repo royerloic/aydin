@@ -29,7 +29,7 @@ def collect_feature_2d(
     rx = lx // 2
     ry = ly // 2
 
-    exclude_center = exclude_center and abs(dx) <= rx and abs(dy) <= ry
+    # exclude_center = exclude_center  and abs(dx) <= rx and abs(dy) <= ry
 
     if optimisation and lx == 1 and ly == 1:
         program_code = f"""
@@ -41,16 +41,26 @@ def collect_feature_2d(
 
            const int x0  = x+{dx};
            const int y0  = y+{dy};
-           const int i0 = x0 + {image_x}*y0;
-           const int i = x + {image_x}*y;
            
+           const long i0  = x0 + {image_x}*y0;
            const float value = x0<0||y0<0||x0>{image_x-1}||y0>{image_y-1} ? 0.0f : image[i0];
-
-           feature[i] = {"0.0f" if exclude_center else "value" };
+           
+           const long i   = x  + {image_x}*y;
+           feature[i] = {"x0==x && y0==y ? 0.0f : value" if exclude_center else "value"};
          }}
         """
     else:
         program_code = f"""
+
+        inline float integral_lookup(__global float *integral, int x, int y)
+        {{
+            x = min(x, {image_x-1});
+            y = min(y, {image_y-1});
+            
+            const long i = x + {image_x} * y;
+            
+            return (x<0||y<0) ? 0.0f : integral[i];
+        }}
 
       __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature, float mean)
       {{
@@ -58,42 +68,41 @@ def collect_feature_2d(
         const int x = get_global_id(1);
         const int y = get_global_id(0);
 
-        const int x0  = min(x+{dx}-{rx}-1, {image_x - 1});
-        const int x1  = min(x+{dx}+{rx},   {image_x - 1}); 
-        const int x2  = min(x+{dx}-{rx}-1, {image_x - 1});
-        const int x3  = min(x+{dx}+{rx},   {image_x - 1}); 
-        
-        const int y0  = min(y+{dy}-{ry}-1, {image_y - 1});
-        const int y1  = min(y+{dy}-{ry}-1, {image_y - 1}); 
-        const int y2  = min(y+{dy}+{ry},   {image_y - 1});
-        const int y3  = min(y+{dy}+{ry},   {image_y - 1}); 
-        
-        const uint i0 = x0 + {image_x} * y0;
-        const uint i1 = x1 + {image_x} * y1;
-        const uint i2 = x2 + {image_x} * y2;
-        const uint i3 = x3 + {image_x} * y3;
-        
-        const uint i = x + {image_x}*y;
-       
-        const float value0 = x0<0||y0<0 ? 0.0f : integral[i0];
-        const float value1 = x1<0||y1<0 ? 0.0f : integral[i1];
-        const float value2 = x2<0||y2<0 ? 0.0f : integral[i2];
-        const float value3 = x3<0||y3<0 ? 0.0f : integral[i3];
-        const float value4 = {"image[i]" if exclude_center else "0.0f"};
-        
-        const float adj = {lx*ly-1 if exclude_center else lx*ly}*mean;
+        const int xl  = x+{dx - rx}-1;
+        const int xh  = x+{dx + rx}  ; 
 
-        const float value = (value3
+        const int yl  = y+{dy - ry}-1;
+        const int yh  = y+{dy + ry}  ;
+
+        const float value0 = integral_lookup(integral, xl, yl);
+        const float value1 = integral_lookup(integral, xh, yl);
+        const float value2 = integral_lookup(integral, xl, yh);
+        const float value3 = integral_lookup(integral, xh, yh);
+
+        const bool center_inside = (xl<x) && (x<=xh) && (yl<y) && (y<=yh);
+        const bool all_inside    = (xl<0) && ({image_x-1}<=xh) && (yl<0) && ({image_y-1}<=yh); 
+        const bool exclude_center = {"center_inside && !all_inside" if exclude_center else "false"}; 
+
+        const long raw_volume = (xh-xl)*(yh-yl);
+        const long volume = raw_volume - (exclude_center ? 1 : 0);
+
+        const long i = x + {image_x}*y;
+        const float center = exclude_center ? image[i] : 0.0f;
+
+        const float value = (
+                            +value3
                             -value2-value1
                             +value0
-                            -value4
-                            +adj)*(1.0f / ((x1-x0+1) * (y1-y0+1)));
-
+                            -center
+                            )
+                            / volume
+                            + mean;  
 
         feature[i] = value;
       }}
       """
     # print(program_code)
+    # //
 
     program = opencl_provider.build(program_code)
 

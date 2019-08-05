@@ -54,7 +54,7 @@ def demo(image):
                     name='noisy',
                 )
 
-        generator = FastMultiscaleConvolutionalFeatures(max_features=50)
+        generator = FastMultiscaleConvolutionalFeatures()
         regressor = GBMRegressor()
         monitor = Monitor(callback)
 
