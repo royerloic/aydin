@@ -25,8 +25,6 @@ def collect_feature_1d(
 
     rx = lx // 2
 
-    exclude_center = exclude_center and abs(dx) <= rx
-
     if optimisation and lx == 1:
         program_code = f"""
 
@@ -34,38 +32,51 @@ def collect_feature_1d(
          {{
            const int x = get_global_id(0);
 
-           const int x0  = x+{dx};
+           const int x0 = x+{dx};
+           
            const int i0 = x0;
-           const int i = x;
-
            const float value = x0<0||x0>{image_x-1} ? 0.0f : image[i0];
 
-           feature[i] = {"0.0f" if exclude_center else "value" };
+           const int i = x;
+           feature[i] = {"x0==x ? 0.0f : value" if exclude_center else "value"};
          }}
         """
     else:
         program_code = f"""
+        
+        inline float integral_lookup(__global float *integral, int x)
+        {{
+            x = min(x, {image_x-1});
+            return x<0 ? 0.0f : integral[x];
+        }}
 
       __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature, float mean)
       {{
         int x = get_global_id(0);
 
-        const int x0  = min(x+{dx}-{rx}-1, {image_x - 1});
-        const int x1  = min(x+{dx}+{rx},   {image_x - 1}); 
+        const int xl  = x+{dx-rx}-1;
+        const int xh  = x+{dx+rx}; 
 
-        const uint i0 = x0;
-        const uint i1 = x1;
+        const float value0 = integral_lookup(integral, xl);
+        const float value1 = integral_lookup(integral, xh);
         
-        const int i = x;
+        const bool center_inside = (xl<x) && (x<=xh);
+        const bool all_inside    = (xl<0) && ({image_x-1}<=xh); 
+        const bool exclude_center = {"center_inside && !all_inside" if exclude_center else "false"}; 
 
-        const float value0 = x0<0 ? 0.0f : integral[i0];
-        const float value1 = x1<0 ? 0.0f : integral[i1];
-        const float value2 = {"image[i]" if exclude_center else "0.0f"};
+        const long raw_volume = (xh-xl);
+        const long volume = raw_volume - (exclude_center ? 1 : 0);
 
-        const float adj = {lx-1 if exclude_center else lx}*mean;
-
-        const float value = (value1-value0-value2+adj)*{1.0 / lx};
-
+        const long i = x;
+        const float center = exclude_center ? image[i] : 0.0f;
+        
+        const float value = (
+                            +value1
+                            -value0
+                            -center
+                            )
+                            /volume
+                            + mean;
 
         feature[i] = value;
       }}

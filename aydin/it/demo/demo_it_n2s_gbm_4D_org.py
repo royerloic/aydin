@@ -11,25 +11,23 @@ from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 
 
-def demo(image):
+def demo():
 
     with napari.gui_qt():
 
-        level = 2
-        scales = [1, 3, 7, 15, 31]
-        widths = [3, 3, 3, 3, 3]
+        # (3, 320, 865, 1014)
+        image_path = examples_single.gardner_org.get_path()
+        image, metadata = io.imread(image_path, zarr_cache=False)
+        print(image.shape)
+        image = image.squeeze()
+        image = image[:, 0:60, 270:500, 400:600]
+        image = image.astype(numpy.float32)
+        image = rescale_intensity(image, in_range='image', out_range=(0, 1))
+        print(image.shape)
 
-        generator = FastMultiscaleConvolutionalFeatures(
-            kernel_widths=widths[:level], kernel_scales=scales[:level]
-        )
+        generator = FastMultiscaleConvolutionalFeatures(max_level=2)
 
-        regressor = GBMRegressor(
-            num_leaves=128,
-            n_estimators=128,
-            learning_rate=0.01,
-            loss='l1',
-            early_stopping_rounds=None,
-        )
+        regressor = GBMRegressor()
 
         it = ImageTranslatorClassic(generator, regressor, normaliser='identity')
 
@@ -53,13 +51,4 @@ def demo(image):
         print(denoised.shape)
 
 
-# (3, 320, 865, 1014)
-image_path = examples_single.gardner_org.get_path()
-array, metadata = io.imread(image_path, zarr_cache=False)
-print(array.shape)
-array = array.squeeze()
-array = array[:, 0:60, 270:500, 400:600]
-array = array.astype(numpy.float32)
-array = rescale_intensity(array, in_range='image', out_range=(0, 1))
-print(array.shape)
-demo(array)
+demo()

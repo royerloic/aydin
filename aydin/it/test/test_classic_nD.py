@@ -2,40 +2,41 @@ import time
 
 import napari
 import numpy
-from skimage.data import camera, binary_blobs
+from skimage.data import binary_blobs
 from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from pitl.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
-from pitl.it.it_classic import ImageTranslatorClassic
-from pitl.regression.gbm import GBMRegressor
-from pitl.regression.nn.nn import NNRegressor
-
-
 # Turns on napari display...
-display_for_debug = False
+from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.it.it_classic import ImageTranslatorClassic
+from aydin.regression.gbm import GBMRegressor
+from aydin.regression.nn.nn import NNRegressor
+
+display_for_debug = True
 
 
 def test_it_classic_nn_2D():
-    it_classic_nn_nD(2, 512, numpy.s_[0:501, 0:373], regressor='nn')
+    it_classic_nn_nD(2, 256, numpy.s_[0:101, 0:173], regressor='nn', min_ssim=0.70)
 
 
 def test_it_classic_nn_3D():
-    it_classic_nn_nD(3, 128, numpy.s_[0:111, 0:73, 0:37], regressor='nn')
+    it_classic_nn_nD(3, 128, numpy.s_[0:111, 0:73, 0:37], regressor='nn', min_ssim=0.70)
 
 
 def test_it_classic_nn_4D():
-    it_classic_nn_nD(4, 64, numpy.s_[0:11, 0:31, 0:3747, 0:50], regressor='nn')
+    it_classic_nn_nD(
+        4, 64, numpy.s_[0:11, 0:31, 0:3747, 0:50], regressor='nn', min_ssim=0.70
+    )
 
 
 def test_it_classic_gbm_2D():
-    it_classic_nn_nD(2, 512, numpy.s_[0:111, 0:73], regressor='gbm')
+    it_classic_nn_nD(2, 256, numpy.s_[0:111, 0:73], regressor='gbm', min_ssim=0.70)
 
 
 def test_it_classic_gbm_3D():
-    it_classic_nn_nD(3, 64, numpy.s_[0:111, 0:73, 0:37], regressor='gbm')
+    it_classic_nn_nD(3, 64, numpy.s_[0:111, 0:73, 0:37], regressor='gbm', min_ssim=0.70)
 
 
 def test_it_classic_gbm_4D():
@@ -100,10 +101,10 @@ def it_classic_nn_nD(
 
     train = noisy[train_slice]
 
-    generator = FastMultiscaleConvolutionalFeatures(max_features=10)
+    generator = FastMultiscaleConvolutionalFeatures()
 
     if regressor == 'nn':
-        regressor = NNRegressor()
+        regressor = NNRegressor(max_epochs=6)
     elif regressor == 'gbm':
         regressor = GBMRegressor()
 
@@ -123,13 +124,6 @@ def it_classic_nn_nD(
     noisy = numpy.clip(noisy, 0, 1)
     denoised = numpy.clip(denoised, 0, 1)
 
-    with napari.gui_qt():
-        viewer = napari.Viewer()
-        viewer.add_image(n(train), name='train')
-        viewer.add_image(n(image), name='image')
-        viewer.add_image(n(noisy), name='noisy')
-        viewer.add_image(n(denoised), name='denoised')
-
     psnr_noisy = psnr(noisy, image)
     ssim_noisy = ssim(noisy, image)
     print("noisy", psnr_noisy, ssim_noisy)
@@ -138,13 +132,21 @@ def it_classic_nn_nD(
     ssim_denoised = ssim(denoised, image)
     print("denoised", psnr_denoised, ssim_denoised)
 
-    assert psnr_denoised > psnr_noisy and ssim_denoised > ssim_noisy
-    assert psnr_denoised > psnr_noisy and ssim_denoised > ssim_noisy
+    if display_for_debug or not ssim_denoised > min_ssim:
+        with napari.gui_qt():
+            viewer = napari.Viewer()
+            viewer.add_image(n(train), name='train')
+            viewer.add_image(n(image), name='image')
+            viewer.add_image(n(noisy), name='noisy')
+            viewer.add_image(n(denoised), name='denoised')
 
     # if the line below fails, then the parameters of the image the lgbm regressor have been broken.
     # do not change the number below, but instead, fix the problem -- most likely a parameter.
 
     assert ssim_denoised > min_ssim
+
+    assert psnr_denoised > psnr_noisy and ssim_denoised > ssim_noisy
+    assert psnr_denoised > psnr_noisy and ssim_denoised > ssim_noisy
 
 
 def n(image):

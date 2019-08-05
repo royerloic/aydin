@@ -7,7 +7,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from aydin.features.classic.mcfocl import MultiscaleConvolutionalFeatures
+from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 
@@ -27,15 +27,8 @@ def test_it_classic():
     noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
     noisy = noisy.astype(numpy.float32)
 
-    generator = MultiscaleConvolutionalFeatures(exclude_center=True)
-
-    regressor = GBMRegressor(
-        learning_rate=0.01,
-        num_leaves=127,
-        max_bin=512,
-        n_estimators=2048,
-        early_stopping_rounds=20,
-    )
+    generator = FastMultiscaleConvolutionalFeatures()
+    regressor = GBMRegressor()
 
     it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)
 

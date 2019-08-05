@@ -52,7 +52,9 @@ class GBMRegressor(RegressorBase):
         :param early_stopping_rounds:
         :type early_stopping_rounds:
         """
-        # TODO: call to init of super class is missing
+
+        super().__init__()
+
         self.num_leaves = num_leaves
         self.n_estimators = n_estimators
         self.max_bin = max_bin
@@ -67,11 +69,14 @@ class GBMRegressor(RegressorBase):
         self.monitoring_datasets = None
         self.callback_period = 3
 
+    def progressive(self):
+        return False
+
     def reset(self):
         del self.lgbmr
         self.lgbmr = []
 
-    def _get_params(self, num_samples, batch=False):
+    def _get_params(self, num_samples, dtype=numpy.float32, batch=False):
         min_data_in_leaf = 20 + int(0.01 * (num_samples / self.num_leaves))
         # print(f'min_data_in_leaf: {min_data_in_leaf}')
 
@@ -81,13 +86,18 @@ class GBMRegressor(RegressorBase):
         elif objective == 'l2':
             objective = 'regression_l2'
 
+        if dtype == numpy.uint8:
+            max_bin = 256
+        else:
+            max_bin = self.max_bin
+
         params = {
             "boosting_type": "gbdt",
             'objective': objective,
             "learning_rate": self.learning_rate,
             "num_leaves": self.num_leaves,
             "max_depth": max(3, int(math.log2(self.num_leaves)) - 1),
-            "max_bin": self.max_bin,
+            "max_bin": max_bin,
             # "min_data_in_leaf": min_data_in_leaf,
             "subsample_for_bin": 200000,
             "num_threads": max(1, int(self.compute_load * multiprocessing.cpu_count())),
@@ -107,29 +117,22 @@ class GBMRegressor(RegressorBase):
 
         return params
 
-    def fit_batch(
-        self, x_train, y_train, x_valid=None, y_valid=None, regressor_callback=None
-    ):
-
-        self._fit(
-            x_train,
-            y_train,
-            x_valid,
-            y_valid,
-            is_batch=True,
-            regressor_callback=regressor_callback,
-        )
-
     def fit(
-        self, x_train, y_train, x_valid=None, y_valid=None, regressor_callback=None
+        self,
+        x_train,
+        y_train,
+        x_valid=None,
+        y_valid=None,
+        is_batch=False,
+        regressor_callback=None,
     ):
 
-        self._fit(
+        return self._fit(
             x_train,
             y_train,
             x_valid,
             y_valid,
-            is_batch=False,
+            is_batch=is_batch,
             regressor_callback=regressor_callback,
         )
 
@@ -147,19 +150,19 @@ class GBMRegressor(RegressorBase):
         self.num_features = x_train.shape[-1]
         has_valid_dataset = x_valid is not None and y_valid is not None
 
-        train_dataset = lightgbm.Dataset(
-            x_train, y_train, params={'verbose': -1}, silent=True
-        )
+        train_dataset = lightgbm.Dataset(x_train, y_train, silent=True)
         valid_dataset = (
-            lightgbm.Dataset(x_valid, y_valid, params={'verbose': -1}, silent=True)
+            lightgbm.Dataset(x_valid, y_valid, silent=True)
             if has_valid_dataset
             else None
         )
 
         self.last_callback_time_sec = -1
 
+        evals_result = {}
+
         model = lightgbm.train(
-            params=self._get_params(num_samples, batch=is_batch),
+            params=self._get_params(num_samples, dtype=x_train.dtype, batch=is_batch),
             init_model=None,  # self.lgbmr if is_batch else None, <-- not working...
             train_set=train_dataset,
             valid_sets=valid_dataset,
@@ -170,6 +173,7 @@ class GBMRegressor(RegressorBase):
             # keep_training_booster= is_batch, <-- not working...
             callbacks=[] if regressor_callback is None else [regressor_callback],
             verbose_eval=regressor_callback is None,
+            evals_result=evals_result,
         )
 
         if is_batch:
@@ -183,6 +187,10 @@ class GBMRegressor(RegressorBase):
         del valid_dataset
 
         gc.collect()
+
+        valid_loss = evals_result['valid_0'][self.metric][-1]
+
+        return valid_loss
 
     def predict(self, x, batch_mode='median', model_to_use: Booster = None):
         """

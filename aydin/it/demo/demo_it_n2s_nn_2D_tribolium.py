@@ -62,7 +62,7 @@ def demo():
             kernel_widths=widths, kernel_scales=scales
         )
 
-        regressor = NNRegressor()
+        regressor = NNRegressor(max_epochs=5)
 
         it = ImageTranslatorClassic(
             feature_generator=generator, regressor=regressor, normaliser='identity'

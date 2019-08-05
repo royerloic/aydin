@@ -11,7 +11,7 @@ class LinearRegressor:
 
     linear: LinearRegression
 
-    def __init__(self, mode='Lasso'):
+    def __init__(self, mode='linear'):
         """
         Constructs a linear regressor.
 
@@ -23,12 +23,28 @@ class LinearRegressor:
         elif mode == 'linear':
             self.linear = LinearRegression()
 
-    def fit(self, x_train, y_train, x_valid=None, y_valid=None):
+    def progressive(self):
+        return False
+
+    def reset(self):
+        pass
+
+    def fit(
+        self,
+        x_train,
+        y_train,
+        x_valid=None,
+        y_valid=None,
+        is_batch=False,
+        regressor_callback=None,
+    ):
         """
-        Fits function y=f(x) goiven training pairs (x_train, y_train).
+        Fits function y=f(x) given training pairs (x_train, y_train).
         Stops when performance stops improving on the test dataset: (x_test, y_test).
 
         """
+        if is_batch:
+            raise NotImplemented("Batch training not het implemented!")
         self.linear = self.linear.fit(x_train, y_train)
 
     def predict(self, x, model_to_use=None):

@@ -9,7 +9,6 @@ from skimage.util import random_noise
 
 from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
-from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn.nn import NNRegressor
 
 
@@ -32,7 +31,7 @@ def test_it_classic_nn():
     noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
     noisy = noisy.astype(numpy.float32)
 
-    generator = FastMultiscaleConvolutionalFeatures(max_features=34)
+    generator = FastMultiscaleConvolutionalFeatures()
     regressor = NNRegressor()
 
     it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)

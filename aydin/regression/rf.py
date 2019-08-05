@@ -10,10 +10,10 @@ class RandomForrestRegressor(GBMRegressor):
 
     def __init__(
         self,
-        num_leaves=63,
-        n_estimators=128,
+        num_leaves=1024,
+        n_estimators=2048,
         max_bin=512,
-        learning_rate=0.05,
+        learning_rate=0.001,
         loss='l1',
         early_stopping_rounds=5,
         verbosity=100,

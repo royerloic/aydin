@@ -1,6 +1,7 @@
 import time
 
 import napari
+import numpy
 import numpy as np
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
@@ -13,12 +14,18 @@ from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 
 
-def demo(image):
+def n(image):
+    return rescale_intensity(
+        image.astype(numpy.float32), in_range='image', out_range=(0, 1)
+    )
+
+
+def demo():
     """
         Demo for self-supervised denoising using camera image with synthetic noise
     """
 
-    image = rescale_intensity(image, in_range='image', out_range=(0, 1))
+    image = n(camera().astype(np.float32))
 
     intensity = 5
     np.random.seed(0)
@@ -28,30 +35,11 @@ def demo(image):
 
     with napari.gui_qt():
         viewer = napari.Viewer()
-        viewer.add_image(
-            rescale_intensity(image, in_range='image', out_range=(0, 1)), name='image'
-        )
-        viewer.add_image(
-            rescale_intensity(noisy, in_range='image', out_range=(0, 1)), name='noisy'
-        )
+        viewer.add_image(n(image), name='image')
+        viewer.add_image(n(noisy), name='noisy')
 
-        scales = [1, 3, 7, 15]
-        widths = [7, 5, 3, 3]
-
-        generator = FastMultiscaleConvolutionalFeatures(
-            kernel_widths=widths,
-            kernel_scales=scales,
-            kernel_shapes=['l1'] * len(scales),
-            exclude_center=True,
-        )
-
-        regressor = GBMRegressor(
-            learning_rate=0.01,
-            num_leaves=127,
-            max_bin=512,
-            n_estimators=2048,
-            early_stopping_rounds=20,
-        )
+        generator = FastMultiscaleConvolutionalFeatures(max_level=4)
+        regressor = GBMRegressor()
 
         it = ImageTranslatorClassic(
             feature_generator=generator, regressor=regressor, normaliser='identity'
@@ -73,15 +61,7 @@ def demo(image):
         print("denoised", psnr(denoised, image), ssim(denoised, image))
         # print("denoised_predict", psnr(denoised_predict, image), ssim(denoised_predict, image))
 
-        viewer.add_image(
-            rescale_intensity(denoised, in_range='image', out_range=(0, 1)),
-            name='denoised',
-        )
-        # viewer.add_image(rescale_intensity(denoised_predict, in_range='image', out_range=(0, 1)), name='denoised_predict%d' % param)
+        viewer.add_image(n(denoised), name='denoised')
 
 
-demo(camera().astype(np.float32))
-# for example in examples_single.get_list():
-#     example_file_path = examples_single.get_path(*example)
-#     array, metadata = io.imread(example_file_path)
-#     demo(array.astype(np.float32), min_level=5, max_level=6)
+demo()

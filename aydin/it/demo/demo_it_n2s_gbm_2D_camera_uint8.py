@@ -3,19 +3,18 @@ import time
 import napari
 import numpy
 import numpy as np
+import skimage
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
+from skimage.morphology import disk
+from skimage.restoration import denoise_nl_means, estimate_sigma
 from skimage.util import random_noise
 
 from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
-from aydin.regression.nn.nn import NNRegressor
-
-"""
-    Demo for self-supervised denoising using camera image with synthetic noise
-"""
+from aydin.regression.gbm import GBMRegressor
 
 
 def n(image):
@@ -25,35 +24,47 @@ def n(image):
 
 
 def demo():
+    """
+        Demo for self-supervised denoising using camera image with synthetic noise
+    """
 
     image = camera().astype(np.float32)
     image = n(image)
+
     intensity = 5
     np.random.seed(0)
     noisy = np.random.poisson(image * intensity) / intensity
     noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
     noisy = noisy.astype(np.float32)
 
-    start_time = time.time()
+    generator = FastMultiscaleConvolutionalFeatures(max_level=10, dtype=numpy.uint8)
 
-    generator = FastMultiscaleConvolutionalFeatures()
-    regressor = NNRegressor()
+    regressor = GBMRegressor()
 
     it = ImageTranslatorClassic(
         feature_generator=generator, regressor=regressor, normaliser='identity'
     )
 
-    denoised = it.train(noisy, noisy, max_epochs=50, patience=20)
+    start = time.time()
+    denoised = it.train(noisy, noisy)
+    stop = time.time()
+    print(f"Training: elapsed time:  {stop-start} ")
 
-    elapsedtime = time.time() - start_time
-    print(f"time elapsed: {elapsedtime} s")
+    if denoised is None:
+        # in case of batching we have to do this:
+        start = time.time()
+        denoised = it.translate(noisy)
+        stop = time.time()
+        print(f"inference: elapsed time:  {stop-start} ")
+
+    denoised = rescale_intensity(denoised, in_range='image', out_range=(0, 1))
 
     image = numpy.clip(image, 0, 1)
     noisy = numpy.clip(noisy, 0, 1)
     denoised = numpy.clip(denoised, 0, 1)
 
-    print("noisy", psnr(noisy, image), ssim(noisy, image))
-    print("denoised", psnr(denoised, image), ssim(denoised, image))
+    print("noisy", psnr(image, noisy), ssim(noisy, image))
+    print("denoised", psnr(image, denoised), ssim(denoised, image))
 
     with napari.gui_qt():
         viewer = napari.Viewer()

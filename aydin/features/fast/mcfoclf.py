@@ -1,11 +1,13 @@
 import math
 import tempfile
 
+import napari
 import numpy
 import numpy as np
 import psutil
 import pyopencl
 import pyopencl as cl
+from napari import Viewer
 from pyopencl.array import to_device, Array
 
 from aydin.features.fast.features_1d import collect_feature_1d
@@ -40,8 +42,9 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         kernel_widths=[3] * 10,
         kernel_scales=[2 ** i - 1 for i in range(1, 11)],
         kernel_shapes=None,
-        max_features=+math.inf,
+        max_level=10,
         exclude_center=False,
+        dtype=numpy.float32,
     ):
         """
         Constructs a multiscale convolutional feature generator that uses OpenCL.
@@ -71,36 +74,73 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         self.kernel_shapes = (
             ['l2'] * len(kernel_widths) if kernel_shapes is None else kernel_shapes
         )
-        self.max_features = max_features
+        self.max_level = max_level
 
         self.exclude_center = exclude_center
+        self.dtype = dtype
 
-    def get_available_mem(self):
-        return self.opencl_provider.device.global_mem_size
+        assert dtype == numpy.float32 or dtype == numpy.uint8 or dtype == numpy.uint16
 
-    def get_needed_mem(self, num_elements):
-        # We keep a 20% buffer to be confortable...
-        return int(1.2 * 4 * num_elements)
+    def is_enough_memory(self, array):
 
-    def is_enough_memory(self, num_elements):
-        return (
-            self.get_needed_mem(num_elements)
-            < self.opencl_provider.device.global_mem_size
+        # 20% buffer:
+        buffer = 1.2
+
+        available_cpu_mem = psutil.virtual_memory().free
+        available_gpu_mem = self.opencl_provider.device.global_mem_size
+        print(f"Available cpu mem: {available_cpu_mem / 1E6} MB")
+        print(f"Available gpu mem: {available_gpu_mem / 1E6} MB")
+
+        # This is what we need on the GPU to store the image and one feature:
+        needed_gpu_mem = 2 * int(buffer * 4 * array.size * 1)
+        print(
+            f"Memory needed on the gpu: {needed_gpu_mem / 1E6} MB (image + 1 feature)"
         )
 
-    def get_receptive_field_radius(self):
+        nb_dim = len(array.shape)
+        approximate_num_features = len(self.get_feature_descriptions(nb_dim))
+        print(f"Approximate number of features: {approximate_num_features}")
 
-        radii = max(
-            [
-                width * scale // 2
-                for width, scale in zip(self.kernel_widths, self.kernel_scales)
-            ]
+        # This is what we need on the CPU:
+        needed_cpu_mem = int(
+            buffer
+            * np.dtype(self.dtype).itemsize
+            * array.size
+            * approximate_num_features
         )
-        return radii
+        print(f"Memory needed on the cpu: {needed_cpu_mem/ 1E6} MB")
 
-    def compute(
-        self, image, batch_dims=None, features_aspect_ratio=None, features=None
-    ):
+        min_nb_batches_cpu = math.ceil(needed_cpu_mem / available_cpu_mem)
+        min_nb_batches_gpu = math.ceil(needed_gpu_mem / available_gpu_mem)
+        min_nb_batches = max(min_nb_batches_cpu, min_nb_batches_gpu)
+        print(
+            f"Minimum number of batches: {min_nb_batches} ( cpu:{min_nb_batches_cpu}, gpu:{min_nb_batches_gpu} )"
+        )
+
+        max_batch_size = (array.itemsize * array.size) / min_nb_batches
+        is_enough_memory = (
+            needed_cpu_mem < available_cpu_mem and needed_gpu_mem < available_gpu_mem
+        )
+        print(f"Maximum batch size: {max_batch_size} ")
+        print(f"Is enough memory: {is_enough_memory} ")
+
+        return is_enough_memory, max_batch_size
+
+    def get_receptive_field_radius(self, nb_dim):
+
+        radius = 0
+        counter = 0
+        for width, scale in zip(self.kernel_widths, self.kernel_scales):
+
+            if counter > self.max_level:
+                break
+
+            radius = max(radius, width * scale // 2)
+            counter += 1
+
+        return radius
+
+    def compute(self, image, batch_dims=None, features=None):
         """
         Computes the features given an image. If the input image is of shape (d,h,w),
         resulting features are of shape (d,h,w,n) where n is the number of features.
@@ -136,27 +176,27 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                 f'Number of batch dim: {nb_batch_dim}, number of non batch dim: {nb_non_batch_dim}'
             )
 
-        # Set default aspect ratio based on image dimension:
-        if features_aspect_ratio is None:
-            features_aspect_ratio = (1,) * image_dimension
-        assert len(features_aspect_ratio) == image_dimension
-        features_aspect_ratio = list(features_aspect_ratio)
-
-        if self.debug_log:
-            print(f'Feature aspect ratio: {features_aspect_ratio}')
-
-        # Permutate aspect ratio:
-        features_aspect_ratio = tuple(
-            features_aspect_ratio[axis] for axis in axes_permutation
-        )
-
-        # and we only keep the non-batch dimensions aspect ratio values:
-        features_aspect_ratio = features_aspect_ratio[-nb_non_batch_dim:]
-
-        if self.debug_log:
-            print(
-                f'Feature aspect ratio after permutation and selection: {features_aspect_ratio}'
-            )
+        # # Set default aspect ratio based on image dimension:
+        # if features_aspect_ratio is None:
+        #     features_aspect_ratio = (1,) * image_dimension
+        # assert len(features_aspect_ratio) == image_dimension
+        # features_aspect_ratio = list(features_aspect_ratio)
+        #
+        # if self.debug_log:
+        #     print(f'Feature aspect ratio: {features_aspect_ratio}')
+        #
+        # # Permutate aspect ratio:
+        # features_aspect_ratio = tuple(
+        #     features_aspect_ratio[axis] for axis in axes_permutation
+        # )
+        #
+        # # and we only keep the non-batch dimensions aspect ratio values:
+        # features_aspect_ratio = features_aspect_ratio[-nb_non_batch_dim:]
+        #
+        # if self.debug_log:
+        #     print(
+        #         f'Feature aspect ratio after permutation and selection: {features_aspect_ratio}'
+        #     )
 
         # Initialise some variables:
         image_batch = None
@@ -233,10 +273,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
                 # We first do a dry run to compute the number of features:
                 nb_features = self.collect_features_nD(
-                    image_batch_gpu,
-                    image_integral_gpu,
-                    nb_non_batch_dim,
-                    features_aspect_ratio,
+                    image_batch_gpu, image_integral_gpu, nb_non_batch_dim
                 )
                 if self.debug_log:
                     print(f'Number of features:  {nb_features}')
@@ -251,7 +288,6 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                     image_batch_gpu,
                     image_integral_gpu,
                     nb_non_batch_dim,
-                    features_aspect_ratio,
                     feature_gpu,
                     features[feature_batch_slice],
                     mean,
@@ -296,14 +332,14 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         if self.debug_log:
             print(f'Creating feature array...')
 
-        size_in_bytes = nb_features * image.size * image.itemsize
+        size_in_bytes = nb_features * image.size * np.dtype(self.dtype).itemsize
         free_mem_in_bytes = psutil.virtual_memory().free
         if self.debug_log:
             print(f'There is {int(free_mem_in_bytes/1E6)} MB of free memory')
-            print(f'Feature array is {(size_in_bytes/1E6)} MB.')
+            print(f'Feature array will be {(size_in_bytes/1E6)} MB.')
 
-        # We take the heuristic that we need twice the amount of memory available to be confortable:
-        is_enough_memory = 2 * size_in_bytes < free_mem_in_bytes
+        # We take the heuristic that we need 20% extra memory available to be confortable:
+        is_enough_memory = 1.2 * size_in_bytes < free_mem_in_bytes
 
         # That's the shape we need:
         shape = (nb_features,) + image.shape
@@ -313,12 +349,12 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                 print(
                     f'There is enough memory -- we do not need to use a mem mapped array.'
                 )
-            array = np.zeros(shape, dtype=np.float32)
+            array = np.zeros(shape, dtype=self.dtype)
 
         else:
             if self.debug_log:
                 print(f'There is not enough memory -- we will use a mem mapped array.')
-            array = offcore_array(dtype=np.float32, shape=shape)
+            array = offcore_array(shape=shape, dtype=self.dtype)
 
         return array
 
@@ -360,7 +396,6 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         image_gpu,
         image_integral_gpu,
         ndim,
-        features_aspect_ratio,
         feature_gpu=None,
         features=None,
         mean=0,
@@ -384,71 +419,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             else:
                 print(f"Computing features...")
 
-        feature_description_list = []
-
-        for width, scale, shape in zip(
-            self.kernel_widths, self.kernel_scales, self.kernel_shapes
-        ):
-            # Check if we have passed the max number of features already:
-            # Important: We mioght overshoot a bit, but that's ok to make sure we get all features at a given scale...
-            if len(feature_description_list) >= self.max_features:
-                break
-
-            # Computing the radius:
-            radius = width // 2
-
-            # We compuet the radii along the different dimensions taking into account the aspect ratio:
-            radii = list(max(1, int(radius * ratio)) for ratio in features_aspect_ratio)
-
-            # We generate all feature shift vectors:
-            features_shifts = list(nd_range_radii(radii))
-
-            # print(f'Feature shifts: {features_shifts}')
-
-            # For each feature shift we append to the feature description list:
-            for shift in features_shifts:
-
-                # There is no point in collecting features bigger than the image itself:
-                # Note: this is not a good idea: number of features varies image size which causes trouble.
-                if (width * scale // 2) > max(image_gpu.shape):
-                    break
-
-                # Excluding the center pixel/feature:
-                if self.exclude_center and scale == 1 and shift == (0,) * ndim:
-                    continue
-
-                # Different 'shapes' of feature  distributions:
-                if shape == 'l1' and sum([abs(i) for i in shift]) > radius:
-                    continue
-                elif shape == 'l2' and sum([i * i for i in shift]) > radius * radius:
-                    continue
-                elif shape == 'li':
-                    pass
-
-                # effective shift and scale after taking into account the aspect ratio:
-                effective_shift = tuple(i * scale for i in shift)
-                effective_scale = tuple(
-                    max(1, int(ratio * scale)) for ratio in features_aspect_ratio
-                )
-
-                #  We append the feature description:
-                feature_description_list.append((effective_shift, effective_scale))
-
-        # Some features might be identical due to the aspect ratio, we eliminate duplicates:
-        no_duplicate_feature_description_list = remove_duplicates(
-            feature_description_list
-        )
-
-        # We save the last computed feature description list for debug purposes:
-        self.debug_feature_description_list = feature_description_list
-
-        # We check and report how many duplicates were eliminated:
-        number_of_duplicates = len(feature_description_list) - len(
-            no_duplicate_feature_description_list
-        )
-        if self.debug_log:
-            print(f"Number of duplicate features: {number_of_duplicates}")
-        feature_description_list = no_duplicate_feature_description_list
+        feature_description_list = self.get_feature_descriptions(ndim)
 
         if features is not None:
 
@@ -496,8 +467,18 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                 # We copy the GPU computed feature back into CPU memory:
                 cl.enqueue_copy(self.opencl_provider.queue, feature, feature_gpu.data)
 
-                # We put the computed feature into the main array that golds all features:
-                features[feature_index] = feature
+                # We multiply to prepare potential casting,
+                # Let's also check that we don't have overflows:
+                if self.dtype == numpy.uint8:
+                    feature *= 255
+                    # assert numpy.any(feature < 255)
+                elif self.dtype == numpy.uint16:
+                    feature *= 255 * 255
+                    # assert numpy.any(feature < 255*255)
+
+                # We put the computed feature into the main array that holds all features:
+                # casting is done as needed:
+                features[feature_index] = feature.astype(self.dtype, copy=False)
 
                 # with napari.gui_qt():
                 #     viewer = Viewer()
@@ -517,6 +498,71 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         else:
             # In this case we are just here to count the _number_ of features, and return that count:
             return len(feature_description_list)
+
+    def get_feature_descriptions(self, ndim):
+        feature_description_list = []
+
+        level = 0
+        for width, scale, shape in zip(
+            self.kernel_widths, self.kernel_scales, self.kernel_shapes
+        ):
+            # Check if we have passed the max number of features already:
+            # Important: We might overshoot a bit, but that's ok to make sure we get all features at a given scale...
+            if level > self.max_level:
+                break
+            level += 1
+
+            # Computing the radius:
+            radius = width // 2
+
+            # We computw the radii along the different dimensions taking into account the aspect ratio:
+            radii = list((max(1, radius),) * ndim)
+
+            # We generate all feature shift vectors:
+            features_shifts = list(nd_range_radii(radii))
+
+            # print(f'Feature shifts: {features_shifts}')
+
+            # For each feature shift we append to the feature description list:
+            for shift in features_shifts:
+
+                # There is no point in collecting features bigger than the image itself:
+                # Note: this is not a good idea: number of features varies image size which causes trouble.
+                # if (width * scale // 2) > max(image_gpu.shape):
+                #    break
+
+                # Excluding the center pixel/feature:
+                if self.exclude_center and scale == 1 and shift == (0,) * ndim:
+                    continue
+
+                # Different 'shapes' of feature  distributions:
+                if shape == 'l1' and sum([abs(i) for i in shift]) > radius:
+                    continue
+                elif shape == 'l2' and sum([i * i for i in shift]) > radius * radius:
+                    continue
+                elif shape == 'li':
+                    pass
+
+                # effective shift and scale after taking into account the aspect ratio:
+                effective_shift = tuple(i * scale for i in shift)
+                effective_scale = (max(1, scale),) * ndim
+
+                #  We append the feature description:
+                feature_description_list.append((effective_shift, effective_scale))
+        # Some features might be identical due to the aspect ratio, we eliminate duplicates:
+        no_duplicate_feature_description_list = remove_duplicates(
+            feature_description_list
+        )
+        # We save the last computed feature description list for debug purposes:
+        self.debug_feature_description_list = feature_description_list
+        # We check and report how many duplicates were eliminated:
+        number_of_duplicates = len(feature_description_list) - len(
+            no_duplicate_feature_description_list
+        )
+        if self.debug_log:
+            print(f"Number of duplicate features: {number_of_duplicates}")
+        feature_description_list = no_duplicate_feature_description_list
+        return feature_description_list
 
 
 # Removes duplicates without chaning list's order:

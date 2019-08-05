@@ -14,7 +14,7 @@ class NNCallback(Callback):
         self.iteration = 0
 
     def on_train_begin(self, logs=None):
-        print(f"on_train_begin...")
+        # print(f"on_train_begin...")
         pass
 
     def on_batch_ends(self, batch, logs=None):
@@ -30,12 +30,13 @@ class NNCallback(Callback):
         pass
 
     def on_epoch_end(self, epoch, logs=None):
-        print(f"on_epoch_end...")
+        # print(f"on_epoch_end...")
         current = self.get_monitor_value(logs)
-        print(f"VALUE = {current}")
+        # print(f"VALUE = {current}")
 
     def on_train_end(self, logs=None):
-        print(f"on_train_end...")
+        # print(f"on_train_end...")
+        pass
 
     def get_monitor_value(self, logs):
 
