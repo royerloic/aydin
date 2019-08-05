@@ -63,7 +63,8 @@ def noise2self(**kwargs):
     path = os.path.abspath(kwargs['path'])
     noisy = read_image_from_path(path)
     pbar = ProgressBar(total=100)
-    N2SService.run(noisy, pbar)
+    n2s = N2SService()
+    denoised = n2s.run(noisy, pbar)
     pbar.close()
 
 
