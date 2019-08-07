@@ -1,7 +1,13 @@
+import os
 from abc import ABC, abstractmethod
+from os.path import join
 
+import jsonpickle
 import numexpr
 import numpy
+
+from aydin.util.json import encode_indent
+from aydin.util.log.logging import lprint
 
 
 class NormaliserBase(ABC):
@@ -26,6 +32,36 @@ class NormaliserBase(ABC):
         self.rmin = None
         self.rmax = None
 
+    def save(self, path: str, name='default'):
+        """
+        Saves an 'all-batteries-included' normaliser at a given path (folder).
+        :param path: path to save to
+        """
+        os.makedirs(path, exist_ok=True)
+
+        frozen = encode_indent(self)
+
+        lprint(f"Saving normaliser to: {path}")
+        with open(join(path, f"normaliser_{name}.json"), "w") as json_file:
+            json_file.write(frozen)
+
+        return frozen
+
+    @staticmethod
+    def load(path: str, name='default'):
+        """
+        Returns an 'all-batteries-included' normaliser from a given path (folder).
+        :param model_path: path to load from.
+        """
+
+        lprint(f"Loading normaliser from: {path}")
+        with open(join(path, f"normaliser_{name}.json"), "r") as json_file:
+            frozen = json_file.read()
+
+        thawed = jsonpickle.decode(frozen)
+
+        return thawed
+
     @abstractmethod
     def calibrate(self, array):
         """
@@ -46,7 +82,7 @@ class NormaliserBase(ABC):
         if array.dtype != numpy.float32:
             array = array.astype(numpy.float32)
 
-        if self.rmin and self.rmax:
+        if not self.rmin is None and not self.rmax is None:
             min_value = numpy.float32(self.rmin)
             max_value = numpy.float32(self.rmax)
             epsilon = numpy.float32(self.epsilon)
@@ -76,7 +112,7 @@ class NormaliserBase(ABC):
         :param array: array to denormalise
         :type array: ndarray
         """
-        if self.rmin and self.rmax:
+        if not self.rmin is None and not self.rmax is None:
 
             min_value = numpy.float32(self.rmin)
             max_value = numpy.float32(self.rmax)

@@ -8,8 +8,7 @@ from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.io import io
 from aydin.io.datasets import examples_single
 from aydin.it.it_classic import ImageTranslatorClassic
-from aydin.regression.gbm import GBMRegressor
-from aydin.regression.nn.nn import NNRegressor
+from aydin.regression.nn import NNRegressor
 
 
 def demo():
@@ -29,7 +28,7 @@ def demo():
 
         regressor = NNRegressor(max_epochs=5)
 
-        it = ImageTranslatorClassic(generator, regressor, normaliser='identity')
+        it = ImageTranslatorClassic(generator, regressor, normaliser_type='identity')
 
         start = time.time()
         it.train(image, image)

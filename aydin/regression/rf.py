@@ -15,18 +15,12 @@ class RandomForrestRegressor(GBMRegressor):
         max_bin=512,
         learning_rate=0.001,
         loss='l1',
-        early_stopping_rounds=5,
+        patience=5,
         verbosity=100,
     ):
 
         super().__init__(
-            num_leaves,
-            n_estimators,
-            max_bin,
-            learning_rate,
-            loss,
-            early_stopping_rounds,
-            verbosity,
+            num_leaves, n_estimators, max_bin, learning_rate, loss, patience, verbosity
         )
 
     def _get_params(self, num_samples, batch=False):

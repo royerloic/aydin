@@ -9,7 +9,7 @@ from skimage.util import random_noise
 
 from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
-from aydin.regression.nn.nn import NNRegressor
+from aydin.regression.nn import NNRegressor
 
 
 def n(image):

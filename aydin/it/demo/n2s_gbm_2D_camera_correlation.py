@@ -45,7 +45,7 @@ def demo():
         it = ImageTranslatorClassic(
             feature_generator=generator,
             regressor=regressor,
-            normaliser='identity',
+            normaliser_type='identity',
             analyse_correlation=True,
         )
 

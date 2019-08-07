@@ -35,12 +35,12 @@ class N2SService:
             num_leaves=127,
             max_bin=512,
             n_estimators=2048,
-            early_stopping_rounds=20,
+            patience=20,
         )
 
         progress_callback.emit(51)
         it = ImageTranslatorClassic(
-            feature_generator=generator, regressor=regressor, normaliser='identity'
+            feature_generator=generator, regressor=regressor, normaliser_type='identity'
         )
         response = it.train(
             noisy_image,

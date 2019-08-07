@@ -11,10 +11,10 @@ def n(image):
     )
 
 
-def test_collect_feature_2d_():
+def test_collect_feature_2d():
 
     scales = [1, 3, 7]
-    widths = [5, 5, 5]
+    widths = [3, 3, 3]
 
     generator = FastMultiscaleConvolutionalFeatures(
         kernel_widths=widths,
@@ -32,7 +32,7 @@ def test_collect_feature_2d_():
     for feature_description in generator.debug_feature_description_list:
         print(f"Feature: {feature_description}")
 
-    assert len(generator.debug_feature_description_list) == 32
+    assert len(generator.debug_feature_description_list) == 14
 
 
 def test_collect_feature_2d_uint8():

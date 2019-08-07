@@ -11,8 +11,7 @@ from skimage.util import random_noise
 
 from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
-from aydin.regression.gbm import GBMRegressor
-from aydin.regression.nn.nn import NNRegressor
+from aydin.regression.nn import NNRegressor
 
 
 def n(image):
@@ -43,7 +42,7 @@ def demo():
         regressor = NNRegressor(max_epochs=1)
 
         it = ImageTranslatorClassic(
-            feature_generator=generator, regressor=regressor, normaliser='identity'
+            feature_generator=generator, regressor=regressor, normaliser_type='identity'
         )
 
         start = time.time()

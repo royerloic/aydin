@@ -1,5 +1,3 @@
-from pprint import pprint
-
 import numpy
 import pyopencl
 from pyopencl.array import Array
@@ -8,7 +6,7 @@ from aydin.features.fast.features_1d import collect_feature_1d
 from aydin.features.fast.features_2d import collect_feature_2d
 from aydin.features.fast.features_3d import collect_feature_3d
 from aydin.features.fast.features_4d import collect_feature_4d
-from aydin.opencl.opencl_provider import OpenCLProvider
+from aydin.providers.opencl.opencl_provider import OpenCLProvider
 
 
 def test_collect_feature_1d():

@@ -10,7 +10,7 @@ from aydin.io.datasets import examples_single
 from aydin.io.folders import get_temp_folder
 from aydin.io.io import imwrite
 from aydin.it.it_classic import ImageTranslatorClassic
-from aydin.regression.nn.nn import NNRegressor
+from aydin.regression.nn import NNRegressor
 
 
 def demo():
@@ -43,7 +43,7 @@ def demo():
         generator = FastMultiscaleConvolutionalFeatures(max_level=4, dtype=numpy.uint8)
         regressor = NNRegressor()
 
-        it = ImageTranslatorClassic(generator, regressor, normaliser='percentile')
+        it = ImageTranslatorClassic(generator, regressor, normaliser_type='percentile')
 
         start = time.time()
         it.train(train, train, batch_dims=batch_dims, max_epochs=1, patience=1)

@@ -12,9 +12,11 @@ from skimage.morphology import disk
 from skimage.restoration import denoise_nl_means, estimate_sigma
 from skimage.util import random_noise
 
+import aydin
 from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
+from aydin.util.log.logging import set_log_max_depth
 
 
 def n(image):
@@ -27,6 +29,8 @@ def demo():
     """
         Demo for self-supervised denoising using camera image with synthetic noise
     """
+
+    set_log_max_depth(4)
 
     image = camera().astype(np.float32)
     image = n(image)
@@ -47,7 +51,7 @@ def demo():
     regressor = GBMRegressor()
 
     it = ImageTranslatorClassic(
-        feature_generator=generator, regressor=regressor, normaliser='identity'
+        feature_generator=generator, regressor=regressor, normaliser_type='identity'
     )
 
     start = time.time()

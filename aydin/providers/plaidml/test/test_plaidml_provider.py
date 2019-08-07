@@ -1,4 +1,4 @@
-from aydin.plaidml.plaidml_provider import PlaidMLProvider
+from aydin.providers.plaidml.plaidml_provider import PlaidMLProvider
 
 
 def test_plaidml_provider():

@@ -115,7 +115,7 @@ def test_imwrite():
     # We use a generator that takes care of everything:
     with imwrite(temp_file, shape=array.shape, dtype=array.dtype) as tiff_array:
 
-        # We copy here the file
+        # We write here the file
         print("Writting file...")
         tiff_array[...] = array
 

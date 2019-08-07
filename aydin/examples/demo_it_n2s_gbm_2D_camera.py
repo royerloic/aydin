@@ -50,7 +50,7 @@ def demo(image, min_level=7, max_level=100):
                 num_leaves=127,
                 max_bin=512,
                 n_estimators=2048,
-                early_stopping_rounds=20,
+                patience=20,
             )
 
             it = ImageTranslatorClassic(

@@ -11,7 +11,7 @@ from skimage.util import random_noise
 
 from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
-from aydin.regression.nn.nn import NNRegressor
+from aydin.regression.nn import NNRegressor
 
 """
     Demo for self-supervised denoising using camera image with synthetic noise
@@ -40,10 +40,10 @@ def demo():
     regressor = NNRegressor()
 
     it = ImageTranslatorClassic(
-        feature_generator=generator, regressor=regressor, normaliser='identity'
+        feature_generator=generator, regressor=regressor, normaliser_type='identity'
     )
 
-    denoised = it.train(noisy, noisy, max_epochs=50, patience=20)
+    denoised = it.train(noisy, noisy, max_epochs=300, patience=200)
 
     elapsedtime = time.time() - start_time
     print(f"time elapsed: {elapsedtime} s")

@@ -40,7 +40,7 @@ def demo(image):
         regressor = GBMRegressor()
 
         it = ImageTranslatorClassic(
-            feature_generator=generator, regressor=regressor, normaliser='identity'
+            feature_generator=generator, regressor=regressor, normaliser_type='identity'
         )
 
         start = time.time()

@@ -1,6 +1,6 @@
 import math
 import multiprocessing
-import time
+from os.path import join
 from typing import List, Union
 
 import gc
@@ -8,23 +8,19 @@ import lightgbm
 import numpy
 import psutil
 from lightgbm import Booster
-from lightgbm.callback import CallbackEnv
 
 from aydin.regression.regressor_base import RegressorBase
+from aydin.util.log.logging import lsection, lprint
 
 
 class GBMRegressor(RegressorBase):
     """
     Regressor that uses the LightGBM library.
 
-    TODO:   (i)   use directly the native lgbm API instead of the skilearn facade.
-    TODO:   (ii)  Expose key tuning parameters described here: https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html
-    TODO:   (iii) implement increnental learning using technique described here: https://towardsdatascience.com/how-to-learn-from-bigdata-files-on-low-memory-incremental-learning-d377282d38ff
-    TODO:   (iv)  for that purpose (point iii) we will need to dump the x_train and y_train to disk and load it incrementally for learning...
-    TODO:   (v)   try the GPU acceleration: https://lightgbm.readthedocs.io/en/latest/GPU-Performance.html
+   TODO:   (v)   try the GPU acceleration: https://lightgbm.readthedocs.io/en/latest/GPU-Performance.html
     """
 
-    lgbmr: Union[Booster, List[Booster]]
+    model: Union[Booster, List[Booster]]
 
     def __init__(
         self,
@@ -33,8 +29,8 @@ class GBMRegressor(RegressorBase):
         max_bin=512,
         learning_rate=0.01,
         loss='l1',
-        early_stopping_rounds=5,
-        verbosity=100,
+        patience=5,
+        verbosity=-1,
         compute_load=0.8,
     ):
 
@@ -49,32 +45,48 @@ class GBMRegressor(RegressorBase):
         :type learning_rate:
         :param eval_metric:
         :type eval_metric:
-        :param early_stopping_rounds:
-        :type early_stopping_rounds:
+        :param patience:
+        :type patience:
         """
 
         super().__init__()
+
+        self.force_verbose_eval = False
 
         self.num_leaves = num_leaves
         self.n_estimators = n_estimators
         self.max_bin = max_bin
         self.learning_rate = learning_rate
         self.metric = loss
-        self.early_stopping_rounds = early_stopping_rounds
+        self.early_stopping_rounds = patience
         self.verbosity = verbosity
         self.compute_load = compute_load
 
-        self.lgbmr = None
+        self.model = None
 
-        self.monitoring_datasets = None
-        self.callback_period = 3
+    def save(self, path: str):
+        super().save(path)
+        if not self.model is None:
+            lgbm_model_file = join(path, 'lgbm_model.txt')
+            self.model.save_model(lgbm_model_file)
+        return 'lightGBM'
+
+    def _load_internals(self, path: str):
+        lgbm_model_file = join(path, 'lgbm_model.txt')
+        self.model = Booster(model_file=lgbm_model_file)
+
+    ## We exclude certain fields from saving:
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['model']
+        return state
 
     def progressive(self):
         return False
 
     def reset(self):
-        del self.lgbmr
-        self.lgbmr = []
+        del self.model
+        self.model = []
 
     def _get_params(self, num_samples, dtype=numpy.float32, batch=False):
         min_data_in_leaf = 20 + int(0.01 * (num_samples / self.num_leaves))
@@ -102,7 +114,7 @@ class GBMRegressor(RegressorBase):
             "subsample_for_bin": 200000,
             "num_threads": max(1, int(self.compute_load * multiprocessing.cpu_count())),
             "metric": self.metric,
-            'verbosity': -1,  # self.verbosity
+            'verbosity': -1,  # self.verbosity,
             "bagging_freq": 1,
             "bagging_fraction": 0.8,
             # "device_type" : 'gpu'
@@ -145,52 +157,76 @@ class GBMRegressor(RegressorBase):
         is_batch=False,
         regressor_callback=None,
     ):
+        with lsection(f"GBM regressor fitting (batch={is_batch}):"):
 
-        num_samples = y_train.shape[0]
-        self.num_features = x_train.shape[-1]
-        has_valid_dataset = x_valid is not None and y_valid is not None
+            nb_data_points = y_train.shape[0]
+            self.num_features = x_train.shape[-1]
+            has_valid_dataset = x_valid is not None and y_valid is not None
 
-        train_dataset = lightgbm.Dataset(x_train, y_train, silent=True)
-        valid_dataset = (
-            lightgbm.Dataset(x_valid, y_valid, silent=True)
-            if has_valid_dataset
-            else None
-        )
+            lprint(f"Number of data points: {nb_data_points}")
+            if has_valid_dataset:
+                lprint(f"Number of validation data points: {y_valid.shape[0]}")
+            lprint(f"Number of features per data point: {self.num_features}")
 
-        self.last_callback_time_sec = -1
+            train_dataset = lightgbm.Dataset(x_train, y_train, silent=True)
+            valid_dataset = (
+                lightgbm.Dataset(x_valid, y_valid, silent=True)
+                if has_valid_dataset
+                else None
+            )
 
-        evals_result = {}
+            # We translate the it classic callback into a lightGBM callback:
+            # This avoids propagating annoying 'evaluation_result_list[0][2]'
+            # throughout teh codebase...
+            def lgbm_callback(env):
+                if regressor_callback:
+                    try:
+                        val_loss = env.evaluation_result_list[0][2]
+                    except:
+                        val_loss = 0
+                        lprint(
+                            "Problem with getting loss from LightGBM 'env' in callback"
+                        )
+                    regressor_callback(env.iteration, val_loss, env.model)
 
-        model = lightgbm.train(
-            params=self._get_params(num_samples, dtype=x_train.dtype, batch=is_batch),
-            init_model=None,  # self.lgbmr if is_batch else None, <-- not working...
-            train_set=train_dataset,
-            valid_sets=valid_dataset,
-            early_stopping_rounds=self.early_stopping_rounds
-            if has_valid_dataset
-            else None,
-            num_boost_round=self.n_estimators,
-            # keep_training_booster= is_batch, <-- not working...
-            callbacks=[] if regressor_callback is None else [regressor_callback],
-            verbose_eval=regressor_callback is None,
-            evals_result=evals_result,
-        )
+            evals_result = {}
 
-        if is_batch:
-            if (not isinstance(self.lgbmr, (list,))) or self.lgbmr is None:
-                self.lgbmr = []
-            self.lgbmr.append(model)
-        else:
-            self.lgbmr = model
+            with lsection("GBM regressor fitting now:", intersept_print=True):
+                model = lightgbm.train(
+                    params=self._get_params(
+                        nb_data_points, dtype=x_train.dtype, batch=is_batch
+                    ),
+                    init_model=None,  # self.lgbmr if is_batch else None, <-- not working...
+                    train_set=train_dataset,
+                    valid_sets=valid_dataset,
+                    early_stopping_rounds=self.early_stopping_rounds
+                    if has_valid_dataset
+                    else None,
+                    num_boost_round=self.n_estimators,
+                    # keep_training_booster= is_batch, <-- not working...
+                    callbacks=[] if (lgbm_callback is None) else [lgbm_callback],
+                    verbose_eval=(lgbm_callback is None) or (self.force_verbose_eval),
+                    evals_result=evals_result,
+                )
+                lprint(f"GBM fitting done.")
 
-        del train_dataset
-        del valid_dataset
+            if is_batch:
+                if (not isinstance(self.model, (list,))) or self.model is None:
+                    self.model = []
+                self.model.append(model)
+            else:
+                self.model = model
 
-        gc.collect()
+            del train_dataset
+            del valid_dataset
 
-        valid_loss = evals_result['valid_0'][self.metric][-1]
+            gc.collect()
 
-        return valid_loss
+            if has_valid_dataset:
+                valid_loss = evals_result['valid_0'][self.metric][-1]
+                return valid_loss
+            else:
+                return None
 
     def predict(self, x, batch_mode='median', model_to_use: Booster = None):
         """
@@ -203,50 +239,70 @@ class GBMRegressor(RegressorBase):
         :rtype:
         """
 
-        # We check that we get the right number of features.
-        # If not, most likely the batch_dims are set wrong...
-        assert self.num_features == x.shape[-1]
+        with lsection(f"GBM regressor prediction:"):
 
-        if model_to_use is None:
-            model_to_use = self.lgbmr
+            # We check that we get the right number of features.
+            # If not, most likely the batch_dims are set wrong...
+            assert self.num_features == x.shape[-1]
 
-        if isinstance(model_to_use, (list,)):
-            yp = None
+            lprint(f"Number of data points             : {x.shape[0]}")
+            lprint(f"Number of features per data points: {x.shape[-1]}")
 
-            nb_models = len(model_to_use)
+            if model_to_use is None:
+                lprint(f"Using a provided model! (Typical for callbacks)")
+                model_to_use = self.model
 
-            size_in_bytes = nb_models * x.size * x.itemsize
-            free_mem_in_bytes = psutil.virtual_memory().free
+            if isinstance(model_to_use, (list,)):
 
-            # we check if there is enough memory to compute the median:
-            is_enough_memory = 1.2 * size_in_bytes < free_mem_in_bytes
+                lprint(f"GBM regressor was trained on multiple batches")
 
-            if batch_mode == 'median' and is_enough_memory:
+                yp = None
 
-                yp_batch_list = []
+                nb_models = len(model_to_use)
 
-                for model in model_to_use:
-                    yp_batch = model.predict(x, num_iteration=model.best_iteration)
-                    yp_batch_list.append(yp_batch)
+                # Compute sizes
+                size_in_bytes = nb_models * x.size * x.itemsize
+                free_mem_in_bytes = psutil.virtual_memory().free
 
-                yp = numpy.median(yp_batch_list, axis=0)
-                return yp
+                # we check if there is enough memory to compute the median:
+                is_enough_memory = 1.2 * size_in_bytes < free_mem_in_bytes
 
-            else:  # or we compute the mean:
-                counter = 0
-                for model in model_to_use:
-                    yp_batch = model.predict(x, num_iteration=model.best_iteration)
+                if batch_mode == 'median' and is_enough_memory:
 
-                    if yp is None:
-                        yp = yp_batch
-                    else:
-                        yp += yp_batch
+                    lprint(f"Combining 'bagged' regressors using _median_")
+                    yp_batch_list = []
 
-                    counter = counter + 1
+                    counter = 0
+                    for model in model_to_use:
+                        lprint(f"Predicting now batch {counter}/{nb_models}...")
+                        yp_batch = model.predict(x, num_iteration=model.best_iteration)
+                        yp_batch_list.append(yp_batch)
+                        counter += 1
 
-                yp /= counter
+                    yp = numpy.median(yp_batch_list, axis=0)
+                    return yp
 
-                return yp
+                else:  # or we compute the mean:
+                    lprint(f"Combining 'bagged' regressors using _mean_")
+                    counter = 0
+                    for model in model_to_use:
+                        lprint(f"Predicting now batch {counter}/{nb_models}...")
+                        yp_batch = model.predict(x, num_iteration=model.best_iteration)
 
-        else:
-            return model_to_use.predict(x, num_iteration=model_to_use.best_iteration)
+                        if yp is None:
+                            yp = yp_batch
+                        else:
+                            yp += yp_batch
+
+                        counter += 1
+
+                    yp /= counter
+
+                    return yp
+
+            else:
+                lprint(f"GBM regressor predicting now...")
+                return model_to_use.predict(
+                    x, num_iteration=model_to_use.best_iteration
+                )
+            lprint(f"GBM regressor predicting done!")

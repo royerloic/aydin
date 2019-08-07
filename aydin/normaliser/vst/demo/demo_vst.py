@@ -43,11 +43,7 @@ generator = FastMultiscaleConvolutionalFeatures(
 )
 
 regressor = GBMRegressor(
-    learning_rate=0.01,
-    num_leaves=127,
-    max_bin=512,
-    n_estimators=2048,
-    early_stopping_rounds=20,
+    learning_rate=0.01, num_leaves=127, max_bin=512, n_estimators=2048, patience=20
 )
 
 
