@@ -1,18 +1,12 @@
 import collections
+import os
 from abc import ABC, abstractmethod
+from os.path import join
 
+import jsonpickle
 
-RegressorCallbackTuple = collections.namedtuple(
-    "RegressorCallbackEnv",
-    [
-        "model",
-        "params",
-        "iteration",
-        "begin_iteration",
-        "end_iteration",
-        "evaluation_result_list",
-    ],
-)
+from aydin.util.json import encode_indent
+from aydin.util.log.logging import lprint
 
 
 class RegressorBase(ABC):
@@ -25,6 +19,41 @@ class RegressorBase(ABC):
         """
 
         """
+
+    def save(self, path: str):
+        """
+        Saves an 'all-batteries-included' regressor at a given path (folder).
+        :param path: path to save to
+        """
+        os.makedirs(path, exist_ok=True)
+
+        frozen = encode_indent(self)
+
+        lprint("Saving regressor to: {path}")
+        with open(join(path, "regressor.json"), "w") as json_file:
+            json_file.write(frozen)
+
+        return frozen
+
+    @staticmethod
+    def load(path: str):
+        """
+        Returns an 'all-batteries-included' regressor from a given path (folder).
+        :param model_path: path to load from.
+        """
+
+        lprint("Loading regressor from: {path}")
+        with open(join(path, "regressor.json"), "r") as json_file:
+            frozen = json_file.read()
+
+        thawed = jsonpickle.decode(frozen)
+        thawed._load_internals(path)
+
+        return thawed
+
+    @abstractmethod
+    def _load_internals(self, path: str):
+        raise NotImplementedError()
 
     @property
     @abstractmethod

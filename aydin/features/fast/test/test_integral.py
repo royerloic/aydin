@@ -8,7 +8,7 @@ from aydin.features.fast.integral import (
     integral_3d,
     integral_4d,
 )
-from aydin.opencl.opencl_provider import OpenCLProvider
+from aydin.providers.opencl.opencl_provider import OpenCLProvider
 
 
 def test_integral_1d():
@@ -54,7 +54,7 @@ def test_integral_2d():
     image_t1_gpu = Array(opencl_provider.queue, image_o_gpu.shape, numpy.float32)
     image_t2_gpu = Array(opencl_provider.queue, image_o_gpu.shape, numpy.float32)
 
-    image_i_gpu = integral_2d(
+    image_i_gpu, _ = integral_2d(
         opencl_provider, image_o_gpu, image_t1_gpu, image_t2_gpu, mean=mean
     )
     image_i_r = image_i_gpu.get()
@@ -86,7 +86,7 @@ def test_integral_3d():
     image_t1_gpu = Array(opencl_provider.queue, image_o_gpu.shape, numpy.float32)
     image_t2_gpu = Array(opencl_provider.queue, image_o_gpu.shape, numpy.float32)
 
-    image_i_gpu = integral_3d(
+    image_i_gpu, _ = integral_3d(
         opencl_provider, image_o_gpu, image_t1_gpu, image_t2_gpu, mean
     )
     image_i_r = image_i_gpu.get()
@@ -121,7 +121,7 @@ def test_integral_4d():
     image_t1_gpu = Array(opencl_provider.queue, image_o_gpu.shape, numpy.float32)
     image_t2_gpu = Array(opencl_provider.queue, image_o_gpu.shape, numpy.float32)
 
-    image_i_gpu = integral_4d(
+    image_i_gpu, _ = integral_4d(
         opencl_provider, image_o_gpu, image_t1_gpu, image_t2_gpu, mean
     )
     image_i_r = image_i_gpu.get()

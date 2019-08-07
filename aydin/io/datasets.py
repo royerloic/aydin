@@ -6,6 +6,7 @@ from os.path import join, exists
 import gdown
 
 from aydin.io.folders import get_cache_folder
+from aydin.util.log.logging import lprint
 
 datasets_folder = join(get_cache_folder(), 'data')
 
@@ -113,11 +114,11 @@ def download_from_gdrive(
     url = f'https://drive.google.com/uc?id={id}'
     output_path = join(dest_folder, name)
     if overwrite or not exists(output_path):
-        print(f"Downloading file {output_path} as it does not exist yet.")
+        lprint(f"Downloading file {output_path} as it does not exist yet.")
         gdown.download(url, output_path, quiet=False)
 
         if unzip:
-            print(f"Unzipping file {output_path}...")
+            lprint(f"Unzipping file {output_path}...")
             zip_ref = zipfile.ZipFile(output_path, 'r')
             zip_ref.extractall(dest_folder)
             zip_ref.close()
@@ -125,7 +126,7 @@ def download_from_gdrive(
 
         return output_path
     else:
-        print(f"Not downloading file {output_path} as it already exists.")
+        lprint(f"Not downloading file {output_path} as it already exists.")
         return None
 
 

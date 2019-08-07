@@ -3,7 +3,7 @@ import pyopencl
 from pyopencl import cltypes
 from pyopencl.array import Array
 
-from aydin.opencl.opencl_provider import OpenCLProvider
+from aydin.providers.opencl.opencl_provider import OpenCLProvider
 
 
 def integral_1d(

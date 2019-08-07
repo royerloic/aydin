@@ -35,10 +35,7 @@ def demo_aydin_2D():
         )
 
         regressor = GBMRegressor(
-            learning_rate=0.01,
-            num_leaves=256,
-            n_estimators=1024,
-            early_stopping_rounds=20,
+            learning_rate=0.01, num_leaves=256, n_estimators=1024, patience=20
         )
 
         it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)

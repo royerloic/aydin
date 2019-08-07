@@ -11,7 +11,7 @@ from tifffile import imread
 from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.io.datasets import examples_zipped
 from aydin.it.it_classic import ImageTranslatorClassic
-from aydin.regression.nn.nn import NNRegressor
+from aydin.regression.nn import NNRegressor
 
 
 def demo():
@@ -65,7 +65,7 @@ def demo():
         regressor = NNRegressor(max_epochs=5)
 
         it = ImageTranslatorClassic(
-            feature_generator=generator, regressor=regressor, normaliser='identity'
+            feature_generator=generator, regressor=regressor, normaliser_type='identity'
         )
 
         start = time.time()

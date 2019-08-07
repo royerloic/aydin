@@ -5,16 +5,18 @@ from typing import List
 
 import zarr
 
+from aydin.util.log.logging import lprint
+
 
 def is_zarr_storage(input_path):
     try:
         z = zarr.open(input_path)
         assert len(z.shape) >= 0
-        print(f"This path is a ZARR storage: {input_path}")
+        lprint(f"This path is a ZARR storage: {input_path}")
         # IF we reach this point, then we could open the fil and therefore it os a Zarr file...
         return True
     except:
-        print(f"This path is NOT a ZARR storage: {input_path}")
+        lprint(f"This path is NOT a ZARR storage: {input_path}")
         return False
 
 

@@ -13,7 +13,6 @@ from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.io.datasets import downloaded_zipped_example, examples_zipped
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
-from aydin.regression.nn.nn import NNRegressor
 
 
 def n(image):
@@ -62,7 +61,7 @@ def demo():
         generator = FastMultiscaleConvolutionalFeatures(max_level=4)
         regressor = GBMRegressor()
 
-        it = ImageTranslatorClassic(generator, regressor, normaliser='identity')
+        it = ImageTranslatorClassic(generator, regressor, normaliser_type='identity')
 
         start = time.time()
         it.train(noisy, image)

@@ -26,7 +26,7 @@ def _test_percentile_normaliser_internal(input_path, use_dask):
 
     assert array.dtype == numpy.uint16
 
-    percent = 1
+    percent = 0.001
     normaliser = PercentileNormaliser(percent=percent)
     normaliser.calibrate(array)
     print(f"before normalisation: min,max = {(normaliser.rmin, normaliser.rmax)}")
@@ -35,16 +35,18 @@ def _test_percentile_normaliser_internal(input_path, use_dask):
 
     assert normalised_array.dtype == numpy.float32
 
+    assert 0.0 <= normalised_array.min() and normalised_array.max() <= 1.0
+
     # normalised_array *= 2
     denormalised_array = normaliser.denormalise(normalised_array)
 
     assert denormalised_array.dtype == numpy.uint16
 
-    rmin = percentile(denormalised_array, percent)
-    rmax = percentile(denormalised_array, 100 - percent)
+    rmin = percentile(denormalised_array, 100 * percent)
+    rmax = percentile(denormalised_array, 100 - 100 * percent)
     print(f"after normalisation: min,max = {(rmin, rmax)}")
 
-    assert abs(normaliser.rmin - rmin) < 5 and abs(normaliser.rmax - rmax) < 5
+    assert abs(normaliser.rmin - rmin) < 5 and abs(normaliser.rmax - rmax) < 20
 
 
 def test_minmax_normaliser():

@@ -29,7 +29,7 @@ def demo():
 
         regressor = GBMRegressor()
 
-        it = ImageTranslatorClassic(generator, regressor, normaliser='identity')
+        it = ImageTranslatorClassic(generator, regressor, normaliser_type='identity')
 
         batch_dims = (False, False, False, False)
 

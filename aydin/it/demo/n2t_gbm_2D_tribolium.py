@@ -69,11 +69,11 @@ def demo():
             num_leaves=127,
             max_bin=512,
             n_estimators=320,
-            early_stopping_rounds=20,
+            patience=20,
         )
 
         it = ImageTranslatorClassic(
-            feature_generator=generator, regressor=regressor, normaliser='identity'
+            feature_generator=generator, regressor=regressor, normaliser_type='identity'
         )
 
         start = time.time()

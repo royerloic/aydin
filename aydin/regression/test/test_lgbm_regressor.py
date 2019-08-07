@@ -6,15 +6,21 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from aydin.features.classic.mcfocl import MultiscaleConvolutionalFeatures
+from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.regression.gbm import GBMRegressor
 
 
+def n(image):
+    return rescale_intensity(
+        image.astype(numpy.float32), in_range='image', out_range=(0, 1)
+    )
+
+
 def test_lgbm_regressor():
-    display = False
+    display = True
 
     image = camera().astype(numpy.float32)
-    image = rescale_intensity(image, in_range='image', out_range=(0, 1))
+    image = n(image)
 
     intensity = 5
     numpy.random.seed(0)
@@ -22,30 +28,18 @@ def test_lgbm_regressor():
     noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
     noisy = noisy.astype(numpy.float32)
 
-    scales = [1, 3, 7, 15]
-    widths = [3, 3, 3, 3]
+    generator = FastMultiscaleConvolutionalFeatures(exclude_center=True)
 
-    generator = MultiscaleConvolutionalFeatures(
-        kernel_widths=widths,
-        kernel_scales=scales,
-        kernel_shapes=['l1'] * len(scales),
-        exclude_center=True,
-    )
-
-    regressor = GBMRegressor(
-        learning_rate=0.01,
-        num_leaves=127,
-        max_bin=512,
-        n_estimators=512,
-        early_stopping_rounds=20,
-    )
+    regressor = GBMRegressor(verbosity=100)
 
     features = generator.compute(noisy)
 
     x = features.reshape(-1, features.shape[-1])
     y = noisy.reshape(-1)
 
-    regressor.fit(x, y)
+    regressor.force_verbose_eval = True
+
+    regressor.fit(x, y)  # , x_valid=x, y_valid=y)
 
     yp = regressor.predict(x)
 
@@ -59,13 +53,8 @@ def test_lgbm_regressor():
     if display:
         with napari.gui_qt():
             viewer = napari.Viewer()
-            viewer.add_image(
-                rescale_intensity(image, in_range='image', out_range=(0, 1)),
-                name='image',
-            )
-            viewer.add_image(
-                rescale_intensity(denoised, in_range='image', out_range=(0, 1)),
-                name='denoised',
-            )
+            viewer.add_image(n(image), name='image')
+            viewer.add_image(n(noisy), name='noisy')
+            viewer.add_image(n(denoised), name='denoised')
 
     assert ssim_value > 0.84

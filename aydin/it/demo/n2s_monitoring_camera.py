@@ -21,11 +21,11 @@ def n(image):
     )
 
 
-def demo(image):
+def demo(regressor):
     """
         Demo for self-supervised denoising using camera image with synthetic noise
     """
-    image = image.astype(np.float32)
+    image = camera().astype(np.float32)
     image = n(image)
 
     intensity = 5
@@ -43,25 +43,30 @@ def demo(image):
         ]
 
         def callback(arg):
-            print(arg)
-            image, eval_metric, iter = arg
-            print(f"Iteration: {iter} metric: {eval_metric}")
+            # print(arg)
+            iteration, val_loss, image = arg
+            print(
+                f"********CALLBACK******** --> Iteration: {iteration} metric: {val_loss}"
+            )
             # print(f"images: {str(images)}")
             # print("image: ", image[0])
             if image[0] is not None:
+                print(
+                    f"********CALLBACK******** --> Image: shape={image[0].shape} dtype={image[0].dtype}"
+                )
                 viewer.add_image(
                     rescale_intensity(image[0], in_range='image', out_range=(0, 1)),
-                    name='noisy',
+                    name=f'noisy{iteration}',
                 )
 
         generator = FastMultiscaleConvolutionalFeatures()
-        regressor = GBMRegressor()
+
         monitor = Monitor(callback)
 
         it = ImageTranslatorClassic(
             feature_generator=generator,
             regressor=regressor,
-            normaliser='identity',
+            normaliser_type='identity',
             monitor=monitor,
         )
 
@@ -82,4 +87,5 @@ def demo(image):
         viewer.add_image(n(denoised), name='denoised')
 
 
-demo(camera())
+demo(GBMRegressor())
+# demo(NNRegressor())

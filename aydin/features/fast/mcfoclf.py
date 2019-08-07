@@ -1,13 +1,9 @@
 import math
-import tempfile
 
-import napari
 import numpy
 import numpy as np
 import psutil
-import pyopencl
 import pyopencl as cl
-from napari import Viewer
 from pyopencl.array import to_device, Array
 
 from aydin.features.fast.features_1d import collect_feature_1d
@@ -21,9 +17,10 @@ from aydin.features.fast.integral import (
     integral_4d,
 )
 from aydin.features.features_base import FeatureGeneratorBase
-from aydin.offcore.offcore import offcore_array
-from aydin.opencl.opencl_provider import OpenCLProvider
-from aydin.util.nd import nd_range, nd_range_radii
+from aydin.providers.opencl.opencl_provider import OpenCLProvider
+from aydin.util.log.logging import lsection, lprint
+from aydin.util.nd import nd_range_radii
+from aydin.util.offcore.offcore import offcore_array
 
 
 class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
@@ -38,7 +35,6 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
     def __init__(
         self,
-        opencl_provider=OpenCLProvider(),
         kernel_widths=[3] * 10,
         kernel_scales=[2 ** i - 1 for i in range(1, 11)],
         kernel_shapes=None,
@@ -64,10 +60,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         """
 
         self.check_nans = False
-        self.debug_log = True
         self.debug_force_memmap = False
-
-        self.opencl_provider = opencl_provider
 
         self.kernel_widths = kernel_widths
         self.kernel_scales = kernel_scales
@@ -81,50 +74,74 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
         assert dtype == numpy.float32 or dtype == numpy.uint8 or dtype == numpy.uint16
 
+    def _load_internals(self, path: str):
+
+        # We can't use the loaded provider,
+        # we need a new one because of the
+        # native ressources associated:
+        self.opencl_provider = None
+
+    ## We exclude certain fields from saving:
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        if 'opencl_provider' in state:
+            del state['opencl_provider']
+        return state
+
+    def _ensure_opencl_prodider_initialised(self):
+        if not hasattr(self, 'opencl_provider') or self.opencl_provider is None:
+            self.opencl_provider = OpenCLProvider()
+
     def is_enough_memory(self, array):
 
-        # 20% buffer:
-        buffer = 1.2
+        with lsection('Is enough memory for feature generation ?'):
 
-        available_cpu_mem = psutil.virtual_memory().free
-        available_gpu_mem = self.opencl_provider.device.global_mem_size
-        print(f"Available cpu mem: {available_cpu_mem / 1E6} MB")
-        print(f"Available gpu mem: {available_gpu_mem / 1E6} MB")
+            # Ensure we have an openCL provider initialised:
+            self._ensure_opencl_prodider_initialised()
 
-        # This is what we need on the GPU to store the image and one feature:
-        needed_gpu_mem = 2 * int(buffer * 4 * array.size * 1)
-        print(
-            f"Memory needed on the gpu: {needed_gpu_mem / 1E6} MB (image + 1 feature)"
-        )
+            # 20% buffer:
+            buffer = 1.2
 
-        nb_dim = len(array.shape)
-        approximate_num_features = len(self.get_feature_descriptions(nb_dim))
-        print(f"Approximate number of features: {approximate_num_features}")
+            available_cpu_mem = psutil.virtual_memory().free
+            available_gpu_mem = self.opencl_provider.device.global_mem_size
+            lprint(f"Available cpu mem: {available_cpu_mem / 1E6} MB")
+            lprint(f"Available gpu mem: {available_gpu_mem / 1E6} MB")
 
-        # This is what we need on the CPU:
-        needed_cpu_mem = int(
-            buffer
-            * np.dtype(self.dtype).itemsize
-            * array.size
-            * approximate_num_features
-        )
-        print(f"Memory needed on the cpu: {needed_cpu_mem/ 1E6} MB")
+            # This is what we need on the GPU to store the image and one feature:
+            needed_gpu_mem = 2 * int(buffer * 4 * array.size * 1)
+            lprint(
+                f"Memory needed on the gpu: {needed_gpu_mem / 1E6} MB (image + 1 feature)"
+            )
 
-        min_nb_batches_cpu = math.ceil(needed_cpu_mem / available_cpu_mem)
-        min_nb_batches_gpu = math.ceil(needed_gpu_mem / available_gpu_mem)
-        min_nb_batches = max(min_nb_batches_cpu, min_nb_batches_gpu)
-        print(
-            f"Minimum number of batches: {min_nb_batches} ( cpu:{min_nb_batches_cpu}, gpu:{min_nb_batches_gpu} )"
-        )
+            nb_dim = len(array.shape)
+            approximate_num_features = len(self.get_feature_descriptions(nb_dim))
+            lprint(f"Approximate number of features: {approximate_num_features}")
 
-        max_batch_size = (array.itemsize * array.size) / min_nb_batches
-        is_enough_memory = (
-            needed_cpu_mem < available_cpu_mem and needed_gpu_mem < available_gpu_mem
-        )
-        print(f"Maximum batch size: {max_batch_size} ")
-        print(f"Is enough memory: {is_enough_memory} ")
+            # This is what we need on the CPU:
+            needed_cpu_mem = int(
+                buffer
+                * np.dtype(self.dtype).itemsize
+                * array.size
+                * approximate_num_features
+            )
+            lprint(f"Memory needed on the cpu: {needed_cpu_mem/ 1E6} MB")
 
-        return is_enough_memory, max_batch_size
+            min_nb_batches_cpu = math.ceil(needed_cpu_mem / available_cpu_mem)
+            min_nb_batches_gpu = math.ceil(needed_gpu_mem / available_gpu_mem)
+            min_nb_batches = max(min_nb_batches_cpu, min_nb_batches_gpu)
+            lprint(
+                f"Minimum number of batches: {min_nb_batches} ( cpu:{min_nb_batches_cpu}, gpu:{min_nb_batches_gpu} )"
+            )
+
+            max_batch_size = (array.itemsize * array.size) / min_nb_batches
+            is_enough_memory = (
+                needed_cpu_mem < available_cpu_mem
+                and needed_gpu_mem < available_gpu_mem
+            )
+            lprint(f"Maximum batch size: {max_batch_size} ")
+            lprint(f"Is enough memory: {is_enough_memory} ")
+
+            return is_enough_memory, max_batch_size
 
     def get_receptive_field_radius(self, nb_dim):
 
@@ -140,6 +157,23 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
         return radius
 
+    def save(self, path: str):
+        """
+        Saves a 'all-batteries-inlcuded' image translation model at a given path (can be file or folder).
+        :param path: path to save to
+        """
+
+        return super().save(path)
+
+    @staticmethod
+    def load(path: str):
+        """
+        Loads all parameters for the image translation
+        :param path: path to load from.
+        """
+
+        return super().load(path)
+
     def compute(self, image, batch_dims=None, features=None):
         """
         Computes the features given an image. If the input image is of shape (d,h,w),
@@ -150,177 +184,189 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         :rtype:
         """
 
-        # Checking NaNs just in case:
-        if self.check_nans and np.isnan(np.sum(image)):
-            raise Exception(f'NaN values occur in image!')
+        with lsection('Computing multi-scale convolutional features '):
 
-        image_dimension = len(image.shape)
+            # Ensure we have an openCL provider initialised:
+            self._ensure_opencl_prodider_initialised()
 
-        # set default batch_dim value:
-        if batch_dims is None:
-            batch_dims = (False,) * image_dimension
+            # Checking NaNs just in case:
+            if self.check_nans and np.isnan(np.sum(image)):
+                raise Exception(f'NaN values occur in image!')
 
-        # permutate dimensions in image to consolidate batch dimensions at the front:
-        batch_dim_axes = [i for i in range(0, image_dimension) if batch_dims[i]]
-        non_batch_dim_axes = [i for i in range(0, image_dimension) if not batch_dims[i]]
-        axes_permutation = batch_dim_axes + non_batch_dim_axes
-        image = numpy.transpose(image, axes=axes_permutation)
-        nb_batch_dim = sum([(1 if i else 0) for i in batch_dims])
-        nb_non_batch_dim = image_dimension - nb_batch_dim
+            image_dimension = len(image.shape)
 
-        if self.debug_log:
-            print(
+            # set default batch_dim value:
+            if batch_dims is None:
+                batch_dims = (False,) * image_dimension
+
+            # permutate dimensions in image to consolidate batch dimensions at the front:
+            batch_dim_axes = [i for i in range(0, image_dimension) if batch_dims[i]]
+            non_batch_dim_axes = [
+                i for i in range(0, image_dimension) if not batch_dims[i]
+            ]
+            axes_permutation = batch_dim_axes + non_batch_dim_axes
+            image = numpy.transpose(image, axes=axes_permutation)
+            nb_batch_dim = sum([(1 if i else 0) for i in batch_dims])
+            nb_non_batch_dim = image_dimension - nb_batch_dim
+
+            lprint(
                 f'Axis permutation for batch-dim consolidation during feature gen: {axes_permutation}'
             )
-            print(
+            lprint(
                 f'Number of batch dim: {nb_batch_dim}, number of non batch dim: {nb_non_batch_dim}'
             )
 
-        # # Set default aspect ratio based on image dimension:
-        # if features_aspect_ratio is None:
-        #     features_aspect_ratio = (1,) * image_dimension
-        # assert len(features_aspect_ratio) == image_dimension
-        # features_aspect_ratio = list(features_aspect_ratio)
-        #
-        # if self.debug_log:
-        #     print(f'Feature aspect ratio: {features_aspect_ratio}')
-        #
-        # # Permutate aspect ratio:
-        # features_aspect_ratio = tuple(
-        #     features_aspect_ratio[axis] for axis in axes_permutation
-        # )
-        #
-        # # and we only keep the non-batch dimensions aspect ratio values:
-        # features_aspect_ratio = features_aspect_ratio[-nb_non_batch_dim:]
-        #
-        # if self.debug_log:
-        #     print(
-        #         f'Feature aspect ratio after permutation and selection: {features_aspect_ratio}'
-        #     )
+            #### PLEASE DO NOT DELETE THIS CODE !!!!!!!!
+            ###
+            ##
+            # # Set default aspect ratio based on image dimension:
+            # if features_aspect_ratio is None:
+            #     features_aspect_ratio = (1,) * image_dimension
+            # assert len(features_aspect_ratio) == image_dimension
+            # features_aspect_ratio = list(features_aspect_ratio)
+            #
+            # if self.debug_log:
+            #     print(f'Feature aspect ratio: {features_aspect_ratio}')
+            #
+            # # Permutate aspect ratio:
+            # features_aspect_ratio = tuple(
+            #     features_aspect_ratio[axis] for axis in axes_permutation
+            # )
+            #
+            # # and we only keep the non-batch dimensions aspect ratio values:
+            # features_aspect_ratio = features_aspect_ratio[-nb_non_batch_dim:]
+            #
+            # if self.debug_log:
+            #     print(
+            #         f'Feature aspect ratio after permutation and selection: {features_aspect_ratio}'
+            #     )
 
-        # Initialise some variables:
-        image_batch = None
-        image_batch_gpu = None
-        image_integral_gpu_1 = None
-        image_integral_gpu_2 = None
-        feature_gpu = None
+            # Initialise some variables:
+            image_batch = None
+            image_batch_gpu = None
+            image_integral_gpu_1 = None
+            image_integral_gpu_2 = None
+            feature_gpu = None
 
-        # We iterate over batches:
-        for index in np.ndindex(*(image.shape[0:nb_batch_dim])):
+            # We iterate over batches:
+            for index in np.ndindex(*(image.shape[0:nb_batch_dim])):
 
-            # Image batch slice:
-            image_batch_slice = (*index, *(slice(None),) * nb_non_batch_dim)
+                # Image batch slice:
+                image_batch_slice = (*index, *(slice(None),) * nb_non_batch_dim)
 
-            # Feature batch slice:
-            feature_batch_slice = (
-                slice(None),
-                *index,
-                *(slice(None),) * nb_non_batch_dim,
-            )
-
-            if self.debug_log:
-                print(f'Index: {index}')
-                print(f'Image batch slice: {image_batch_slice}')
-                print(f'Feature batch slice: {feature_batch_slice}')
-
-            # Little simplification:
-            if image_batch_slice == (slice(None, None, None),) * nb_non_batch_dim:
-                image_batch_slice = numpy.s_[...]
-
-            # Copy because image[image_batch_slice] is not necessarily contiguous and pyOpenCL does not like discontiguous arrays:
-            if image_batch is None:
-                image_batch = np.array(
-                    image[image_batch_slice], copy=True, dtype=numpy.float32
-                )
-            else:
-                # Here we need to explicitly transfer values without creating an instance!
-                numpy.copyto(image_batch, image[image_batch_slice], casting='unsafe')
-
-            # We move the image to the GPU. Needs to fit entirely, could be a problem for very very large images.
-            if image_batch_gpu is None:
-                image_batch_gpu = to_device(self.opencl_provider.queue, image_batch)
-            else:
-                image_batch_gpu.set(image_batch, self.opencl_provider.queue)
-
-            # This array on the GPU will host a single feature.
-            # We will use that as temp destination for each feature generated on the GPU.
-            if feature_gpu is None:
-                feature_gpu = Array(
-                    self.opencl_provider.queue, image_batch_gpu.shape, np.float32
+                # Feature batch slice:
+                feature_batch_slice = (
+                    slice(None),
+                    *index,
+                    *(slice(None),) * nb_non_batch_dim,
                 )
 
-                # we also allocate the needed integral images gpu storage:
-                image_integral_gpu_1 = Array(
-                    self.opencl_provider.queue, image_batch_gpu.shape, np.float32
+                lprint(f'Index: {index}')
+                lprint(f'Image batch slice: {image_batch_slice}')
+                lprint(f'Feature batch slice: {feature_batch_slice}')
+
+                # Little simplification:
+                if image_batch_slice == (slice(None, None, None),) * nb_non_batch_dim:
+                    image_batch_slice = numpy.s_[...]
+
+                # Copy because image[image_batch_slice] is not necessarily contiguous and pyOpenCL does not like discontiguous arrays:
+                if image_batch is None:
+                    image_batch = np.array(
+                        image[image_batch_slice], copy=True, dtype=numpy.float32
+                    )
+                else:
+                    # Here we need to explicitly transfer values without creating an instance!
+                    numpy.copyto(
+                        image_batch, image[image_batch_slice], casting='unsafe'
+                    )
+
+                # We move the image to the GPU. Needs to fit entirely, could be a problem for very very large images.
+                lprint(
+                    f'Uploading image to GPU (size={image_batch.size*image_batch.itemsize / 1e6} MB)'
                 )
-                image_integral_gpu_2 = Array(
-                    self.opencl_provider.queue, image_batch_gpu.shape, np.float32
-                )
+                if image_batch_gpu is None:
+                    image_batch_gpu = to_device(self.opencl_provider.queue, image_batch)
+                else:
+                    image_batch_gpu.set(image_batch, self.opencl_provider.queue)
 
-            # Checking that the number of dimensions is within the bounds of what we can do:
-            if nb_non_batch_dim <= 4:
+                # This array on the GPU will host a single feature.
+                # We will use that as temp destination for each feature generated on the GPU.
+                if feature_gpu is None:
+                    feature_gpu = Array(
+                        self.opencl_provider.queue, image_batch_gpu.shape, np.float32
+                    )
 
-                # We also compute the integral image for the present batch image:
-                image_integral_gpu, mean = self.compute_integral_image(
-                    image_batch_gpu, image_integral_gpu_1, image_integral_gpu_2
-                )
+                    # we also allocate the needed integral images gpu storage:
+                    image_integral_gpu_1 = Array(
+                        self.opencl_provider.queue, image_batch_gpu.shape, np.float32
+                    )
+                    image_integral_gpu_2 = Array(
+                        self.opencl_provider.queue, image_batch_gpu.shape, np.float32
+                    )
 
-                # Usefull code snippet for debugging features:
-                # with napari.gui_qt():
-                #      viewer = Viewer()
-                #      viewer.add_image(image_batch_gpu.get(), name='image')
-                #      viewer.add_image(rescale_intensity(image_integral_gpu.get(), in_range='image', out_range=(0, 1)), name='integral')
+                # Checking that the number of dimensions is within the bounds of what we can do:
+                if nb_non_batch_dim <= 4:
 
-                # We first do a dry run to compute the number of features:
-                nb_features = self.collect_features_nD(
-                    image_batch_gpu, image_integral_gpu, nb_non_batch_dim
-                )
-                if self.debug_log:
-                    print(f'Number of features:  {nb_features}')
+                    # We also compute the integral image for the present batch image:
+                    image_integral_gpu, mean = self.compute_integral_image(
+                        image_batch_gpu, image_integral_gpu_1, image_integral_gpu_2
+                    )
 
-                if features is None:
-                    # At this point we know how big is the whole feature array, so we create it (encompasses all batches)
-                    # This happens only once, the first time:
-                    features = self.create_feature_array(image, nb_features)
+                    # Usefull code snippet for debugging features:
+                    # with napari.gui_qt():
+                    #      viewer = Viewer()
+                    #      viewer.add_image(image_batch_gpu.get(), name='image')
+                    #      viewer.add_image(rescale_intensity(image_integral_gpu.get(), in_range='image', out_range=(0, 1)), name='integral')
 
-                # we compute one batch of features:
-                self.collect_features_nD(
-                    image_batch_gpu,
-                    image_integral_gpu,
-                    nb_non_batch_dim,
-                    feature_gpu,
-                    features[feature_batch_slice],
-                    mean,
-                )
+                    # We first do a dry run to compute the number of features:
+                    nb_features = self.collect_features_nD(
+                        image_batch_gpu, image_integral_gpu, nb_non_batch_dim
+                    )
+                    lprint(f'Number of features:  {nb_features}')
 
-            else:  # We only support 1D, 2D, 3D, and 4D.
-                raise Exception(
-                    f'dimension above {image_dimension} for non nbatch dimensions not yet implemented!'
-                )
+                    if features is None:
+                        # At this point we know how big is the whole feature array, so we create it (encompasses all batches)
+                        # This happens only once, the first time:
+                        lprint(f'Creating feature array the first time...')
+                        features = self.create_feature_array(image, nb_features)
 
-        del feature_gpu
-        del image_batch_gpu
+                    # we compute one batch of features:
+                    self.collect_features_nD(
+                        image_batch_gpu,
+                        image_integral_gpu,
+                        nb_non_batch_dim,
+                        feature_gpu,
+                        features[feature_batch_slice],
+                        mean,
+                    )
 
-        # 'collect_fesatures_nD' puts the feature vector in axis 0.
-        # The following line creates a view of the array
-        # in which the features are indexed by the last dimension instead:
-        features = np.moveaxis(features, 0, -1)
+                else:  # We only support 1D, 2D, 3D, and 4D.
+                    message = f'dimension above {image_dimension} for non nbatch dimensions not yet implemented!'
+                    lprint(message)
+                    raise Exception(message)
 
-        # computes the inverse permutation from the permutation use to consolidate batch dimensions:
-        axes_inverse_permutation = [
-            axes_permutation.index(l) for l in range(len(axes_permutation))
-        ] + [image_dimension]
+            del feature_gpu
+            del image_batch_gpu
 
-        # permutates dimensions back:
-        image = numpy.transpose(image, axes=axes_inverse_permutation[:-1])
-        features = numpy.transpose(features, axes=axes_inverse_permutation)
+            # 'collect_fesatures_nD' puts the feature vector in axis 0.
+            # The following line creates a view of the array
+            # in which the features are indexed by the last dimension instead:
+            features = np.moveaxis(features, 0, -1)
 
-        return features
+            # computes the inverse permutation from the permutation use to consolidate batch dimensions:
+            axes_inverse_permutation = [
+                axes_permutation.index(l) for l in range(len(axes_permutation))
+            ] + [image_dimension]
+
+            # permutates dimensions back:
+            image = numpy.transpose(image, axes=axes_inverse_permutation[:-1])
+            features = numpy.transpose(features, axes=axes_inverse_permutation)
+
+            return features
 
     def create_feature_array(self, image, nb_features):
         """
         Creates a feature array of the right size and possibly in a 'lazy' way using memory mapping.
-
 
         :param image: image for which features are created
         :type image:
@@ -329,67 +375,72 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         :return: feature array
         :rtype:
         """
-        if self.debug_log:
-            print(f'Creating feature array...')
 
-        size_in_bytes = nb_features * image.size * np.dtype(self.dtype).itemsize
-        free_mem_in_bytes = psutil.virtual_memory().free
-        if self.debug_log:
-            print(f'There is {int(free_mem_in_bytes/1E6)} MB of free memory')
-            print(f'Feature array will be {(size_in_bytes/1E6)} MB.')
+        with lsection(f'Creating feature array for image of shape: {image.shape}'):
 
-        # We take the heuristic that we need 20% extra memory available to be confortable:
-        is_enough_memory = 1.2 * size_in_bytes < free_mem_in_bytes
+            size_in_bytes = nb_features * image.size * np.dtype(self.dtype).itemsize
+            free_mem_in_bytes = psutil.virtual_memory().free
+            lprint(f'There is {int(free_mem_in_bytes/1E6)} MB of free memory')
+            lprint(f'Feature array will be {(size_in_bytes/1E6)} MB.')
 
-        # That's the shape we need:
-        shape = (nb_features,) + image.shape
+            # We take the heuristic that we need 20% extra memory available to be confortable:
+            is_enough_memory = 1.2 * size_in_bytes < free_mem_in_bytes
 
-        if not self.debug_force_memmap and is_enough_memory:
-            if self.debug_log:
-                print(
+            # That's the shape we need:
+            shape = (nb_features,) + image.shape
+
+            if not self.debug_force_memmap and is_enough_memory:
+                lprint(
                     f'There is enough memory -- we do not need to use a mem mapped array.'
                 )
-            array = np.zeros(shape, dtype=self.dtype)
+                array = np.zeros(shape, dtype=self.dtype)
 
-        else:
-            if self.debug_log:
-                print(f'There is not enough memory -- we will use a mem mapped array.')
-            array = offcore_array(shape=shape, dtype=self.dtype)
+            else:
+                lprint(f'There is not enough memory -- we will use a mem mapped array.')
+                array = offcore_array(shape=shape, dtype=self.dtype)
 
-        return array
+            return array
 
     def compute_integral_image(
         self, image_gpu, image_integral_gpu_1, image_integral_gpu_2
     ):
 
-        dim = len(image_gpu.shape)
+        with lsection(f'Computing integral image...'):
 
-        if dim == 1:
-            return integral_1d(self.opencl_provider, image_gpu, image_integral_gpu_1)
+            # Ensure we have an openCL provider initialised:
+            self._ensure_opencl_prodider_initialised()
 
-        elif dim == 2:
-            return integral_2d(
-                self.opencl_provider,
-                image_gpu,
-                image_integral_gpu_1,
-                image_integral_gpu_2,
-            )
+            dim = len(image_gpu.shape)
 
-        elif dim == 3:
-            return integral_3d(
-                self.opencl_provider,
-                image_gpu,
-                image_integral_gpu_1,
-                image_integral_gpu_2,
-            )
+            if dim == 1:
+                return integral_1d(
+                    self.opencl_provider, image_gpu, image_integral_gpu_1
+                )
 
-        elif dim == 4:
-            return integral_4d(
-                self.opencl_provider,
-                image_gpu,
-                image_integral_gpu_1,
-                image_integral_gpu_2,
-            )
+            elif dim == 2:
+                return integral_2d(
+                    self.opencl_provider,
+                    image_gpu,
+                    image_integral_gpu_1,
+                    image_integral_gpu_2,
+                )
+
+            elif dim == 3:
+                return integral_3d(
+                    self.opencl_provider,
+                    image_gpu,
+                    image_integral_gpu_1,
+                    image_integral_gpu_2,
+                )
+
+            elif dim == 4:
+                return integral_4d(
+                    self.opencl_provider,
+                    image_gpu,
+                    image_integral_gpu_1,
+                    image_integral_gpu_2,
+                )
+            lprint("Done.")
 
     def collect_features_nD(
         self,
@@ -413,91 +464,93 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         :return: number of features or the features themselves depending on the value of features (None or not None)
         """
 
-        if self.debug_log:
+        with lsection(f'Compute features of dimension {len(image_gpu.shape)}'):
+
+            # Ensure we have an openCL provider initialised:
+            self._ensure_opencl_prodider_initialised()
+
             if features is None:
-                print(f"Counting the number of features...")
+                lprint(f"Counting the number of features...")
             else:
-                print(f"Computing features...")
+                lprint(f"Computing features...")
 
-        feature_description_list = self.get_feature_descriptions(ndim)
+            feature_description_list = self.get_feature_descriptions(ndim)
 
-        if features is not None:
+            if features is not None:
 
-            # If feature is not None then we are
+                # If feature is not None then we are
 
-            # Temporary numpy array to hold the features after their computation on GPU:
-            feature = None
+                # Temporary numpy array to hold the features after their computation on GPU:
+                feature = None
 
-            # We iterate through all features:
-            feature_index = 0
-            for effective_shift, effective_scale in feature_description_list:
+                # We iterate through all features:
+                feature_index = 0
+                for effective_shift, effective_scale in feature_description_list:
 
-                if self.debug_log:
-                    print(
-                        #    f"(width={width}, scale={scale}, shift={shift}, shape={shape}, reduction={reduction})"
-                        f"(shift={effective_shift}, scale={effective_scale} "
+                    lprint(f"(shift={effective_shift}, scale={effective_scale} ")
+
+                    # We assemble the call:
+                    params = (
+                        self.opencl_provider,
+                        image_gpu,
+                        image_integral_gpu,
+                        feature_gpu,
+                        *effective_shift,
+                        *effective_scale,
+                        self.exclude_center,
+                        mean,
                     )
 
-                # We assemble the call:
-                params = (
-                    self.opencl_provider,
-                    image_gpu,
-                    image_integral_gpu,
-                    feature_gpu,
-                    *effective_shift,
-                    *effective_scale,
-                    self.exclude_center,
-                    mean,
-                )
+                    # We dispatch the call to the appropriate OpenCL feature collection code:
+                    if ndim == 1:
+                        collect_feature_1d(*params)
+                    elif ndim == 2:
+                        collect_feature_2d(*params)
+                    elif ndim == 3:
+                        collect_feature_3d(*params)
+                    elif ndim == 4:
+                        collect_feature_4d(*params)
 
-                # We dispatch the call to the appropriate OpenCL feature collection code:
-                if ndim == 1:
-                    collect_feature_1d(*params)
-                elif ndim == 2:
-                    collect_feature_2d(*params)
-                elif ndim == 3:
-                    collect_feature_3d(*params)
-                elif ndim == 4:
-                    collect_feature_4d(*params)
+                    # Just-in-time allocation of the temp CPU feature array:
+                    if feature is None:
+                        feature = numpy.zeros(features.shape[1:], dtype=numpy.float32)
 
-                # Just-in-time allocation of the temp CPU feature array:
-                if feature is None:
-                    feature = numpy.zeros(features.shape[1:], dtype=numpy.float32)
+                    # We copy the GPU computed feature back into CPU memory:
+                    cl.enqueue_copy(
+                        self.opencl_provider.queue, feature, feature_gpu.data
+                    )
 
-                # We copy the GPU computed feature back into CPU memory:
-                cl.enqueue_copy(self.opencl_provider.queue, feature, feature_gpu.data)
+                    # We multiply to prepare potential casting,
+                    # Let's also check that we don't have overflows:
+                    if self.dtype == numpy.uint8:
+                        feature *= 255
+                        # assert numpy.any(feature < 255)
+                    elif self.dtype == numpy.uint16:
+                        feature *= 255 * 255
+                        # assert numpy.any(feature < 255*255)
 
-                # We multiply to prepare potential casting,
-                # Let's also check that we don't have overflows:
-                if self.dtype == numpy.uint8:
-                    feature *= 255
-                    # assert numpy.any(feature < 255)
-                elif self.dtype == numpy.uint16:
-                    feature *= 255 * 255
-                    # assert numpy.any(feature < 255*255)
+                    # We put the computed feature into the main array that holds all features:
+                    # casting is done as needed:
+                    features[feature_index] = feature.astype(self.dtype, copy=False)
 
-                # We put the computed feature into the main array that holds all features:
-                # casting is done as needed:
-                features[feature_index] = feature.astype(self.dtype, copy=False)
+                    # with napari.gui_qt():
+                    #     viewer = Viewer()
+                    #     viewer.add_image(image_gpu.get(), name='image')
+                    #     viewer.add_image(feature, name='feature')
 
-                # with napari.gui_qt():
-                #     viewer = Viewer()
-                #     viewer.add_image(image_gpu.get(), name='image')
-                #     viewer.add_image(feature, name='feature')
+                    # optional sanity check:
+                    if self.check_nans and np.isnan(np.sum(features[feature_index])):
+                        raise Exception(f'NaN values occur in features!')
 
-                # optional sanity check:
-                if self.check_nans and np.isnan(np.sum(features[feature_index])):
-                    raise Exception(f'NaN values occur in features!')
+                    # Increment feature counter:
+                    feature_index += 1
 
-                # Increment feature counter:
-                feature_index += 1
+                # We return the array holding all computed features:
+                return features
 
-            # We return the array holding all computed features:
-            return features
-
-        else:
-            # In this case we are just here to count the _number_ of features, and return that count:
-            return len(feature_description_list)
+            else:
+                # In this case we are just here to count the _number_ of features, and return that count:
+                return len(feature_description_list)
 
     def get_feature_descriptions(self, ndim):
         feature_description_list = []
@@ -559,8 +612,8 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         number_of_duplicates = len(feature_description_list) - len(
             no_duplicate_feature_description_list
         )
-        if self.debug_log:
-            print(f"Number of duplicate features: {number_of_duplicates}")
+
+        lprint(f"Number of duplicate features: {number_of_duplicates}")
         feature_description_list = no_duplicate_feature_description_list
         return feature_description_list
 

@@ -8,11 +8,11 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from aydin.features.classic.mcfocl import MultiscaleConvolutionalFeatures
+from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.regression.gbm import GBMRegressor
 
 
-def demo_lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, display=True):
+def lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, display=True):
     image = camera().astype(numpy.float32)
     image = rescale_intensity(image, in_range='image', out_range=(0, 1))
 
@@ -25,7 +25,7 @@ def demo_lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, displa
     scales = [1, 3, 7, 15]
     widths = [3, 3, 3, 3]
 
-    generator = MultiscaleConvolutionalFeatures(
+    generator = FastMultiscaleConvolutionalFeatures(
         kernel_widths=widths,
         kernel_scales=scales,
         kernel_shapes=['l1'] * len(scales),
@@ -50,7 +50,7 @@ def demo_lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, displa
         'num_leaves': 127,
         'max_bin': 512,
         'n_estimators': 512,
-        'early_stopping_rounds': 20,
+        'patience': 20,
         'verbosity': 0,
     }
 
@@ -65,7 +65,7 @@ def demo_lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, displa
 
         for x_batch, y_batch in zip(x_batches, y_batches):
 
-            regressor.fit_batch(x_batch, y_batch, xv, yv)
+            regressor.fit(x_batch, y_batch, xv, yv, is_batch=True)
 
             batch_counter = batch_counter + 1
             if batch_counter > num_used_batches:
@@ -97,9 +97,9 @@ def demo_lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, displa
 
 
 def test_demo_lgbm_regressor():
-    ssim_no_batch = demo_lgbm_regressor(batch=False, display=False)
-    ssim_one_batch = demo_lgbm_regressor(batch=True, num_used_batches=1, display=False)
-    ssim_batch = demo_lgbm_regressor(batch=True, display=False)
+    ssim_no_batch = lgbm_regressor(batch=False, display=False)
+    ssim_one_batch = lgbm_regressor(batch=True, num_used_batches=1, display=False)
+    ssim_batch = lgbm_regressor(batch=True, display=False)
 
     print(
         f"ssim_no_batch={ssim_no_batch}, ssim_one_batch={ssim_one_batch}, ssim_batch={ssim_batch} "
