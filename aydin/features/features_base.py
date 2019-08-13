@@ -73,12 +73,26 @@ class FeatureGeneratorBase(ABC):
         raise NotImplemented()
 
     @abstractmethod
-    def compute(self, image, batch_dims=None, features=None):
+    def compute(
+        self,
+        image,
+        exclude_center_feature=False,
+        exclude_center_value=False,
+        batch_dims=None,
+        features=None,
+    ):
         """
         Computes the features given an image. If the input image is of shape (d,h,w),
         resulting features are of shape (d,h,w,n) where n is the number of features.
+
         :param image: image for which features are computed
         :type image: ndarray
+        :param exclude_center_feature:
+        :type exclude_center_feature:
+        :param batch_dims:
+        :type batch_dims:
+        :param exclude_center_value:
+        :type exclude_center_value:
         :return: feature array
         :rtype: ndarray
         """

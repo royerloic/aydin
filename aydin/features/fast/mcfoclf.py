@@ -39,7 +39,6 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         kernel_scales=[2 ** i - 1 for i in range(1, 11)],
         kernel_shapes=None,
         max_level=10,
-        exclude_center=False,
         dtype=numpy.float32,
     ):
         """
@@ -69,7 +68,6 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         )
         self.max_level = max_level
 
-        self.exclude_center = exclude_center
         self.dtype = dtype
 
         assert dtype == numpy.float32 or dtype == numpy.uint8 or dtype == numpy.uint16
@@ -114,7 +112,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             )
 
             nb_dim = len(array.shape)
-            approximate_num_features = len(self.get_feature_descriptions(nb_dim))
+            approximate_num_features = len(self.get_feature_descriptions(nb_dim, False))
             lprint(f"Approximate number of features: {approximate_num_features}")
 
             # This is what we need on the CPU:
@@ -174,7 +172,14 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
         return super().load(path)
 
-    def compute(self, image, batch_dims=None, features=None):
+    def compute(
+        self,
+        image,
+        batch_dims=None,
+        exclude_center_feature=False,
+        exclude_center_value=False,
+        features=None,
+    ):
         """
         Computes the features given an image. If the input image is of shape (d,h,w),
         resulting features are of shape (d,h,w,n) where n is the number of features.
@@ -320,7 +325,11 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
                     # We first do a dry run to compute the number of features:
                     nb_features = self.collect_features_nD(
-                        image_batch_gpu, image_integral_gpu, nb_non_batch_dim
+                        image_batch_gpu,
+                        image_integral_gpu,
+                        nb_non_batch_dim,
+                        exclude_center_feature,
+                        exclude_center_value,
                     )
                     lprint(f'Number of features:  {nb_features}')
 
@@ -335,6 +344,8 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                         image_batch_gpu,
                         image_integral_gpu,
                         nb_non_batch_dim,
+                        exclude_center_feature,
+                        exclude_center_value,
                         feature_gpu,
                         features[feature_batch_slice],
                         mean,
@@ -447,6 +458,8 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         image_gpu,
         image_integral_gpu,
         ndim,
+        exclude_center_feature,
+        exclude_center_value,
         feature_gpu=None,
         features=None,
         mean=0,
@@ -474,7 +487,9 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             else:
                 lprint(f"Computing features...")
 
-            feature_description_list = self.get_feature_descriptions(ndim)
+            feature_description_list = self.get_feature_descriptions(
+                ndim, exclude_center_feature
+            )
 
             if features is not None:
 
@@ -497,7 +512,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                         feature_gpu,
                         *effective_shift,
                         *effective_scale,
-                        self.exclude_center,
+                        exclude_center_value,
                         mean,
                     )
 
@@ -552,7 +567,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                 # In this case we are just here to count the _number_ of features, and return that count:
                 return len(feature_description_list)
 
-    def get_feature_descriptions(self, ndim):
+    def get_feature_descriptions(self, ndim, exclude_center):
         feature_description_list = []
 
         level = 0
@@ -585,7 +600,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                 #    break
 
                 # Excluding the center pixel/feature:
-                if self.exclude_center and scale == 1 and shift == (0,) * ndim:
+                if exclude_center and scale == 1 and shift == (0,) * ndim:
                     continue
 
                 # Different 'shapes' of feature  distributions:

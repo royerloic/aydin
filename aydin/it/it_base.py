@@ -456,10 +456,10 @@ class ImageTranslatorBase(ABC):
                 lprint(f"Margins for batches: {margins} .")
 
                 # batch slice objects (with and without margins):
-                batch_slices_margins = nd_split_slices(
-                    shape, batch_strategy, margins=margins
+                batch_slices_margins = list(
+                    nd_split_slices(shape, batch_strategy, margins=margins)
                 )
-                batch_slices = nd_split_slices(shape, batch_strategy)
+                batch_slices = list(nd_split_slices(shape, batch_strategy))
 
                 lprint(f"Number of batches (slices): {len(batch_slices)}")
 
