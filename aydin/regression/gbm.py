@@ -1,3 +1,4 @@
+import glob
 import math
 import multiprocessing
 from os.path import join
@@ -67,13 +68,30 @@ class GBMRegressor(RegressorBase):
     def save(self, path: str):
         super().save(path)
         if not self.model is None:
-            lgbm_model_file = join(path, 'lgbm_model.txt')
-            self.model.save_model(lgbm_model_file)
+            if isinstance(self.model, (list,)):
+                counter = 0
+                for model in self.model:
+                    lgbm_model_file = join(path, 'lgbm_model_{counter}.txt')
+                    model.save_model(lgbm_model_file)
+                    counter += 1
+            else:
+                lgbm_model_file = join(path, 'lgbm_model.txt')
+                self.model.save_model(lgbm_model_file)
+
         return 'lightGBM'
 
     def _load_internals(self, path: str):
-        lgbm_model_file = join(path, 'lgbm_model.txt')
-        self.model = Booster(model_file=lgbm_model_file)
+
+        lgbm_files = glob.glob(join(path, 'lgbm_model_*.txt'))
+
+        if len(lgbm_files) == 0:
+            lgbm_model_file = join(path, 'lgbm_model.txt')
+            self.model = Booster(model_file=lgbm_model_file)
+        else:
+            self.model = []
+            for lgbm_file in lgbm_files:
+                booster = Booster(model_file=lgbm_file)
+                self.model.append(booster)
 
     ## We exclude certain fields from saving:
     def __getstate__(self):

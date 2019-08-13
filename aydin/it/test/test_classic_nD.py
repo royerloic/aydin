@@ -14,43 +14,39 @@ from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn import NNRegressor
 
-display_for_debug = True
+display_for_debug = False
 
 
 def test_it_classic_nn_2D():
-    it_classic_nn_nD(
-        2, 256, numpy.s_[0:101, 0:173], regressor='nn_utils', min_ssim=0.70
-    )
+    it_classic_nD(2, 512, numpy.s_[0:281, 0:413], regressor='nn', min_ssim=0.60)
 
 
 def test_it_classic_nn_3D():
-    it_classic_nn_nD(
-        3, 128, numpy.s_[0:111, 0:73, 0:37], regressor='nn_utils', min_ssim=0.70
-    )
+    it_classic_nD(3, 128, numpy.s_[0:111, 0:113, 0:97], regressor='nn', min_ssim=0.70)
 
 
 def test_it_classic_nn_4D():
-    it_classic_nn_nD(
-        4, 64, numpy.s_[0:11, 0:31, 0:3747, 0:50], regressor='nn_utils', min_ssim=0.70
+    it_classic_nD(
+        4, 64, numpy.s_[0:11, 0:41, 0:57, 0:53], regressor='nn', min_ssim=0.70
     )
 
 
 def test_it_classic_gbm_2D():
-    it_classic_nn_nD(2, 256, numpy.s_[0:111, 0:73], regressor='gbm', min_ssim=0.70)
+    it_classic_nD(2, 512, numpy.s_[0:201, 0:213], regressor='gbm', min_ssim=0.70)
 
 
 def test_it_classic_gbm_3D():
-    it_classic_nn_nD(3, 64, numpy.s_[0:111, 0:73, 0:37], regressor='gbm', min_ssim=0.70)
+    it_classic_nD(3, 48, numpy.s_[0:41, 0:43, 0:37], regressor='gbm', min_ssim=0.70)
 
 
 def test_it_classic_gbm_4D():
-    it_classic_nn_nD(
-        4, 32, numpy.s_[0:11, 0:31, 0:37, 0:50], regressor='gbm', min_ssim=0.70
+    it_classic_nD(
+        4, 24, numpy.s_[0:11, 0:23, 0:22, 0:21], regressor='gbm', min_ssim=0.70
     )
 
 
 def test_it_classic_gbm_2D_batchdims():
-    it_classic_nn_nD(
+    it_classic_nD(
         2,
         256,
         numpy.s_[0:117, 0:175],
@@ -61,9 +57,9 @@ def test_it_classic_gbm_2D_batchdims():
 
 
 def test_it_classic_gbm_3D_batchdims():
-    it_classic_nn_nD(
+    it_classic_nD(
         3,
-        64,
+        48,
         numpy.s_[0:31, 0:37, 0:41],
         regressor='gbm',
         batch_dims=(False, True, False),
@@ -72,9 +68,9 @@ def test_it_classic_gbm_3D_batchdims():
 
 
 def test_it_classic_gbm_4D_batchdims():
-    it_classic_nn_nD(
+    it_classic_nD(
         4,
-        32,
+        24,
         numpy.s_[0:11, 0:13, 0:17, 0:15],
         regressor='gbm',
         batch_dims=(False, True, False, True),
@@ -82,11 +78,11 @@ def test_it_classic_gbm_4D_batchdims():
     )
 
 
-def it_classic_nn_nD(
+def it_classic_nD(
     n_dim,
     length=128,
     train_slice=numpy.s_[...],
-    regressor='nn_utils',
+    regressor='nn',
     batch_dims=None,
     min_ssim=0.85,
 ):
@@ -107,8 +103,8 @@ def it_classic_nn_nD(
 
     generator = FastMultiscaleConvolutionalFeatures()
 
-    if regressor == 'nn_utils':
-        regressor = NNRegressor(max_epochs=6)
+    if regressor == 'nn':
+        regressor = NNRegressor(max_epochs=10)
     elif regressor == 'gbm':
         regressor = GBMRegressor()
 

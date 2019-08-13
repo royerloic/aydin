@@ -111,7 +111,9 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         # If the regressor is not progressive (supports training through multiple epochs) then we limit epochs to 1
         return max_epochs if self.regressor.progressive else 1
 
-    def _compute_features(self, image, exclude_center, batch_dims):
+    def _compute_features(
+        self, image, batch_dims, exclude_center_feature, exclude_center_value
+    ):
         """
 
         :param image:
@@ -124,10 +126,9 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
         with lsection(f"Computing features for image of shape {image.shape}:"):
 
-            lprint(f"exclude_center={exclude_center}")
+            lprint(f"exclude_center_feature={exclude_center_feature}")
+            lprint(f"exclude_center_value={exclude_center_value}")
             lprint(f"batch_dims={batch_dims}")
-
-            self.feature_generator.exclude_center = exclude_center
 
             if self.correlation:
                 max_length = max(self.correlation)
@@ -140,7 +141,12 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                 features_aspect_ratio = None
 
             # image, batch_dims=None, features_aspect_ratio=None, features=None
-            features = self.feature_generator.compute(image, batch_dims=batch_dims)
+            features = self.feature_generator.compute(
+                image,
+                batch_dims=batch_dims,
+                exclude_center_feature=exclude_center_feature,
+                exclude_center_value=exclude_center_value,
+            )
             x = features.reshape(-1, features.shape[-1])
 
             return x
@@ -192,7 +198,9 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         ):
 
             # Compute features on main training data:
-            x = self._compute_features(input_image, self.self_supervised, batch_dims)
+            x = self._compute_features(
+                input_image, batch_dims, self.self_supervised, self.self_supervised
+            )
             y = target_image.reshape(-1)
             # if self.debug:
             #   assert numpy.may_share_memory(target_image, y)
@@ -207,7 +215,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                 # compute features proper:
                 monitoring_images_features = [
                     self._compute_features(
-                        monitoring_image, self.self_supervised, batch_dims
+                        monitoring_image, batch_dims, self.self_supervised, False
                     )
                     for monitoring_image in normalised_monitoring_images
                 ]
@@ -308,7 +316,9 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
     def _translate(self, input_image, batch_dims=None):
 
-        features = self._compute_features(input_image, self.self_supervised, batch_dims)
+        features = self._compute_features(
+            input_image, batch_dims, self.self_supervised, False
+        )
         inferred_image = self._predict_from_features(
             features, image_shape=input_image.shape
         )

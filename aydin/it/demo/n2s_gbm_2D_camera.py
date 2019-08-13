@@ -59,21 +59,22 @@ def demo():
     stop = time.time()
     print(f"Training: elapsed time:  {stop-start} ")
 
-    if denoised is None:
-        # in case of batching we have to do this:
-        start = time.time()
-        denoised = it.translate(noisy)
-        stop = time.time()
-        print(f"inference: elapsed time:  {stop-start} ")
+    # in case of batching we have to do this:
+    start = time.time()
+    denoised_inf = it.translate(noisy)
+    stop = time.time()
+    print(f"inference: elapsed time:  {stop-start} ")
 
     denoised = rescale_intensity(denoised, in_range='image', out_range=(0, 1))
 
     image = numpy.clip(image, 0, 1)
     noisy = numpy.clip(noisy, 0, 1)
     denoised = numpy.clip(denoised, 0, 1)
+    denoised_inf = numpy.clip(denoised_inf, 0, 1)
 
-    print("noisy", psnr(image, noisy), ssim(noisy, image))
-    print("denoised", psnr(image, denoised), ssim(denoised, image))
+    print("noisy       :", psnr(image, noisy), ssim(noisy, image))
+    print("denoised    :", psnr(image, denoised), ssim(denoised, image))
+    print("denoised_inf:", psnr(image, denoised_inf), ssim(denoised_inf, image))
 
     with napari.gui_qt():
         viewer = napari.Viewer()
@@ -84,6 +85,7 @@ def demo():
         viewer.add_image(n(median2), name='median2')
         viewer.add_image(n(median5), name='median5')
         viewer.add_image(n(denoised), name='denoised')
+        viewer.add_image(n(denoised_inf), name='denoised_inf')
 
 
 demo()

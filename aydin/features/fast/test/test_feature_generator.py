@@ -17,15 +17,12 @@ def test_collect_feature_2d():
     widths = [3, 3, 3]
 
     generator = FastMultiscaleConvolutionalFeatures(
-        kernel_widths=widths,
-        kernel_scales=scales,
-        kernel_shapes=['l1'] * len(scales),
-        exclude_center=True,
+        kernel_widths=widths, kernel_scales=scales, kernel_shapes=['l1'] * len(scales)
     )
 
     image = n(camera().astype(numpy.float32))
 
-    features = generator.compute(image)
+    features = generator.compute(image, exclude_center_feature=True)
 
     assert features is not None
 
@@ -44,13 +41,12 @@ def test_collect_feature_2d_uint8():
         kernel_widths=widths,
         kernel_scales=scales,
         kernel_shapes=['l1'] * len(scales),
-        exclude_center=True,
         dtype=numpy.uint8,
     )
 
     image = n(camera().astype(numpy.float32))
 
-    features = generator.compute(image)
+    features = generator.compute(image, exclude_center_feature=True)
 
     assert features is not None
     assert features.dtype == numpy.uint8

@@ -22,10 +22,7 @@ def test_fg_saveload():
     scales = [1, 5, 7]
     widths = [5, 5, 5]
     generator = FastMultiscaleConvolutionalFeatures(
-        kernel_widths=widths,
-        kernel_scales=scales,
-        kernel_shapes=['l1'] * len(scales),
-        exclude_center=True,
+        kernel_widths=widths, kernel_scales=scales, kernel_shapes=['l1'] * len(scales)
     )
 
     temp_file = join(get_temp_folder(), "test_fg_saveload.json" + str(time.time()))
@@ -38,7 +35,7 @@ def test_fg_saveload():
     assert loaded_generator.kernel_scales[1] == 5
 
     image = n(camera().astype(numpy.float32))
-    features = loaded_generator.compute(image)
+    features = loaded_generator.compute(image, exclude_center_feature=True)
     assert features is not None
 
     for feature_description in loaded_generator.debug_feature_description_list:
