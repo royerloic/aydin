@@ -1,4 +1,4 @@
-from aydin.providers.opencl import OpenCLProvider
+from aydin.providers.opencl.opencl_provider import OpenCLProvider
 
 
 def test_opencl_provider():

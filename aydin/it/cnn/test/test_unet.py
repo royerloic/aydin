@@ -14,7 +14,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from unet import Unet
+from aydin.it.cnn.unet import Unet
 
 image = camera().astype(np.float32)
 image = rescale_intensity(image, in_range='image', out_range=(0, 1))

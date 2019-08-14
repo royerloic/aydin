@@ -5,7 +5,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from ..n2s import n2sService
+from aydin.services.n2s import N2SService
 
 
 def test_run():
@@ -19,8 +19,8 @@ def test_run():
     noisy_image = noisy_image.astype(np.float32)
 
     # Call the Noise2Self service
-    n2s = n2sService()
-    denoised_image = n2s.run(noisy_image, progress_callback)
+    n2s = N2SService()
+    denoised_image = n2s.run(noisy_image, None)
 
     # Check if denoised image satisfies some checks
     assert psnr(denoised_image, image) >= 20.0

@@ -5,7 +5,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from ..n2t import N2TService
+from aydin.services.n2t import N2TService
 
 
 # TODO: Check with loic if this test makes sense
