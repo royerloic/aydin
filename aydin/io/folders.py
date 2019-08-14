@@ -6,9 +6,9 @@ from sys import platform
 
 
 def get_home_folder():
-    from os.path import expanduser
+    from pathlib import Path
 
-    home_folder = expanduser("~")
+    home_folder = str(Path.home())
     return home_folder
 
 

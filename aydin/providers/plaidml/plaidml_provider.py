@@ -11,8 +11,7 @@ from fuzzywuzzy import process
 
 
 class PlaidMLProvider:
-    def __init__(self, includes=[], excludes=['CPU']):
-
+    def __init__(self, includes=[], excludes=[]):
         with lsection(f"Initialising PlaidML device and context:"):
             self.context = plaidml.Context()
             plaidml.quiet()
@@ -26,7 +25,7 @@ class PlaidMLProvider:
     def get_all_devices(self):
 
         plaidml.settings._setup_for_test(plaidml.settings.user_settings)
-        plaidml.settings.experimental = False
+        plaidml.settings.experimental = True
         devices, _ = plaidml.devices(self.context, limit=100, return_all=True)
 
         return devices
@@ -59,7 +58,7 @@ class PlaidMLProvider:
 
         return list(devices)
 
-    def get_best_device(self, includes=[], excludes=['CPU']):
+    def get_best_device(self, includes=[], excludes=[]):
         opencl = OpenCLProvider()
         filtered_devices = self.get_filtered_device_list(includes, excludes)
 

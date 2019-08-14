@@ -9,7 +9,7 @@ from aydin.util.log.logging import lsection, lprint
 
 
 class OpenCLProvider:
-    def __init__(self, includes=[], excludes=['CPU']):
+    def __init__(self, includes=[], excludes=[]):
 
         with lsection(f"Initialising OpenCL device and context:"):
             os.environ['PYOPENCL_NO_CACHE'] = '1'
@@ -46,9 +46,23 @@ class OpenCLProvider:
             for include in includes:
                 devices = [device for device in devices if include in device.name]
 
-            if sort_by_mem_size:
-                devices = sorted(devices, key=lambda x: x.global_mem_size, reverse=True)
+            cpu_devices = []
+            gpu_devices = []
+            for device in devices:
+                if 'CPU' in device.name:
+                    cpu_devices.append(device)
+                else:
+                    gpu_devices.append(device)
 
+            if sort_by_mem_size:
+                cpu_devices = sorted(
+                    cpu_devices, key=lambda x: x.global_mem_size, reverse=True
+                )
+                gpu_devices = sorted(
+                    gpu_devices, key=lambda x: x.global_mem_size, reverse=True
+                )
+
+            devices = gpu_devices + cpu_devices
             devices = [device for device in devices if self.test_device(device)]
 
             with lsection(f"Filtered and sorted OpenCL devices:"):
