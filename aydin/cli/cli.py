@@ -6,6 +6,7 @@ import sentry_sdk
 
 from aydin.cli.progress_bar import ProgressBar
 from aydin.gui import gui
+from aydin.io.io import imwrite
 from aydin.services.n2s import N2SService
 from aydin.util.resource import read_image_from_path
 from aydin.examples.demo_it_2D_cli import demo_aydin_2D
@@ -65,6 +66,9 @@ def noise2self(**kwargs):
     pbar = ProgressBar(total=100)
     n2s = N2SService()
     denoised = n2s.run(noisy, pbar)
+    path = path[:-4] + "_denoised" + path[-4:]
+    with imwrite(path, shape=denoised.shape, dtype=denoised.dtype) as imarray:
+        imarray[...] = denoised
     pbar.close()
 
 

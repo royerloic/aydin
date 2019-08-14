@@ -35,7 +35,6 @@ python -m aydin.cli.cli noise2self 'relative/path/to/image'
 To run a demo:
 ```bash
 python -m aydin.cli.cli demo 2D
-
 ```
 
 ## Minimal Viable Product (MVP) statement:
@@ -45,7 +44,7 @@ python -m aydin.cli.cli demo 2D
 - Self-contained executable (separate CLI and GUI)
 - 2D and 3D data 
 - Image translation: pair images (A,B):  A -> B (translation, denoising, etc...)
-- Explicit self-supervised denoising (A): A -> A_denoised 
+- ~~Explicit self-supervised denoising (A): A -> A_denoised~~
 - Explicit noise 2 noise denoising
 - 2D Multichannel
 - Auto-tunning of receptive field based on autocorrelation
