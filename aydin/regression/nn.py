@@ -16,12 +16,15 @@ from aydin.util.log.logging import lsection, lprint
 provider = PlaidMLProvider()
 
 from keras.engine.saving import model_from_json
-from aydin.regression.nn_utils.callback import NNCallback
+from aydin.regression.nn_utils.callbacks import (
+    NNCallback,
+    EarlyStopping,
+    ReduceLROnPlateau,
+    ModelCheckpoint,
+)
 from aydin.regression.nn_utils.models import feed_forward
 from aydin.regression.regressor_base import RegressorBase
 
-
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from keras import optimizers, Model
 
 
@@ -211,15 +214,15 @@ class NNRegressor(RegressorBase):
 
             # Effective number of epochs:
             effective_number_of_epochs = 2 if is_batch else self.max_epochs
-            lprint(f"Effective max number of epochs: {batch_size}")
+            lprint(f"Effective max number of epochs: {effective_number_of_epochs}")
 
             # Early stopping patience:
             early_stopping_patience = 2 if is_batch else self.patience
             lprint(f"Early stopping patience: {early_stopping_patience}")
 
-            # Reduce LR patience:
-            reduce_lr_patience = 1 if is_batch else max(1, self.patience // 2)
-            lprint(f"Reduce LR patience: {reduce_lr_patience}")
+            # Effective LR patience:
+            effective_lr_patience = 1 if is_batch else max(1, self.patience // 2)
+            lprint(f"Effective LR patience: {effective_lr_patience}")
 
             # Here is the list of callbacks:
             callbacks = []
@@ -242,7 +245,7 @@ class NNRegressor(RegressorBase):
                 monitor='val_loss',
                 factor=0.5,
                 verbose=1,
-                patience=reduce_lr_patience,
+                patience=effective_lr_patience,
                 mode='auto',
                 min_lr=1e-9,
             )
@@ -281,7 +284,7 @@ class NNRegressor(RegressorBase):
                     epochs=effective_number_of_epochs,
                     batch_size=min(batch_size, nb_data_points),
                     shuffle=True,
-                    verbose=2,  # 0 if is_batch else 1,
+                    verbose=0,  # 0 if is_batch else 1,
                     callbacks=callbacks,
                 )
                 lprint(f"NN regressor fitting done.")

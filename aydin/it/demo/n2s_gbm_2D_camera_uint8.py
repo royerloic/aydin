@@ -50,18 +50,16 @@ def demo():
     stop = time.time()
     print(f"Training: elapsed time:  {stop-start} ")
 
-    if denoised is None:
-        # in case of batching we have to do this:
-        start = time.time()
-        denoised = it.translate(noisy)
-        stop = time.time()
-        print(f"inference: elapsed time:  {stop-start} ")
-
-    denoised = rescale_intensity(denoised, in_range='image', out_range=(0, 1))
+    # in case of batching we have to do this:
+    start = time.time()
+    denoised_inf = it.translate(noisy)
+    stop = time.time()
+    print(f"inference: elapsed time:  {stop-start} ")
 
     image = numpy.clip(image, 0, 1)
     noisy = numpy.clip(noisy, 0, 1)
     denoised = numpy.clip(denoised, 0, 1)
+    denoised_inf = numpy.clip(denoised_inf, 0, 1)
 
     print("noisy", psnr(image, noisy), ssim(noisy, image))
     print("denoised", psnr(image, denoised), ssim(denoised, image))
@@ -71,6 +69,7 @@ def demo():
         viewer.add_image(n(image), name='image')
         viewer.add_image(n(noisy), name='noisy')
         viewer.add_image(n(denoised), name='denoised')
+        viewer.add_image(n(denoised_inf), name='denoised_inf')
 
 
 demo()

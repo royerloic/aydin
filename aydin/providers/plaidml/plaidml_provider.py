@@ -13,7 +13,7 @@ from fuzzywuzzy import process
 class PlaidMLProvider:
     def __init__(self, includes=[], excludes=['CPU']):
 
-        with lsection(f"Initialising OpenCL device and context:"):
+        with lsection(f"Initialising PlaidML device and context:"):
             self.context = plaidml.Context()
             plaidml.quiet()
 
@@ -84,22 +84,22 @@ class PlaidMLProvider:
 
         with lsection(f"Testing PlaidML device: {device.description.decode()} "):
             try:
-                device = plaidml.Device(self.context, device)
+                plaidml_device = plaidml.Device(self.context, device)
 
                 matmul = plaidml.Function(
                     "function (B[X,Z], C[Z,Y]) -> (A) { A[x,y : X,Y] = +(B[x,z] * C[z,y]); }"
                 )
 
                 shape = plaidml.Shape(self.context, plaidml.DType.FLOAT32, 3, 3)
-                a = plaidml.Tensor(device, shape)
-                b = plaidml.Tensor(device, shape)
-                c = plaidml.Tensor(device, shape)
+                a = plaidml.Tensor(plaidml_device, shape)
+                b = plaidml.Tensor(plaidml_device, shape)
+                c = plaidml.Tensor(plaidml_device, shape)
                 plaidml.run(
                     self.context, matmul, inputs={"B": b, "C": c}, outputs={"A": a}
                 )
-                device.close()
+                plaidml_device.close()
 
-                lprint(f"Device {device} _is_ operational.")
+                lprint(f"Device {device.description.decode()} _is_ operational.")
 
                 return True
 
@@ -107,7 +107,7 @@ class PlaidMLProvider:
 
                 lprint(e)
                 lprint(
-                    f"Device {device} is not operational: it failed to run some basic tensor operation."
+                    f"Device {device.description.decode()} is not operational: it failed to run some basic tensor operation."
                 )
 
                 return False

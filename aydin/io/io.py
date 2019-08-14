@@ -51,7 +51,7 @@ class FileMetadata:
 
 def analyse(input_path):
 
-    with lsection("Analysing file at: {input_path}"):
+    with lsection(f"Analysing file at: {input_path}"):
 
         metadata = FileMetadata()
 
