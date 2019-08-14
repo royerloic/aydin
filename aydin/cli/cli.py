@@ -12,6 +12,10 @@ from aydin.util.resource import read_image_from_path
 from aydin.examples.demo_it_2D_cli import demo_aydin_2D
 
 
+import plaidml.keras
+
+plaidml.keras.install_backend()
+
 logger = logging.getLogger(__name__)
 
 

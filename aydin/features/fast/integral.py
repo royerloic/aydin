@@ -101,7 +101,12 @@ def integral_2d(
 
     integral_2d_y(opencl_provider.queue, (image_x,), None, input.data, temp1.data, mean)
     integral_2d_x(
-        opencl_provider.queue, (image_y,), None, temp1.data, temp2.data, mean * 0
+        opencl_provider.queue,
+        (image_y,),
+        None,
+        temp1.data,
+        temp2.data,
+        mean * numpy.float32(0),
     )
 
     return temp2, mean
@@ -171,7 +176,7 @@ def integral_3d(
         None,
         temp1.data,
         temp2.data,
-        mean * 0,
+        mean * numpy.float32(0),
     )
     integral_3d_x(
         opencl_provider.queue,
@@ -179,7 +184,7 @@ def integral_3d(
         None,
         temp2.data,
         temp1.data,
-        mean * 0,
+        mean * numpy.float32(0),
     )
 
     return temp1, mean
@@ -268,7 +273,7 @@ def integral_4d(
         None,
         temp1.data,
         temp2.data,
-        mean * 0,
+        mean * numpy.float32(0),
     )
     integral_4d_y(
         opencl_provider.queue,
@@ -276,7 +281,7 @@ def integral_4d(
         None,
         temp2.data,
         temp1.data,
-        mean * 0,
+        mean * numpy.float32(0),
     )
     integral_4d_x(
         opencl_provider.queue,
@@ -284,7 +289,7 @@ def integral_4d(
         None,
         temp1.data,
         temp2.data,
-        mean * 0,
+        mean * numpy.float32(0),
     )
 
     return temp2, mean
