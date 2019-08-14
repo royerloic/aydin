@@ -477,7 +477,9 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         :return: number of features or the features themselves depending on the value of features (None or not None)
         """
 
-        with lsection(f'Compute features of dimension {len(image_gpu.shape)}'):
+        with lsection(
+            f'{ "Counting" if features is None else "Collecting"} features of dimension {len(image_gpu.shape)}'
+        ):
 
             # Ensure we have an openCL provider initialised:
             self._ensure_opencl_prodider_initialised()

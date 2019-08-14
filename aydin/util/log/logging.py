@@ -42,12 +42,12 @@ def lsection(section_header: str, intersept_print=False):
 
     ___current_section = section_header
 
-    if ___depth <= ___max_depth:
+    if ___depth + 1 <= ___max_depth:
         __native_print('│' * ___depth + '├╗ ' + section_header)  # ≡
     ___depth += 1
 
     yield
 
     ___depth -= 1
-    if ___depth <= ___max_depth:
+    if ___depth + 1 <= ___max_depth:
         __native_print('│' * (___depth + 1))

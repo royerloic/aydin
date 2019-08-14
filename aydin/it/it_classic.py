@@ -299,7 +299,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                     x_valid=x_valid,
                     y_valid=y_valid,
                     is_batch=True,
-                    regressor_callback=regressor_callback,
+                    regressor_callback=regressor_callback if self.monitor else None,
                 )
                 return validation_loss
             else:
@@ -309,7 +309,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                     x_valid=x_valid,
                     y_valid=y_valid,
                     is_batch=False,
-                    regressor_callback=regressor_callback,
+                    regressor_callback=regressor_callback if self.monitor else None,
                 )
                 inferred_image = self._predict_from_features(x, input_image.shape)
                 return inferred_image

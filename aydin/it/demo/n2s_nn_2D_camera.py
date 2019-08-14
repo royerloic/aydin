@@ -43,7 +43,7 @@ def demo():
         feature_generator=generator, regressor=regressor, normaliser_type='identity'
     )
 
-    denoised = it.train(noisy, noisy, max_epochs=300, patience=200)
+    denoised = it.train(noisy, noisy, max_epochs=30, patience=10)
 
     elapsedtime = time.time() - start_time
     print(f"time elapsed: {elapsedtime} s")

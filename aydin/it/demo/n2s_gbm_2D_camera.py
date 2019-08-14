@@ -30,7 +30,7 @@ def demo():
         Demo for self-supervised denoising using camera image with synthetic noise
     """
 
-    set_log_max_depth(4)
+    set_log_max_depth(5)
 
     image = camera().astype(np.float32)
     image = n(image)

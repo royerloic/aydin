@@ -193,19 +193,22 @@ class GBMRegressor(RegressorBase):
                 else None
             )
 
+            self.__epoch_counter = 0
+
             # We translate the it classic callback into a lightGBM callback:
             # This avoids propagating annoying 'evaluation_result_list[0][2]'
             # throughout teh codebase...
             def lgbm_callback(env):
+                try:
+                    val_loss = env.evaluation_result_list[0][2]
+                except:
+                    val_loss = 0
+                    lprint("Problem with getting loss from LightGBM 'env' in callback")
                 if regressor_callback:
-                    try:
-                        val_loss = env.evaluation_result_list[0][2]
-                    except:
-                        val_loss = 0
-                        lprint(
-                            "Problem with getting loss from LightGBM 'env' in callback"
-                        )
                     regressor_callback(env.iteration, val_loss, env.model)
+                else:
+                    lprint(f"Epoch {self.__epoch_counter}: Validation loss: {val_loss}")
+                    self.__epoch_counter += 1
 
             evals_result = {}
 
@@ -222,7 +225,7 @@ class GBMRegressor(RegressorBase):
                     else None,
                     num_boost_round=self.n_estimators,
                     # keep_training_booster= is_batch, <-- not working...
-                    callbacks=[] if (lgbm_callback is None) else [lgbm_callback],
+                    callbacks=[lgbm_callback],
                     verbose_eval=(lgbm_callback is None) or (self.force_verbose_eval),
                     evals_result=evals_result,
                 )
