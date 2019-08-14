@@ -19,6 +19,7 @@ unit tests windows:
   script:
     - conda info -e
     - pip install -r requirements.txt
+    - sudo pip install git+https://www.github.com/keras-team/keras-contrib.git
     - python -m pytest .
 
 
@@ -30,6 +31,7 @@ unit tests linux:
     - export PATH=~/anaconda3/bin:$PATH
     - conda --version
     - source activate pitl
+    - sudo pip install git+https://www.github.com/keras-team/keras-contrib.git
   script:
     - echo $CONDA_DEFAULT_ENV
     - pip install -r requirements.txt

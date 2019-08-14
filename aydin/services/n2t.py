@@ -1,4 +1,4 @@
-from aydin.features.classic.mcfocl import MultiscaleConvolutionalFeatures
+from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 
@@ -25,10 +25,8 @@ class N2TService:
         :return: denoised version of the input image, will be np compatible
         """
 
-        generator = MultiscaleConvolutionalFeatures(
-            kernel_widths=N2TService.widths,
-            kernel_scales=N2TService.scales,
-            exclude_center=False,
+        generator = FastMultiscaleConvolutionalFeatures(
+            kernel_widths=N2TService.widths, kernel_scales=N2TService.scales
         )
 
         regressor = GBMRegressor(num_leaves=63, n_estimators=512)

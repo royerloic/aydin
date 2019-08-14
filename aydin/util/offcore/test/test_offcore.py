@@ -1,6 +1,6 @@
 import numpy
 
-from aydin.util.offcore import offcore_array
+from aydin.util.offcore.offcore import offcore_array
 
 
 def test_offcore_array():

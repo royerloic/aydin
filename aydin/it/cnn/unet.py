@@ -1,7 +1,6 @@
 import os, importlib
 import numpy as np
 from keras import backend as K
-from keras.layers import Layer
 from keras.models import Model
 from keras import optimizers
 from keras.layers import (
