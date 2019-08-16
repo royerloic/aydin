@@ -26,10 +26,7 @@ def lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, display=Tru
     widths = [3, 3, 3, 3]
 
     generator = FastMultiscaleConvolutionalFeatures(
-        kernel_widths=widths,
-        kernel_scales=scales,
-        kernel_shapes=['l1'] * len(scales),
-        exclude_center=True,
+        kernel_widths=widths, kernel_scales=scales, kernel_shapes=['l1'] * len(scales)
     )
 
     features = generator.compute(noisy)

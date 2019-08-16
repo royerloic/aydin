@@ -27,7 +27,6 @@ class N2SService:
             kernel_widths=self.widths,
             kernel_scales=self.scales,
             kernel_shapes=['l1'] * len(self.scales),
-            exclude_center=True,
         )
 
         progress_callback.emit(35)
