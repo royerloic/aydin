@@ -8,6 +8,7 @@ from aydin.cli.progress_bar import ProgressBar
 from aydin.gui import gui
 from aydin.io.io import imwrite
 from aydin.services.n2s import N2SService
+from aydin.services.n2t import N2TService
 from aydin.util.resource import read_image_from_path
 from aydin.examples.demo_it_2D_cli import demo_aydin_2D
 
@@ -63,14 +64,40 @@ def demo(**kwargs):
 
 
 @aydin.command()
-@click.argument('path')
+@click.argument('path_source')
 def noise2self(**kwargs):
-    path = os.path.abspath(kwargs['path'])
+    # Get abspath to image and read it
+    path = os.path.abspath(kwargs['path_source'])
     noisy = read_image_from_path(path)
+
+    # Run N2S service and save the result
     pbar = ProgressBar(total=100)
     n2s = N2SService()
     denoised = n2s.run(noisy, pbar)
     path = path[:-4] + "_denoised" + path[-4:]
+    with imwrite(path, shape=denoised.shape, dtype=denoised.dtype) as imarray:
+        imarray[...] = denoised
+    pbar.close()
+
+
+@aydin.command()
+@click.argument('train_source')
+@click.argument('train_truth')
+@click.argument('predict_target')
+def noise2truth(**kwargs):
+    # Get abspath to images and read them
+    path_source = os.path.abspath(kwargs['train_source'])
+    path_truth = os.path.abspath(kwargs['train_truth'])
+    path_target = os.path.abspath(kwargs['predict_target'])
+    noisy = read_image_from_path(path_source)
+    truth = read_image_from_path(path_truth)
+    target = read_image_from_path(path_target)
+
+    # Run N2T service and save the result
+    pbar = ProgressBar(total=100)
+    n2t = N2TService()
+    denoised = n2t.run(noisy, truth, target, pbar)
+    path = path_target[:-4] + "_denoised" + path_target[-4:]
     with imwrite(path, shape=denoised.shape, dtype=denoised.dtype) as imarray:
         imarray[...] = denoised
     pbar.close()
