@@ -100,10 +100,10 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             # 20% buffer:
             buffer = 1.2
 
-            available_cpu_mem = psutil.virtual_memory().free
-            available_gpu_mem = self.opencl_provider.device.global_mem_size
-            lprint(f"Available cpu mem: {available_cpu_mem / 1E6} MB")
-            lprint(f"Available gpu mem: {available_gpu_mem / 1E6} MB")
+            max_avail_cpu_mem = 0.9 * psutil.virtual_memory().total
+            max_avail_gpu_mem = 0.9 * self.opencl_provider.device.global_mem_size
+            lprint(f"Maximum cpu mem: {max_avail_cpu_mem / 1E6} MB")
+            lprint(f"Maximum gpu mem: {max_avail_gpu_mem / 1E6} MB")
 
             # This is what we need on the GPU to store the image and one feature:
             needed_gpu_mem = 2 * int(buffer * 4 * array.size * 1)
@@ -124,8 +124,8 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             )
             lprint(f"Memory needed on the cpu: {needed_cpu_mem/ 1E6} MB")
 
-            min_nb_batches_cpu = math.ceil(needed_cpu_mem / available_cpu_mem)
-            min_nb_batches_gpu = math.ceil(needed_gpu_mem / available_gpu_mem)
+            min_nb_batches_cpu = math.ceil(needed_cpu_mem / max_avail_cpu_mem)
+            min_nb_batches_gpu = math.ceil(needed_gpu_mem / max_avail_gpu_mem)
             min_nb_batches = max(min_nb_batches_cpu, min_nb_batches_gpu)
             lprint(
                 f"Minimum number of batches: {min_nb_batches} ( cpu:{min_nb_batches_cpu}, gpu:{min_nb_batches_gpu} )"
@@ -133,8 +133,8 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
             max_batch_size = (array.itemsize * array.size) / min_nb_batches
             is_enough_memory = (
-                needed_cpu_mem < available_cpu_mem
-                and needed_gpu_mem < available_gpu_mem
+                needed_cpu_mem < max_avail_cpu_mem
+                and needed_gpu_mem < max_avail_gpu_mem
             )
             lprint(f"Maximum batch size: {max_batch_size} ")
             lprint(f"Is enough memory: {is_enough_memory} ")
