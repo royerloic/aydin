@@ -60,7 +60,7 @@ def demo():
         widths = [3, 3, 3, 3, 3]
 
         generator = FastMultiscaleConvolutionalFeatures(
-            kernel_widths=widths, kernel_scales=scales, exclude_center=False
+            kernel_widths=widths, kernel_scales=scales
         )
 
         regressor = GBMRegressor(
