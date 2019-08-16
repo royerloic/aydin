@@ -114,4 +114,4 @@ data/
 build/osx/build/
 
 .zgroup
-.png
+*.png
