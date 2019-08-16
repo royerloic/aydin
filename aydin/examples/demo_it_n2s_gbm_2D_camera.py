@@ -42,7 +42,6 @@ def demo(image, min_level=7, max_level=100):
                 kernel_widths=widths[0:param],
                 kernel_scales=scales[0:param],
                 kernel_shapes=['l1'] * len(scales[0:param]),
-                exclude_center=True,
             )
 
             regressor = GBMRegressor(

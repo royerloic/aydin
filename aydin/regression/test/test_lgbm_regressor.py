@@ -28,7 +28,7 @@ def test_lgbm_regressor():
     noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
     noisy = noisy.astype(numpy.float32)
 
-    generator = FastMultiscaleConvolutionalFeatures(exclude_center=True)
+    generator = FastMultiscaleConvolutionalFeatures()
 
     regressor = GBMRegressor(verbosity=100)
 

@@ -36,10 +36,7 @@ scales = [1, 3, 7, 15, 31, 63, 127, 255]
 widths = [3, 3, 3, 3, 3, 3, 3, 3]
 
 generator = FastMultiscaleConvolutionalFeatures(
-    kernel_widths=widths,
-    kernel_scales=scales,
-    kernel_shapes=['l1'] * len(scales),
-    exclude_center=True,
+    kernel_widths=widths, kernel_scales=scales, kernel_shapes=['l1'] * len(scales)
 )
 
 regressor = GBMRegressor(
