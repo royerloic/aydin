@@ -19,6 +19,7 @@ class RegressorBase(ABC):
         """
 
         """
+        self._stop_fit = False
 
     def save(self, path: str):
         """
@@ -53,6 +54,11 @@ class RegressorBase(ABC):
 
     @abstractmethod
     def _load_internals(self, path: str):
+        """
+        Loading internal data of the regressor  -- typically model parameters of 3rd party libs
+        :param path:
+        :type path:
+        """
         raise NotImplementedError()
 
     @property
@@ -67,16 +73,8 @@ class RegressorBase(ABC):
     @abstractmethod
     def reset(self) -> None:
         """
-        resets the regressor to a blank state.
+        Resets the regressor to a blank state.
 
-        :param x_train: x training values
-        :type x_train:
-        :param y_train: y training values
-        :type y_train:
-        :param x_test:
-        :type x_test: x test values
-        :param y_test:
-        :type y_test: y test values
         """
         raise NotImplementedError()
 
@@ -95,27 +93,29 @@ class RegressorBase(ABC):
         Stops when performance stops improving on the test dataset: (x_test, y_test).
 
 
-        :param monitoring_variables:
         :param x_train: x training values
-        :type x_train:
         :param y_train: y training values
-        :type y_train:
         :param x_valid:  x validation values
-        :type x_valid:
         :param y_valid:  y validation values
-        :type y_valid:
+        :param is_batch: if true does batch training
+        :param regressor_callback: regressor callback
+
         """
-        raise NotImplementedError()
+        self._stop_fit = False
+
+    def stop_fit(self):
+        """
+        Stops training (can be called by another thread)
+        """
+        self._stop_fit = True
 
     @abstractmethod
     def predict(self, x, model_to_use=None):
         """
         Predicts y given x by applying the learned function f: y=f(x)
 
-        :param model_to_use:
         :param x: x values
-        :type x:
+        :param model_to_use:
         :return: inferred y values
-        :rtype:
         """
         raise NotImplementedError()

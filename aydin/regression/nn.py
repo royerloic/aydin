@@ -30,7 +30,7 @@ from keras import optimizers, Model
 
 class NNRegressor(RegressorBase):
     """
-    Regressor that uses NN.
+    Regressor that uses standard perceptron-like neural networks.
 
     """
 
@@ -41,18 +41,15 @@ class NNRegressor(RegressorBase):
     ):
         """
         Constructs a LightGBM regressor.
-
-        :param num_leaves:
-        :type num_leaves:
-        :param net_width:
-        :type net_width:
+        :param max_epochs:
         :param learning_rate:
-        :type learning_rate:
-        :param eval_metric:
-        :type eval_metric:
         :param patience:
-        :type patience:
+        :param depth:
+        :param loss:
+
         """
+
+        super().__init__()
 
         self.max_epochs = max_epochs
         self.learning_rate = learning_rate
@@ -125,6 +122,15 @@ class NNRegressor(RegressorBase):
         Stops when performance stops improving on the test dataset: (x_test, y_test).
 
         """
+
+        super().fit(
+            x_train,
+            y_train,
+            x_valid,
+            y_valid,
+            is_batch=is_batch,
+            regressor_callback=regressor_callback,
+        )
 
         with lsection(f"NN Regressor fitting:"):
 
@@ -232,10 +238,10 @@ class NNRegressor(RegressorBase):
 
             # Early stopping callback:
             self.early_stopping = EarlyStopping(
+                self,
                 monitor='val_loss',
                 min_delta=0.000001 if is_batch else 0.0001,
                 patience=early_stopping_patience,
-                verbose=1,
                 mode='auto',
                 restore_best_weights=True,
             )

@@ -1,22 +1,7 @@
 import warnings
-import os
-import csv
-import six
 
 import numpy as np
-import time
-import json
-import warnings
-import io
-import sys
-
-from collections import deque
-from collections import OrderedDict
-from collections import Iterable
-from keras.utils.generic_utils import Progbar
 from keras import backend as K
-
-
 from keras.callbacks import Callback
 
 from aydin.util.log.logging import lprint
@@ -63,6 +48,7 @@ class EarlyStopping(Callback):
     """Stop training when a monitored quantity has stopped improving.
 
     # Arguments
+        nn_regressor: parent regressor
         monitor: quantity to be monitored.
         min_delta: minimum change in the monitored quantity
             to qualify as an improvement, i.e. an absolute
@@ -89,20 +75,20 @@ class EarlyStopping(Callback):
 
     def __init__(
         self,
+        nn_regressor,
         monitor='val_loss',
         min_delta=0,
         patience=0,
-        verbose=0,
         mode='auto',
         baseline=None,
         restore_best_weights=False,
     ):
         super(EarlyStopping, self).__init__()
 
+        self.nn_regressor = nn_regressor
         self.monitor = monitor
         self.baseline = baseline
         self.patience = patience
-        self.verbose = verbose
         self.min_delta = min_delta
         self.wait = 0
         self.stopped_epoch = 0
@@ -156,14 +142,16 @@ class EarlyStopping(Callback):
                 self.stopped_epoch = epoch
                 self.model.stop_training = True
                 if self.restore_best_weights:
-                    if self.verbose > 0:
-                        lprint(
-                            'Restoring model weights from the end of ' 'the best epoch'
-                        )
+                    lprint('Restoring model weights from the end of ' 'the best epoch')
                     self.model.set_weights(self.best_weights)
 
+        # This is where we stop training:
+        if self.nn_regressor._stop_fit:
+            lprint('Training externally stopped!')
+            self.model.stop_training = True
+
     def on_train_end(self, logs=None):
-        if self.stopped_epoch > 0 and self.verbose > 0:
+        if self.stopped_epoch > 0:
             lprint('Epoch %05d: early stopping' % (self.stopped_epoch + 1))
 
     def get_monitor_value(self, logs):

@@ -107,6 +107,10 @@ class ImageTranslatorBase(ABC):
         raise NotImplemented()
 
     @abstractmethod
+    def stop_training(self):
+        raise NotImplemented()
+
+    @abstractmethod
     def _translate(self, input_image, batch_dims=None):
         """
         Translates an input image into an output image according to the learned function

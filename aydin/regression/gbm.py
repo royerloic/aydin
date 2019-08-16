@@ -10,6 +10,7 @@ import numpy
 import psutil
 from lightgbm import Booster
 
+from aydin.regression.gbm_utils.callbacks import early_stopping
 from aydin.regression.regressor_base import RegressorBase
 from aydin.util.log.logging import lsection, lprint
 
@@ -37,17 +38,15 @@ class GBMRegressor(RegressorBase):
 
         """
         Constructs a LightGBM regressor.
-
         :param num_leaves:
-        :type num_leaves:
         :param n_estimators:
-        :type n_estimators:
+        :param max_bin:
         :param learning_rate:
-        :type learning_rate:
-        :param eval_metric:
-        :type eval_metric:
+        :param loss:
         :param patience:
-        :type patience:
+        :param verbosity:
+        :param compute_load:
+
         """
 
         super().__init__()
@@ -156,8 +155,7 @@ class GBMRegressor(RegressorBase):
         is_batch=False,
         regressor_callback=None,
     ):
-
-        return self._fit(
+        super().fit(
             x_train,
             y_train,
             x_valid,
@@ -166,15 +164,6 @@ class GBMRegressor(RegressorBase):
             regressor_callback=regressor_callback,
         )
 
-    def _fit(
-        self,
-        x_train,
-        y_train,
-        x_valid=None,
-        y_valid=None,
-        is_batch=False,
-        regressor_callback=None,
-    ):
         with lsection(f"GBM regressor fitting (batch={is_batch}):"):
 
             nb_data_points = y_train.shape[0]
@@ -212,6 +201,12 @@ class GBMRegressor(RegressorBase):
 
             evals_result = {}
 
+            verbose_eval = (lgbm_callback is None) or (self.force_verbose_eval)
+
+            self.early_stopping_callback = early_stopping(
+                self, self.early_stopping_rounds
+            )
+
             with lsection("GBM regressor fitting now:", intersept_print=True):
                 model = lightgbm.train(
                     params=self._get_params(
@@ -220,13 +215,11 @@ class GBMRegressor(RegressorBase):
                     init_model=None,  # self.lgbmr if is_batch else None, <-- not working...
                     train_set=train_dataset,
                     valid_sets=valid_dataset,
-                    early_stopping_rounds=self.early_stopping_rounds
-                    if has_valid_dataset
-                    else None,
+                    early_stopping_rounds=None if has_valid_dataset else None,
                     num_boost_round=self.n_estimators,
                     # keep_training_booster= is_batch, <-- not working...
-                    callbacks=[lgbm_callback],
-                    verbose_eval=(lgbm_callback is None) or (self.force_verbose_eval),
+                    callbacks=[lgbm_callback, self.early_stopping_callback],
+                    verbose_eval=verbose_eval,
                     evals_result=evals_result,
                 )
                 lprint(f"GBM fitting done.")
@@ -250,15 +243,6 @@ class GBMRegressor(RegressorBase):
                 return None
 
     def predict(self, x, batch_mode='median', model_to_use: Booster = None):
-        """
-        Predicts y given x by applying the learned function f: y=f(x)
-        :param model_to_use:
-        :param batch_mode:
-        :param x:
-        :type x:
-        :return:
-        :rtype:
-        """
 
         with lsection(f"GBM regressor prediction:"):
 

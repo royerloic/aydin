@@ -12,9 +12,11 @@ from skimage.morphology import disk
 from skimage.restoration import denoise_nl_means, estimate_sigma
 from skimage.util import random_noise
 
+import aydin
 from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
+from aydin.regression.nn import NNRegressor
 from aydin.util.log.logging import set_log_max_depth
 
 
@@ -26,7 +28,7 @@ def n(image):
 
 def demo():
     """
-        Demo for self-supervised denoising using camera image with synthetic noise
+        Demo for how to stop training from an other thread.
     """
 
     set_log_max_depth(5)
@@ -40,18 +42,22 @@ def demo():
     noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
     noisy = noisy.astype(np.float32)
 
-    median1 = skimage.filters.median(noisy, disk(1))
-    median2 = skimage.filters.median(noisy, disk(2))
-    median5 = skimage.filters.median(noisy, disk(5))
-
-    nlm = denoise_nl_means(noisy, patch_size=11, sigma=estimate_sigma(noisy))
-
     generator = FastMultiscaleConvolutionalFeatures(max_level=10)
-    regressor = GBMRegressor()
+    # regressor = GBMRegressor()
+    regressor = NNRegressor()
 
     it = ImageTranslatorClassic(
         feature_generator=generator, regressor=regressor, normaliser_type='identity'
     )
+
+    from threading import Timer
+
+    def stop_training():
+        print("!!STOPPING TRAINING NOW FROM ANOTHER THREAD!!")
+        it.stop_training()
+
+    t = Timer(20.0, stop_training)
+    t.start()
 
     start = time.time()
     denoised = it.train(noisy, noisy)
@@ -79,10 +85,6 @@ def demo():
         viewer = napari.Viewer()
         viewer.add_image(n(image), name='image')
         viewer.add_image(n(noisy), name='noisy')
-        viewer.add_image(n(nlm), name='nlm')
-        viewer.add_image(n(median1), name='median1')
-        viewer.add_image(n(median2), name='median2')
-        viewer.add_image(n(median5), name='median5')
         viewer.add_image(n(denoised), name='denoised')
         viewer.add_image(n(denoised_inf), name='denoised_inf')
 

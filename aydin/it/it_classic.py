@@ -105,6 +105,9 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             patience_epsilon,
         )
 
+    def stop_training(self):
+        return self.regressor.stop_fit()
+
     def is_enough_memory(self, array):
         return self.feature_generator.is_enough_memory(array)
 
