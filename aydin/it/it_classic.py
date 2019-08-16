@@ -1,3 +1,4 @@
+import math
 import time
 
 import numpy
@@ -267,29 +268,71 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
             nb_features = x.shape[-1]
             nb_entries = y.shape[0]
-            lprint("Number of entries: %d features: %d ." % (nb_entries, nb_features))
-            lprint("Splitting train and test sets.")
+            lprint("Number of entries: %d features: %d" % (nb_entries, nb_features))
 
-            lprint(f"Creating random indices for train/val split")
-            val_size = int(train_test_ratio * nb_entries)
-            train_indices = numpy.full(nb_entries, False)
-            train_indices[val_size:] = True
-            numpy.random.shuffle(train_indices)
-            valid_indices = numpy.logical_not(train_indices)
+            with lsection(
+                f"Splitting train and test sets (train_test_ratio={train_test_ratio}) "
+            ):
+                # Size of split batch, we assume we use 1024 chunks:
+                lprint(f"Creating random indices for train/val split")
+                nb_split_batches = 1024
 
-            lprint(f"Allocating arrays...")
-            x_train = numpy.zeros(((nb_entries - val_size), nb_features), dtype=x.dtype)
-            y_train = numpy.zeros((nb_entries - val_size,), dtype=y.dtype)
-            x_valid = numpy.zeros((val_size, nb_features), dtype=x.dtype)
-            y_valid = numpy.zeros((val_size,), dtype=y.dtype)
+                nb_split_batches_valid = int(train_test_ratio * nb_split_batches)
+                nb_split_batches_train = nb_split_batches - nb_split_batches_valid
+                train_indices = numpy.full(nb_split_batches, False)
+                train_indices[nb_split_batches_valid:] = True
+                numpy.random.shuffle(train_indices)
 
-            lprint(f"Copying training data...")
-            numpy.copyto(x_train, x[train_indices])
-            numpy.copyto(y_train, y[train_indices])
+                lprint(f"Calculating number of entries for train and validation...")
+                nb_entries_per_split_batch = max(1, nb_entries // nb_split_batches)
+                nb_entries_train = nb_split_batches_train * nb_entries_per_split_batch
+                nb_entries_valid = nb_split_batches_valid * nb_entries_per_split_batch
+                lprint(
+                    f"Number of entries for training: {nb_entries_train}, validation:{nb_entries_valid}"
+                )
 
-            lprint(f"Copying validation data...")
-            numpy.copyto(x_valid, x[valid_indices])
-            numpy.copyto(y_valid, y[valid_indices])
+                lprint(f"Allocating arrays...")
+                x_train = numpy.zeros((nb_entries_train, nb_features), dtype=x.dtype)
+                y_train = numpy.zeros((nb_entries_train,), dtype=y.dtype)
+                x_valid = numpy.zeros((nb_entries_valid, nb_features), dtype=x.dtype)
+                y_valid = numpy.zeros((nb_entries_valid,), dtype=y.dtype)
+
+                with lsection(f"Copying data for training and validation sets..."):
+                    i, jt, jv = 0, 0, 0
+                    for is_train in numpy.nditer(train_indices):
+                        if i % 64 == 0:
+                            lprint(f"Copying section [{i},{i+64}]")
+
+                        src_start = i * nb_entries_per_split_batch
+                        src_stop = (i + 1) * nb_entries_per_split_batch
+                        i += 1
+
+                        xsrc = x[src_start:src_stop]
+                        ysrc = y[src_start:src_stop]
+
+                        if is_train:
+
+                            dst_start = jt * nb_entries_per_split_batch
+                            dst_stop = (jt + 1) * nb_entries_per_split_batch
+                            jt += 1
+
+                            xdst = x_train[dst_start:dst_stop]
+                            ydst = y_train[dst_start:dst_stop]
+
+                            numpy.copyto(xdst, xsrc)
+                            numpy.copyto(ydst, ysrc)
+
+                        else:
+
+                            dst_start = jv * nb_entries_per_split_batch
+                            dst_stop = (jv + 1) * nb_entries_per_split_batch
+                            jv += 1
+
+                            xdst = x_valid[dst_start:dst_stop]
+                            ydst = y_valid[dst_start:dst_stop]
+
+                            numpy.copyto(xdst, xsrc)
+                            numpy.copyto(ydst, ysrc)
 
             lprint("Training now...")
             if is_batch:
