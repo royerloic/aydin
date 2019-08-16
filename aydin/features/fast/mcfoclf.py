@@ -39,6 +39,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         kernel_scales=[2 ** i - 1 for i in range(1, 11)],
         kernel_shapes=None,
         max_level=10,
+        exclude_scale_one=True,
         dtype=numpy.float32,
     ):
         """
@@ -67,6 +68,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             ['l2'] * len(kernel_widths) if kernel_shapes is None else kernel_shapes
         )
         self.max_level = max_level
+        self.exclude_scale_one = exclude_scale_one
 
         self.dtype = dtype
 
@@ -603,6 +605,10 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
                 # Excluding the center pixel/feature:
                 if exclude_center and scale == 1 and shift == (0,) * ndim:
+                    continue
+
+                # Exclude scale one features:
+                if self.exclude_scale_one and scale == 1:
                     continue
 
                 # Different 'shapes' of feature  distributions:
