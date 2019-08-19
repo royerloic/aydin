@@ -20,7 +20,7 @@ from .qt_controls import QtControls
 
 
 # set vispy application to the appropriate qt backend
-use_app(API_NAME)
+# use_app(API_NAME)
 
 
 class QtViewer(QSplitter):

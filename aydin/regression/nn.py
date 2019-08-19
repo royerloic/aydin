@@ -216,6 +216,13 @@ class NNRegressor(RegressorBase):
             # We make sure that we have at least about 1000 items per batch for small images,
             # which is a good minimum. For larger datasets we get bigger batches which is fine.
             batch_size = max(1, x_train.shape[0] // 256)
+            lprint("Max mem: ", provider.device_max_mem)
+
+            # Heuristic threshold here obtained by inspecting batch size per GPU memory
+            # Basically ensures ratio of 700000 batch size per 12GBs of GPU memory
+            batch_size = min(
+                batch_size, (700000 * provider.device_max_mem) // 12884901888
+            )
             lprint(f"Keras batch size for training: {batch_size}")
 
             # Effective number of epochs:
@@ -342,6 +349,12 @@ class NNRegressor(RegressorBase):
 
             # Batch size taking all this into account:
             batch_size = max(1, min(max_gpu_batch_size, x.shape[0] // 256))
+
+            # Heuristic threshold here obtained by inspecting batch size per GPU memory
+            # Basically ensures ratio of 700000 batch size per 12GBs of GPU memory
+            batch_size = min(
+                batch_size, (700000 * max_gpu_mem_in_bytes) // 12884901888
+            )
 
             lprint(f"Batch size: {batch_size}")
             lprint(f"Predicting. features shape = {x.shape}")
