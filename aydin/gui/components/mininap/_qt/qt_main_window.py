@@ -6,7 +6,7 @@ wrap.
 from qtpy import API_NAME
 from vispy import app
 
-app.use_app(API_NAME)
+# app.use_app(API_NAME)
 del app
 
 from qtpy.QtWidgets import QMainWindow, QWidget, QHBoxLayout
