@@ -8,6 +8,13 @@ from pyopencl._cl import get_platforms
 from aydin.util.log.logging import lsection, lprint
 
 
+def compiler_output(text):
+    lprint("Non-empty OpenCL compiler output encountered")
+
+
+cl.compiler_output = compiler_output
+
+
 class OpenCLProvider:
     def __init__(self, includes=[], excludes=[]):
 
