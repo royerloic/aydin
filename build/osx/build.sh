@@ -3,6 +3,9 @@ echo "removing old files..."
 rm -rf build
 rm -rf dist
 
+# Check if error introducing packages are still there
+pip uninstall enum34
+
 
 echo "building app..."
 #onefile
