@@ -5,6 +5,7 @@ import numpy
 
 from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.features.features_base import FeatureGeneratorBase
+from aydin.it.balancing.trainingdatabalancer import TrainingDataBalancer
 from aydin.it.it_base import ImageTranslatorBase
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.regressor_base import RegressorBase
@@ -26,20 +27,26 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         feature_generator=FastMultiscaleConvolutionalFeatures(),
         regressor=GBMRegressor(),
         normaliser_type='percentile',
+        balance_training_data=False,
         analyse_correlation=False,
         monitor=None,
     ):
         """
+        Constructs a 'classic' image translator. Classic image translators use feature generation
+        and standard machine learning regressors to acheive image translation.
 
-        :param feature_generator:
-        :type feature_generator:
-        :param regressor:
-        :type regressor:
+        :param feature_generator: Feature generator
+        :param regressor: regressor
+        :param normaliser_type: normaliser type
+        :param balance_training_data: balance data ? (limits number training entries per target value histogram bin)
+        :param analyse_correlation: analyse correlation?
+        :param monitor: monitor to track progress of training externally (used by UI)
         """
         super().__init__(
             normaliser_type, analyse_correlation=analyse_correlation, monitor=monitor
         )
 
+        self.balance_training_data = balance_training_data
         self.feature_generator = feature_generator
         self.regressor = regressor
 
@@ -119,13 +126,12 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         self, image, batch_dims, exclude_center_feature, exclude_center_value
     ):
         """
-
-        :param image:
-        :type image:
-        :param exclude_center:
-        :type exclude_center:
-        :return:
-        :rtype:
+            Internal function that computes features for a given image.
+        :param image: image
+        :param batch_dims: batch dimensions
+        :param exclude_center_feature: exclude center feature
+        :param exclude_center_value: exclude center value
+        :return: returns flattened array of features
         """
 
         with lsection(f"Computing features for image of shape {image.shape}:"):
@@ -157,15 +163,10 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
     def _predict_from_features(self, x, image_shape):
         """
-            internal function that predicts y from the features x
-        :param x:
-        :type x:
-        :param image_shape:
-        :type image_shape:
-        :param clip:
-        :type clip:
-        :return:
-        :rtype:
+            Internal function that predicts y from the features x
+        :param x: flattened feature array
+        :param image_shape: image shape
+        :return: inferred image with given shape
         """
 
         with lsection(f"Predict from feature vector of dimension {x.shape}:"):
@@ -195,6 +196,14 @@ class ImageTranslatorClassic(ImageTranslatorBase):
     ):
         """
             Train to translate a given input image to a given output image
+            :param input_image: input image
+            :param target_image: target image
+            :param batch_dims: batch dimensions
+            :param train_valid_ratio: ratio between train and validation data
+            :param is_batch: is training batched ? (i.e. should we be able to call train again and continue training?)
+            :param monitoring_images: images to use for mon itoring progress
+            :param callback_period: callback max period
+            :return:
 
         """
         with lsection(
@@ -280,13 +289,13 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             lprint("Number of entries: %d features: %d" % (nb_entries, nb_features))
 
             with lsection(
-                f"Splitting train and test sets (train_test_ratio={train_test_ratio}) "
+                f"Splitting train and test sets (train_test_ratio={train_valid_ratio}) "
             ):
                 # Size of split batch, we assume we use 1024 chunks:
                 lprint(f"Creating random indices for train/val split")
                 nb_split_batches = 1024
 
-                nb_split_batches_valid = int(train_test_ratio * nb_split_batches)
+                nb_split_batches_valid = int(train_valid_ratio * nb_split_batches)
                 nb_split_batches_train = nb_split_batches - nb_split_batches_valid
                 train_indices = numpy.full(nb_split_batches, False)
                 train_indices[nb_split_batches_valid:] = True
@@ -307,13 +316,24 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                 y_valid = numpy.zeros((nb_entries_valid,), dtype=y.dtype)
 
                 with lsection(f"Copying data for training and validation sets..."):
+
+                    balancer = TrainingDataBalancer(
+                        total_entries=nb_split_batches,
+                        number_of_bins=nb_split_batches // 8,
+                        is_active=self.balance_training_data,
+                    )
+
+                    # We use a random permutation to avoid having the balancer drop only from the 'end' of the image
+                    permutation = numpy.random.permutation(nb_split_batches)
+
                     i, jt, jv = 0, 0, 0
                     for is_train in numpy.nditer(train_indices):
                         if i % 64 == 0:
                             lprint(f"Copying section [{i},{i+64}]")
 
-                        src_start = i * nb_entries_per_split_batch
-                        src_stop = (i + 1) * nb_entries_per_split_batch
+                        permutated_i = permutation[i]
+                        src_start = permutated_i * nb_entries_per_split_batch
+                        src_stop = src_start + nb_entries_per_split_batch
                         i += 1
 
                         xsrc = x[src_start:src_stop]
@@ -321,15 +341,16 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
                         if is_train:
 
-                            dst_start = jt * nb_entries_per_split_batch
-                            dst_stop = (jt + 1) * nb_entries_per_split_batch
-                            jt += 1
+                            if balancer.add_entry(ysrc):
+                                dst_start = jt * nb_entries_per_split_batch
+                                dst_stop = (jt + 1) * nb_entries_per_split_batch
+                                jt += 1
 
-                            xdst = x_train[dst_start:dst_stop]
-                            ydst = y_train[dst_start:dst_stop]
+                                xdst = x_train[dst_start:dst_stop]
+                                ydst = y_train[dst_start:dst_stop]
 
-                            numpy.copyto(xdst, xsrc)
-                            numpy.copyto(ydst, ysrc)
+                                numpy.copyto(xdst, xsrc)
+                                numpy.copyto(ydst, ysrc)
 
                         else:
 
@@ -342,6 +363,11 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
                             numpy.copyto(xdst, xsrc)
                             numpy.copyto(ydst, ysrc)
+
+                    lprint(f"Histogram: {balancer.get_histogram_as_string()}")
+                    lprint(
+                        f"Percentage of data kept: {100*balancer.percentage_kept():.2f}%"
+                    )
 
             lprint("Training now...")
             if is_batch:
@@ -367,7 +393,12 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                 return inferred_image
 
     def _translate(self, input_image, batch_dims=None):
-
+        """
+            Internal method that translates an input image on the basis of the trainined model.
+        :param input_image: input image
+        :param batch_dims: batch dimensions
+        :return:
+        """
         features = self._compute_features(
             input_image, batch_dims, self.self_supervised, False
         )
