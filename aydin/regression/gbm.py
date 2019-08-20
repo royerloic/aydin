@@ -254,8 +254,9 @@ class GBMRegressor(RegressorBase):
             lprint(f"Number of features per data points: {x.shape[-1]}")
 
             if model_to_use is None:
-                lprint(f"Using a provided model! (Typical for callbacks)")
                 model_to_use = self.model
+            else:
+                lprint(f"Using a provided model! (Typical for callbacks)")
 
             if isinstance(model_to_use, (list,)):
 

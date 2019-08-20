@@ -79,7 +79,7 @@ def early_stopping(gbm_regressor, stopping_rounds):
                 best_score_list[i] = env.evaluation_result_list
             elif env.iteration - best_iter[i] >= stopping_rounds:
                 lprint(
-                    'Early stopping, best iteration is:\n[%d]\t%s'
+                    'Early stopping, best iteration is: [%d]\t%s'
                     % (
                         best_iter[i] + 1,
                         '\t'.join([_format_eval_result(x) for x in best_score_list[i]]),
