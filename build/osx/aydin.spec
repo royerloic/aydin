@@ -1,5 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import vispy.glsl
+import vispy.io
+import distributed
+import dask
+
 from distutils.sysconfig import get_python_lib
 
 from os import path
@@ -14,7 +19,11 @@ block_cipher = None
 a = Analysis(['../../aydin/cli/cli.py'],
              # pathex=['/Users/ahmetcan.solak/Dev/AhmetCanSolak/aydin'],
              binaries=[],
-             hiddenimports=["vispy.app.backends._pyqt5","vispy.glsl","sentry_sdk.integrations.argv",
+             datas=[(os.path.join(os.path.dirname(dask.__file__)), 'dask'),
+                    (os.path.join(os.path.dirname(distributed.__file__)), 'distributed'),
+                    (os.path.dirname(vispy.glsl.__file__), os.path.join("vispy", "glsl")),
+                    (os.path.join(os.path.dirname(vispy.io.__file__), "_data"), os.path.join("vispy", "io", "_data"))],
+             hiddenimports=["plaidml.keras.backend","vispy.app.backends._pyqt5","vispy.glsl","sentry_sdk.integrations.argv",
                                                                      "sentry_sdk.integrations.modules",
                                                                      "sentry_sdk.integrations.logging",
                                                                      "sentry_sdk.integrations.stdlib",
@@ -41,7 +50,7 @@ a = Analysis(['../../aydin/cli/cli.py'],
                                                                      "sentry_sdk.integrations._wsgi_common",
                                                                      "sentry_sdk.integrations.atexit"],
              hookspath=["hooks"],
-             runtime_hooks=["runtimehooks/hook-multiprocessing.py"],
+             runtime_hooks=["runtimehooks/hook-multiprocessing.py", "runtimehooks/hook-plaidml.py"],
              excludes=["matplotlib"])
 
 pyz = PYZ(a.pure)
