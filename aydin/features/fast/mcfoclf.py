@@ -78,6 +78,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         )
         self.max_level = max_level
         self.exclude_scale_one = exclude_scale_one
+        self.include_median_features = include_median_features
 
         self.dtype = dtype
 
@@ -593,7 +594,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                         feature_index += 1
 
                 # Median features:
-                if self.median_features:
+                if self.include_median_features:
                     with lsection(f"Computing median features:"):
                         index = -1
 
