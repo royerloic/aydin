@@ -137,7 +137,7 @@ def collect_feature_4d(
                                     + mean;
     
 
-               feature[i] = value;
+               feature[i] = clamp(value, 0.0f, nextafter(1.0f,0.0f));
            }}
          }}
          """
