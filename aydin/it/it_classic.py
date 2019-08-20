@@ -70,6 +70,13 @@ class ImageTranslatorClassic(ImageTranslatorBase):
     def get_receptive_field_radius(self, nb_dim):
         return self.feature_generator.get_receptive_field_radius(nb_dim)
 
+    def is_enough_memory(self, array):
+        return self.feature_generator.is_enough_memory(array)
+
+    def limit_epochs(self, max_epochs: int) -> int:
+        # If the regressor is not progressive (supports training through multiple epochs) then we limit epochs to 1
+        return max_epochs if self.regressor.progressive else 1
+
     def train(
         self,
         input_image,
@@ -107,13 +114,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
     def stop_training(self):
         return self.regressor.stop_fit()
-
-    def is_enough_memory(self, array):
-        return self.feature_generator.is_enough_memory(array)
-
-    def limit_epochs(self, max_epochs: int) -> int:
-        # If the regressor is not progressive (supports training through multiple epochs) then we limit epochs to 1
-        return max_epochs if self.regressor.progressive else 1
 
     def _compute_features(
         self, image, batch_dims, exclude_center_feature, exclude_center_value
@@ -188,7 +188,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         input_image,
         target_image,
         batch_dims,
-        train_test_ratio=0.1,
+        train_valid_ratio=0.1,
         is_batch=False,
         monitoring_images=None,
         callback_period=3,
