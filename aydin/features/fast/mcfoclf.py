@@ -1,10 +1,16 @@
 import math
 
+import napari
 import numpy
 import numpy as np
 import psutil
 import pyopencl as cl
+import scipy
+import skimage
+from napari import Viewer
 from pyopencl.array import to_device, Array
+from skimage.morphology import rectangle
+from skimage.morphology import disk
 
 from aydin.features.fast.features_1d import collect_feature_1d
 from aydin.features.fast.features_2d import collect_feature_2d
@@ -19,7 +25,7 @@ from aydin.features.fast.integral import (
 from aydin.features.features_base import FeatureGeneratorBase
 from aydin.providers.opencl.opencl_provider import OpenCLProvider
 from aydin.util.log.logging import lsection, lprint
-from aydin.util.nd import nd_range_radii
+from aydin.util.nd import nd_range_radii, nd_range
 from aydin.util.offcore.offcore import offcore_array
 
 
@@ -40,6 +46,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         kernel_shapes=None,
         max_level=10,
         exclude_scale_one=True,
+        include_median_features=True,
         dtype=numpy.float32,
     ):
         """
@@ -65,7 +72,9 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         self.kernel_widths = kernel_widths
         self.kernel_scales = kernel_scales
         self.kernel_shapes = (
-            ['l2'] * len(kernel_widths) if kernel_shapes is None else kernel_shapes
+            ['li'] + ['l2'] * (len(kernel_widths) - 1)
+            if kernel_shapes is None
+            else kernel_shapes
         )
         self.max_level = max_level
         self.exclude_scale_one = exclude_scale_one
@@ -327,6 +336,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
                     # We first do a dry run to compute the number of features:
                     nb_features = self.collect_features_nD(
+                        image_batch,
                         image_batch_gpu,
                         image_integral_gpu,
                         nb_non_batch_dim,
@@ -343,6 +353,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
                     # we compute one batch of features:
                     self.collect_features_nD(
+                        image_batch,
                         image_batch_gpu,
                         image_integral_gpu,
                         nb_non_batch_dim,
@@ -352,6 +363,11 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                         features[feature_batch_slice],
                         mean,
                     )
+
+                    # #Usefull code snippet for debugging features:
+                    # with napari.gui_qt():
+                    #      viewer = Viewer()
+                    #      viewer.add_image(features, name='features')
 
                 else:  # We only support 1D, 2D, 3D, and 4D.
                     message = f'dimension above {image_dimension} for non nbatch dimensions not yet implemented!'
@@ -457,6 +473,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
     def collect_features_nD(
         self,
+        image,
         image_gpu,
         image_integral_gpu,
         ndim,
@@ -495,81 +512,189 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                 ndim, exclude_center_feature
             )
 
+            # Number of median features:
+            nb_median_features = 2 ** ndim + 1
+
             if features is not None:
 
-                # If feature is not None then we are
+                # If feature is not None then we are actually computing features and not just counting:
 
-                # Temporary numpy array to hold the features after their computation on GPU:
-                feature = None
+                # Standard features:
+                with lsection(f"Computing median features:"):
+                    # Temporary numpy array to hold the features after their computation on GPU:
+                    feature = None
 
-                # We iterate through all features:
-                feature_index = 0
-                for effective_shift, effective_scale in feature_description_list:
+                    # We iterate through all features:
+                    feature_index = 0
+                    for effective_shift, effective_scale in feature_description_list:
 
-                    lprint(f"(shift={effective_shift}, scale={effective_scale} ")
+                        lprint(
+                            f"standard (shift={effective_shift}, scale={effective_scale} "
+                        )
 
-                    # We assemble the call:
-                    params = (
-                        self.opencl_provider,
-                        image_gpu,
-                        image_integral_gpu,
-                        feature_gpu,
-                        *effective_shift,
-                        *effective_scale,
-                        exclude_center_value,
-                        mean,
-                    )
+                        # We assemble the call:
+                        params = (
+                            self.opencl_provider,
+                            image_gpu,
+                            image_integral_gpu,
+                            feature_gpu,
+                            *effective_shift,
+                            *effective_scale,
+                            exclude_center_value,
+                            mean,
+                        )
 
-                    # We dispatch the call to the appropriate OpenCL feature collection code:
-                    if ndim == 1:
-                        collect_feature_1d(*params)
-                    elif ndim == 2:
-                        collect_feature_2d(*params)
-                    elif ndim == 3:
-                        collect_feature_3d(*params)
-                    elif ndim == 4:
-                        collect_feature_4d(*params)
+                        # We dispatch the call to the appropriate OpenCL feature collection code:
+                        if ndim == 1:
+                            collect_feature_1d(*params)
+                        elif ndim == 2:
+                            collect_feature_2d(*params)
+                        elif ndim == 3:
+                            collect_feature_3d(*params)
+                        elif ndim == 4:
+                            collect_feature_4d(*params)
 
-                    # Just-in-time allocation of the temp CPU feature array:
-                    if feature is None:
-                        feature = numpy.zeros(features.shape[1:], dtype=numpy.float32)
+                        # Just-in-time allocation of the temp CPU feature array:
+                        if feature is None:
+                            feature = numpy.zeros(
+                                features.shape[1:], dtype=numpy.float32
+                            )
 
-                    # We copy the GPU computed feature back into CPU memory:
-                    cl.enqueue_copy(
-                        self.opencl_provider.queue, feature, feature_gpu.data
-                    )
+                        # We copy the GPU computed feature back into CPU memory:
+                        cl.enqueue_copy(
+                            self.opencl_provider.queue, feature, feature_gpu.data
+                        )
 
-                    # We multiply to prepare potential casting,
-                    # Let's also check that we don't have overflows:
-                    if self.dtype == numpy.uint8:
-                        feature *= 255
-                        # assert numpy.any(feature < 255)
-                    elif self.dtype == numpy.uint16:
-                        feature *= 255 * 255
-                        # assert numpy.any(feature < 255*255)
+                        # We multiply to prepare potential casting,
+                        # Let's also check that we don't have overflows:
+                        if self.dtype == numpy.uint8:
+                            feature *= 255
+                            # assert numpy.any(feature < 255)
+                        elif self.dtype == numpy.uint16:
+                            feature *= 255 * 255
+                            # assert numpy.any(feature < 255*255)
 
-                    # We put the computed feature into the main array that holds all features:
-                    # casting is done as needed:
-                    features[feature_index] = feature.astype(self.dtype, copy=False)
+                        # We put the computed feature into the main array that holds all features:
+                        # casting is done as needed:
+                        features[feature_index] = feature.astype(self.dtype, copy=False)
 
-                    # with napari.gui_qt():
-                    #     viewer = Viewer()
-                    #     viewer.add_image(image_gpu.get(), name='image')
-                    #     viewer.add_image(feature, name='feature')
+                        # with napari.gui_qt():
+                        #     viewer = Viewer()
+                        #     viewer.add_image(image_gpu.get(), name='image')
+                        #     viewer.add_image(feature, name='feature')
 
-                    # optional sanity check:
-                    if self.check_nans and np.isnan(np.sum(features[feature_index])):
-                        raise Exception(f'NaN values occur in features!')
+                        # optional sanity check:
+                        if self.check_nans and np.isnan(
+                            np.sum(features[feature_index])
+                        ):
+                            raise Exception(f'NaN values occur in features!')
 
-                    # Increment feature counter:
-                    feature_index += 1
+                        # Increment feature counter:
+                        feature_index += 1
+
+                # Median features:
+                if self.median_features:
+                    with lsection(f"Computing median features:"):
+                        index = -1
+
+                        mask = numpy.ones(shape=(3,) * ndim, dtype=numpy.int8)
+
+                        if exclude_center_value:
+                            mask[(1,) * ndim] = 0
+                        features[index] = scipy.ndimage.median_filter(
+                            input=image, footprint=mask
+                        )
+                        # features[index] /= 255
+                        index -= 1
+
+                        if ndim == 1:
+
+                            for x in (0, 2):
+                                lprint(f"median (x={x})")
+                                mask = numpy.ones(shape=(3,) * ndim, dtype=numpy.int8)
+                                mask[x] = 0
+                                if exclude_center_value:
+                                    mask[1] = 0
+                                features[index] = scipy.ndimage.median_filter(
+                                    input=image, footprint=mask
+                                )
+                                # features[index] /= 255
+                                index -= 1
+
+                        elif ndim == 2:
+
+                            for x in (0, 2):
+                                for y in (0, 2):
+                                    lprint(f"median (x={x}, y={y})")
+                                    mask = numpy.ones(
+                                        shape=(3,) * ndim, dtype=numpy.int8
+                                    )
+                                    mask[x, :] = 0
+                                    mask[:, y] = 0
+                                    if exclude_center_value:
+                                        mask[1, 1] = 0
+                                    features[index] = scipy.ndimage.median_filter(
+                                        input=image, footprint=mask
+                                    )
+                                    # features[index] /= 255
+                                    index -= 1
+
+                        elif ndim == 3:
+
+                            for x in (0, 2):
+                                for y in (0, 2):
+                                    for z in (0, 2):
+                                        lprint(f"median (x={x}, y={y}, z={z})")
+                                        mask = numpy.ones(
+                                            shape=(3,) * ndim, dtype=numpy.int8
+                                        )
+                                        mask[x, :, :] = 0
+                                        mask[:, y, :] = 0
+                                        mask[:, :, z] = 0
+                                        if exclude_center_value:
+                                            mask[1, 1] = 0
+                                        features[index] = scipy.ndimage.median_filter(
+                                            input=image, footprint=mask
+                                        )
+                                        # features[index] /= 255
+                                        index -= 1
+
+                        elif ndim == 4:
+
+                            for x in (0, 2):
+                                for y in (0, 2):
+                                    for z in (0, 2):
+                                        for w in (0, 2):
+                                            lprint(
+                                                f"median (x={x}, y={y}, z={z}, w={w})"
+                                            )
+                                            mask = numpy.ones(
+                                                shape=(3,) * ndim, dtype=numpy.int8
+                                            )
+                                            mask[x, :, :, :] = 0
+                                            mask[:, y, :, :] = 0
+                                            mask[:, :, z, :] = 0
+                                            mask[:, :, :, w] = 0
+                                            if exclude_center_value:
+                                                mask[1, 1] = 0
+                                            features[
+                                                index
+                                            ] = scipy.ndimage.median_filter(
+                                                input=image, footprint=mask
+                                            )
+                                            # features[index] /= 255
+                                            index -= 1
+
+                        # with napari.gui_qt():
+                        #     viewer = Viewer()
+                        #     viewer.add_image(features, name='features')
 
                 # We return the array holding all computed features:
                 return features
 
             else:
                 # In this case we are just here to count the _number_ of features, and return that count:
-                return len(feature_description_list)
+                return len(feature_description_list) + nb_median_features
 
     def get_feature_descriptions(self, ndim, exclude_center):
         feature_description_list = []

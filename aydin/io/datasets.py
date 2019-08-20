@@ -5,6 +5,7 @@ from os.path import join, exists
 
 import gdown
 
+from aydin.io import io
 from aydin.io.folders import get_cache_folder
 from aydin.util.log.logging import lprint
 
@@ -15,15 +16,24 @@ try:
 except:
     pass
 
+# Convenience shortcuts:
+def newyork():
+    return examples_single.generic_newyork.get_array()
+
 
 class examples_single(Enum):
     def get_path(self):
         download_from_gdrive(*self.value, datasets_folder)
         return join(datasets_folder, self.value[1])
 
+    def get_array(self):
+        array, _ = io.imread(self.get_path())
+        return array
+
     # XY natural images:
     generic_crowd = ('13UHK8MjhBviv31mAW2isdG4G-aGaNJIj', 'crowd.tif')
     generic_mandrill = ('1B33ELiFuCV0OJ6IHh7Ix9lvImwI_QkR-', 'mandrill.tif')
+    generic_newyork = ('15Nuu_NU3iNuoPRmpFbrGIY0VT0iCmuKu', 'newyork.png')
 
     # XYC (RGB)
     celldiv = ('120w8j2XgJgwD0w0nqX-Gd0C4Qi_gJ8oO', 'Example-noisy1.png')

@@ -22,8 +22,8 @@ def demo():
     array = array.squeeze()
     array = array[1]
 
-    train = array  # full
-    # train = array[50:250, 300:500, 400:600]
+    # train = array  # full
+    train = array[50:250, 300:500, 400:600]
 
     infer = array  # Full: 320, 865, 1014
     # infer = array[0:160, 0:430, 0:512] # 1/8th
@@ -40,13 +40,13 @@ def demo():
 
         batch_dims = (False,) * len(array.shape)
 
-        generator = FastMultiscaleConvolutionalFeatures(max_level=4, dtype=numpy.uint8)
+        generator = FastMultiscaleConvolutionalFeatures(max_level=4, dtype=numpy.uint16)
         regressor = NNRegressor()
 
         it = ImageTranslatorClassic(generator, regressor, normaliser_type='percentile')
 
         start = time.time()
-        it.train(train, train, batch_dims=batch_dims, max_epochs=1, patience=1)
+        it.train(train, train, batch_dims=batch_dims, max_epochs=30, patience=8)
         stop = time.time()
         print(f"Training: elapsed time:  {stop-start} ")
 
