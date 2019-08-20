@@ -234,6 +234,12 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
                 current_time_sec = time.time()
 
+                # Correct for dtype range:
+                if self.feature_generator.dtype == numpy.uint8:
+                    val_loss /= 255
+                elif self.feature_generator.dtype == numpy.uint16:
+                    val_loss /= 255 * 255
+
                 if (
                     current_time_sec
                     > self.last_callback_time_sec + self.callback_period
