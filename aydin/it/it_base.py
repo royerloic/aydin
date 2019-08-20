@@ -99,7 +99,7 @@ class ImageTranslatorBase(ABC):
         input_image,
         target_image,
         batch_dims,
-        train_test_ratio=0.1,
+        train_valid_ratio=0.1,
         is_batch=False,
         monitoring_images=None,
         callback_period=3,
