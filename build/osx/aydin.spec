@@ -51,7 +51,7 @@ a = Analysis(['../../aydin/cli/cli.py'],
                                                                      "sentry_sdk.integrations.atexit"],
              hookspath=["hooks"],
              runtime_hooks=["runtimehooks/hook-multiprocessing.py", "runtimehooks/hook-plaidml.py"],
-             excludes=["matplotlib"])
+             excludes=["matplotlib", "napari"])
 
 pyz = PYZ(a.pure)
 
