@@ -57,7 +57,8 @@ VERSION = '0.0.3'
 def aydin(ctx):
     sentry_sdk.init("https://d9d7db5f152546c490995a409023c60a@sentry.io/1498298")
     if ctx.invoked_subcommand is None:
-        gui.run()
+        # gui.run()
+        print("Run aydin with a command please...")
     else:
         pass
 
@@ -90,6 +91,9 @@ def update_app(name, id):
         file_id=id, dest_path=updated_app_path, unzip=False
     )
     print("Please find the most recent version here: ", updated_app_path)
+
+    if platform.system() == 'Darwin':
+        os.system("chmod 755 " + updated_app_path)
 
     # Run same command with newest version
     args = click.get_os_args()
