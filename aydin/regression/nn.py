@@ -352,9 +352,7 @@ class NNRegressor(RegressorBase):
 
             # Heuristic threshold here obtained by inspecting batch size per GPU memory
             # Basically ensures ratio of 700000 batch size per 12GBs of GPU memory
-            batch_size = min(
-                batch_size, (700000 * max_gpu_mem_in_bytes) // 12884901888
-            )
+            batch_size = min(batch_size, (700000 * max_gpu_mem_in_bytes) // 12884901888)
 
             lprint(f"Batch size: {batch_size}")
             lprint(f"Predicting. features shape = {x.shape}")

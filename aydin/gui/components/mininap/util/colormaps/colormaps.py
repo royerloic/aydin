@@ -8,16 +8,18 @@ from ..._vispy.color import Colormap as LabelColormap
 # _matplotlib_list_file = os.path.join(os.path.dirname(__file__), 'matplotlib_cmaps.txt')
 # with open(_matplotlib_list_file) as fin:
 #    matplotlib_colormaps = [line.rstrip() for line in fin]
-matplotlib_colormaps = ['viridis',
-                        'magma',
-                        'inferno',
-                        'plasma',
-                        'gray',
-                        'hsv',
-                        'twilight',
-                        'twilight_shifted',
-                        'gist_earth',
-                        'PiYG']
+matplotlib_colormaps = [
+    'viridis',
+    'magma',
+    'inferno',
+    'plasma',
+    'gray',
+    'hsv',
+    'twilight',
+    'twilight_shifted',
+    'gist_earth',
+    'PiYG',
+]
 
 primary_color_names = ['red', 'green', 'blue', 'cyan', 'magenta', 'yellow']
 primary_colors = np.array(
