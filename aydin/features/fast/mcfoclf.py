@@ -1,13 +1,11 @@
 import math
 
-import napari
 import numpy
 import numpy as np
 import psutil
 import pyopencl as cl
 import scipy
 import skimage
-from napari import Viewer
 from pyopencl.array import to_device, Array
 from skimage.morphology import rectangle
 from skimage.morphology import disk

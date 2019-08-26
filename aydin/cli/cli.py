@@ -57,7 +57,8 @@ VERSION = '0.0.3'
 def aydin(ctx):
     sentry_sdk.init("https://d9d7db5f152546c490995a409023c60a@sentry.io/1498298")
     if ctx.invoked_subcommand is None:
-        gui.run()
+        # gui.run()
+        print("Run aydin with a command please...")
     else:
         pass
 
@@ -91,6 +92,9 @@ def update_app(name, id):
     )
     print("Please find the most recent version here: ", updated_app_path)
 
+    if platform.system() == 'Darwin':
+        os.system("chmod 755 " + updated_app_path)
+
     # Run same command with newest version
     args = click.get_os_args()
     words = [updated_app_path] + args
@@ -109,10 +113,13 @@ def demo(**kwargs):
 
 @aydin.command()
 @click.argument('path_source')
+@click.option('-s', '--slicing', default='', type=str)
 def noise2self(**kwargs):
     # Get abspath to image and read it
     path = os.path.abspath(kwargs['path_source'])
+
     noisy = read_image_from_path(path)
+    noisy = eval('noisy' + kwargs['slicing'])
 
     # Run N2S service and save the result
     pbar = ProgressBar(total=100)
@@ -128,14 +135,18 @@ def noise2self(**kwargs):
 @click.argument('train_source')
 @click.argument('train_truth')
 @click.argument('predict_target')
+@click.option('-s', '--slicing', default='', type=str)
 def noise2truth(**kwargs):
     # Get abspath to images and read them
     path_source = os.path.abspath(kwargs['train_source'])
     path_truth = os.path.abspath(kwargs['train_truth'])
     path_target = os.path.abspath(kwargs['predict_target'])
     noisy = read_image_from_path(path_source)
+    noisy = eval('noisy' + kwargs['slicing'])
     truth = read_image_from_path(path_truth)
+    truth = eval('truth' + kwargs['slicing'])
     target = read_image_from_path(path_target)
+    target = eval('target' + kwargs['slicing'])
 
     # Run N2T service and save the result
     pbar = ProgressBar(total=100)
