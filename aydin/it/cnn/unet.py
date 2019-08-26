@@ -354,7 +354,7 @@ class Unet:
                 maskedgen(self.input_dim[:-1], mask_shape, input_img, self.batch_size),
                 epochs=num_epoch,
                 steps_per_epoch=np.prod(mask_shape)
-                * np.ceil(input_img.shape[0] / self.batch_size).astype(int),
+                * np.ceil(input_img.shape[0] / self.batch_size).astype(np.int),
                 callbacks=[EStop, ReduceLR],
             )
         return history
