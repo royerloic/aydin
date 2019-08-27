@@ -67,6 +67,10 @@ class Unet:
         self.shiftconv = shiftconv
         self.initial_unit = initial_unit
         self.lr = learn_rate
+
+        # In case input data is a single image.
+        if batch_size == None:
+            batch_size = 1
         self.batch_size = batch_size
 
         if supervised:
