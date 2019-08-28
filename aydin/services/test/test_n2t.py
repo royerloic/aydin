@@ -6,9 +6,11 @@ from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
 from aydin.services.n2t import N2TService
-
+from aydin.util.progress_bar import ProgressBar
 
 # TODO: Check with loic if this test makes sense
+
+
 def test_run():
     # Prepare the noisy classical camera image
     image = camera().astype(np.float32)
@@ -27,7 +29,9 @@ def test_run():
 
     # Call the Noise2Self service
     n2t = N2TService()
-    denoised_image = n2t.run(noisy_image, image, noisy_test)
+    pbar = ProgressBar(total=100)
+    denoised_image = n2t.run(noisy_image, image, noisy_test, pbar)
+    pbar.close()
 
     # Check if denoised image satisfies some checks
     assert psnr(denoised_image, image) >= 20.0
