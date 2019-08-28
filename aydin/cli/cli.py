@@ -12,8 +12,7 @@ import logging
 import sentry_sdk
 from google_drive_downloader import GoogleDriveDownloader as gdd
 
-from aydin.cli.progress_bar import ProgressBar
-from aydin.gui import gui
+from aydin.util.progress_bar import ProgressBar
 from aydin.io.io import imwrite
 from aydin.services.n2s import N2SService
 from aydin.services.n2t import N2TService
