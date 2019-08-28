@@ -5,6 +5,7 @@ from tifffile import imread
 from ..resource import download_and_extract_zipresource
 
 
+@pytest.mark.heavy
 def test_download_and_extract_zipresource():
 
     # Testing execution of the method

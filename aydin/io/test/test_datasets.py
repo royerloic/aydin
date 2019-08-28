@@ -1,3 +1,5 @@
+import pytest
+
 from aydin.io.datasets import (
     download_from_gdrive,
     examples_single,
@@ -18,6 +20,7 @@ def test_examples_single():
             print(dataset)
 
 
+@pytest.mark.heavy
 def test_download():
     if not ci_flag:
         print(
@@ -27,6 +30,7 @@ def test_download():
         )
 
 
+@pytest.mark.heavy
 def test_all_download():
     if not ci_flag:
         download_all_examples()
