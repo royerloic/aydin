@@ -35,6 +35,6 @@ plaidml==0.6.4
 plaidml-keras==0.6.4
 zarr==2.2.0
 numcodecs==0.5.4
-https://download.lfd.uci.edu/pythonlibs/r6aykn4w/pyopencl-2019.1.1+cl12-cp36-cp36m-win_amd64.whl ; sys_platform == "windows"
+https://download.lfd.uci.edu/pythonlibs/r6aykn4w/pyopencl-2019.1.1+cl12-cp36-cp36m-win_amd64.whl ; sys_platform == "win32"
 pyopencl==2019.1.1 ; sys_platform == "darwin"
 pyopencl==2019.1.1 ; sys_platform == "linux"
