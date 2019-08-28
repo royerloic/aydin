@@ -13,17 +13,19 @@ unit tests windows:
     - python -m pytest .
 
 
-#unit tests linux:
-#  tags:
-#    - linux
-#  before_script:
-#    - sudo apt-get install -y build-essential
-#    - export PATH=~/anaconda3/bin:$PATH
-#    - conda --version
-#    - source activate pitl
-#    - sudo pip install git+https://www.github.com/keras-team/keras-contrib.git
-#  script:
-#    - echo $CONDA_DEFAULT_ENV
-#    - pip install -r requirements.txt
-#    - python -m pytest .
-#    - conda deactivate
+unit tests linux:
+  tags:
+    - linux
+  before_script:
+    # - sudo apt-get install python-dev
+    - export PATH=~/anaconda3/bin:$PATH
+    - conda --version
+    - conda create --name aydin python=3.6
+    - source activate aydin
+    - pip install -r requirements.txt
+  script:
+    - echo $CONDA_DEFAULT_ENV
+    - source activate aydin
+    - clinfo
+    - python -m pytest .
+    - conda deactivate
