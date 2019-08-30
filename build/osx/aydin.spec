@@ -1,4 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
+import sys
+print("python ver:", sys.version[:3])
+if sys.version[:3] < "3.7":
+    sys.exit()
+else:
+    print("python version okay")
 
 import vispy.glsl
 import vispy.io
