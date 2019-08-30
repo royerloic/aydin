@@ -5,7 +5,7 @@ rm -rf dist
 
 # Check if error introducing packages are still there
 pip uninstall enum34
-
+pip uninstall imagecodecs
 
 echo "building app..."
 #onefile
