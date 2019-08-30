@@ -349,6 +349,9 @@ class NNRegressor(RegressorBase):
 
             # Batch size taking all this into account:
             batch_size = max(1, min(max_gpu_batch_size, x.shape[0] // 256))
+            batch_size = min(
+                batch_size, 700000 * (max_gpu_mem_in_bytes // 12884901888)
+            )  # TODO: try this on scope machine first
 
             # Heuristic threshold here obtained by inspecting batch size per GPU memory
             # Basically ensures ratio of 700000 batch size per 12GBs of GPU memory
