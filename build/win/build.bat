@@ -3,4 +3,7 @@ version=`python3 -c "import os, sys;tmp = sys.stdout;sys.stdout = open(os.devnul
 del -rf build
 del -rf dist
 
+pip uninstall imagecodecs
+pip uninstall enum34
+
 pyinstaller.exe -w -D -y --clean aydin.spec
