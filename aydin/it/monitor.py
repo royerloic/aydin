@@ -1,6 +1,7 @@
 class Monitor:
-    def __init__(self, monitoring_callback):
-        self.monitoring_callback = monitoring_callback
+    def __init__(self, monitoring_callbacks=[], monitoring_images=None):
+        self.monitoring_callbacks = monitoring_callbacks
+        self.monitoring_images = monitoring_images
 
         self.variables = None
         self._image = None
@@ -19,4 +20,5 @@ class Monitor:
             self._image = val[2]
             # print("changed...")
             # print(self.monitoring_variables)
-            self.monitoring_callback((self._iter, self._val_loss, self._image))
+            for monitoring_callback in self.monitoring_callbacks:
+                monitoring_callback((self._iter, self._val_loss, self._image))

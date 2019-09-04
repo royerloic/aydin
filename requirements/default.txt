@@ -1,5 +1,7 @@
 numexpr
 tqdm
+pyqtgraph
+requests
 black>=19.3b0
 certifi==2019.6.16
 Click==7.0

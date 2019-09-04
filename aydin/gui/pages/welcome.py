@@ -8,12 +8,10 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QHBoxLayout,
-    QGridLayout,
 )
 
 from aydin.gui.pages.wizards.Noise2SelfWizard import Noise2SelfWizard
 from aydin.gui.pages.wizards.Noise2TruthWizard import Noise2TruthWizard
-from aydin.gui.pages.wizards.IsonetWizard import IsonetWizard
 
 
 class WelcomePage(QWidget):
@@ -49,10 +47,6 @@ class WelcomePage(QWidget):
         self.n2t_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.buttons_layout.addWidget(self.n2t_button)
 
-        self.isonet_button = QPushButton("Isonet")
-        self.isonet_button.pressed.connect(self.switch_to_isonet)
-        self.isonet_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
-        self.buttons_layout.addWidget(self.isonet_button)
         self.layout.addLayout(self.buttons_layout)
 
         # Set final layout as widget layout
@@ -63,6 +57,3 @@ class WelcomePage(QWidget):
 
     def switch_to_n2t(self):
         self.parent.setCentralWidget(Noise2TruthWizard(self, self.threadpool))
-
-    def switch_to_isonet(self):
-        self.parent.setCentralWidget(IsonetWizard(self, self.threadpool))

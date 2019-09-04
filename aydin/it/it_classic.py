@@ -92,7 +92,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         batch_dims=None,
         batch_size=None,
         batch_shuffle=False,
-        monitoring_images=None,
         callback_period=3,
         patience=3,
         patience_epsilon=0.000001,
@@ -113,7 +112,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             batch_dims,
             batch_size,
             batch_shuffle,
-            monitoring_images,
             callback_period,
             patience,
             patience_epsilon,
@@ -191,7 +189,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         batch_dims,
         train_valid_ratio=0.1,
         is_batch=False,
-        monitoring_images=None,
         callback_period=3,
     ):
         """
@@ -219,11 +216,11 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             #   assert numpy.may_share_memory(target_image, y)
 
             # Compute features for monitoring images:
-            if monitoring_images:
+            if self.monitor.monitoring_images is not None:
                 # Normalise monitoring images:
                 normalised_monitoring_images = [
                     self.input_normaliser.normalise(monitoring_image)
-                    for monitoring_image in monitoring_images
+                    for monitoring_image in self.monitor.monitoring_images
                 ]
                 # compute features proper:
                 monitoring_images_features = [
@@ -262,7 +259,8 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                         inferred_images = [
                             y_m.reshape(image.shape)
                             for (image, y_m) in zip(
-                                monitoring_images, predicted_monitoring_datasets
+                                self.monitor.monitoring_images,
+                                predicted_monitoring_datasets,
                             )
                         ]
 
