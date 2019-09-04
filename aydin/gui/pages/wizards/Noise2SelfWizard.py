@@ -1,4 +1,3 @@
-import numpy as np
 from PyQt5.QtWidgets import QTabWidget
 
 from aydin.gui.components.tabs.roi import ROIPage
@@ -12,8 +11,8 @@ class Noise2SelfWizard(QTabWidget):
         super(QTabWidget, self).__init__(parent)
 
         self.currentChanged.connect(self.handle_tab_change)
-        self.monitor_image = (
-            None
+        self.monitor_images = (
+            []
         )  # TODO: check the best scheme for handling this in the end
 
         # Add tabs
@@ -26,8 +25,8 @@ class Noise2SelfWizard(QTabWidget):
         self.test_tab = TestN2STab(self, f)
         self.addTab(self.test_tab, "Test")
 
-        self.run_tab = RunN2STab(self, f)
-        self.addTab(self.run_tab, "Run")
+        # self.run_tab = RunN2STab(self, f)
+        # self.addTab(self.run_tab, "Run")
 
         # Disable all tabs except first one
         self.setTabEnabled(1, False)
@@ -48,12 +47,14 @@ class Noise2SelfWizard(QTabWidget):
             self.setTabEnabled(2, False)
             self.setTabEnabled(3, False)
         elif idx == 1:
-            self.roi_tab.load_tab()
+            if not self.roi_tab.is_loaded:
+                self.roi_tab.load_tab()
             self.setTabEnabled(1, True)
             self.setTabEnabled(2, False)
             self.setTabEnabled(3, False)
         elif idx == 2:
-            self.test_tab.load_tab()
+            if not self.test_tab.is_loaded:
+                self.test_tab.load_tab()
             self.setTabEnabled(2, True)
             self.setTabEnabled(3, False)
         elif idx == 3:

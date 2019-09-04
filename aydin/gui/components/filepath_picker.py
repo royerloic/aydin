@@ -64,7 +64,10 @@ class FilePathPicker(QWidget):
             pixmap = QPixmap(self.filename)
             pixmap = pixmap.scaled(200, 200, Qt.KeepAspectRatio)
             self.lbl.setPixmap(pixmap)
-            self.file_ready.emit()
+            if (
+                self.file_ready is not None
+            ):  # TODO: check if this if needed once everything connected on UI
+                self.file_ready.emit()
         else:
             raise Exception("Selected item is not a file...")
 
