@@ -42,6 +42,7 @@ model = Unet(
     normalization=normalization,
     activation=activation,
     learn_rate=0.001,
+    batch_size=1,
 )
 history = model.fit(
     noisy,
