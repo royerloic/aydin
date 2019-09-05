@@ -16,7 +16,7 @@ import click
 
 # Do not initialize anything if help command is passed
 os_args = click.get_os_args()
-if len(os_args) == 0 or (os_args[0] != '--help' and os_args[0] != '-h'):
+if len(os_args) == 0 or ('--help' not in os_args and '-h' not in os_args):
     provider = PlaidMLProvider()
 
 from keras.engine.saving import model_from_json
