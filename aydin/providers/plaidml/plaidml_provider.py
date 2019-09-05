@@ -76,7 +76,7 @@ class PlaidMLProvider:
         for device in filtered_devices:
             if device.description.decode() == best_match:
                 return device
-
+        
         return filtered_devices[0]
 
     def test_device(self, device):
