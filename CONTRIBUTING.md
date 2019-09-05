@@ -14,7 +14,7 @@ Feature suggestions are embraced, but will often be filed for a rainy day. If yo
 
 When suggesting a feature, make sure to:
 
-* Check the code on GitHub to make sure it's not already hiding in an unreleased version ;)
+* Check the code on repo to make sure it's not already hiding in an unreleased version ;)
 * Considered if it's necessary in the library, or is an advanced technique that could be separately explained in an example
 * Check existing issues, open and closed, to make sure it hasn't already been suggested
 
@@ -51,7 +51,7 @@ Once you're ready to share your contribution with us you should submit it as a P
 
 #### Do
 
-* Do use pep8 style guidelines
+* Do use pep8 style guidelines + our preferences with `black` formatter
 * Do comment your code where necessary
 * Do submit only a single example/feature per pull-request
 * Do include a description of what your example is expected to do
@@ -62,6 +62,17 @@ Once you're ready to share your contribution with us you should submit it as a P
 * Don't include any license information in your examples- our repositories are GPLv3 licensed
 * Don't try to do too much at once- submit one or two examples at a time, and be receptive to feedback
 * Don't submit multiple variations of the same example, demonstrate one thing concisely
+
+#### How to setup development environment:
+
+```bash
+conda create --name aydin python=3.6
+source activate aydin
+pip install -r requirements.txt
+
+# For development
+pre-commit install
+```
 
 ### Licensing
 
