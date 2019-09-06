@@ -1,7 +1,7 @@
 import sys
 
 from PyQt5.QtGui import QTextCursor
-from PyQt5.QtWidgets import QWidget, QPlainTextEdit
+from PyQt5.QtWidgets import QPlainTextEdit
 
 
 class OutLog:

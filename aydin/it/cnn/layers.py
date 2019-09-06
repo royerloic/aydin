@@ -1,11 +1,6 @@
-import os, importlib
 import numpy as np
 from keras import backend as K
-from keras.models import Model
-from keras import optimizers
 from keras.layers import (
-    Input,
-    Concatenate,
     Conv2D,
     LeakyReLU,
     ZeroPadding2D,
@@ -15,10 +10,8 @@ from keras.layers import (
     Layer,
     multiply,
     MaxPooling2D,
-    UpSampling2D,
     Activation,
 )
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from aydin.it.cnn.intancenormalization import InstanceNormalization
 
 

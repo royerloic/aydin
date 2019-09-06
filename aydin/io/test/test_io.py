@@ -1,4 +1,3 @@
-import tempfile
 import pytest
 from os import path
 from os.path import join

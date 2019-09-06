@@ -1,5 +1,4 @@
 import hashlib
-import hashlib
 import os
 import traceback
 from contextlib import contextmanager
@@ -10,7 +9,6 @@ from pathlib import Path
 import dask
 import numcodecs
 import numpy
-import pims
 import skimage
 import zarr
 from czifile import czifile, CziFile

@@ -1,5 +1,4 @@
 import time
-from os import remove
 from os.path import join, exists
 
 import numpy

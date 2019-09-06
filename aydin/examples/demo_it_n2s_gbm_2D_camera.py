@@ -7,7 +7,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from aydin.features.classic.mcfocl import MultiscaleConvolutionalFeatures
+from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 
@@ -38,7 +38,7 @@ def demo(image, min_level=7, max_level=100):
         widths = [3, 3, 3, 3, 3, 3, 3, 3]
 
         for param in range(min_level, min(max_level, len(scales)), 1):
-            generator = MultiscaleConvolutionalFeatures(
+            generator = FastMultiscaleConvolutionalFeatures(
                 kernel_widths=widths[0:param],
                 kernel_scales=scales[0:param],
                 kernel_shapes=['l1'] * len(scales[0:param]),

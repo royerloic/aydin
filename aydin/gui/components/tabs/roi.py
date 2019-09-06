@@ -1,5 +1,5 @@
 import numpy as np
-from PyQt5.QtWidgets import QWidget, QPushButton, QVBoxLayout, QLabel
+from PyQt5.QtWidgets import QPushButton, QVBoxLayout
 from vispy.visuals.transforms import STTransform
 
 from aydin.gui.components.mininap import Viewer

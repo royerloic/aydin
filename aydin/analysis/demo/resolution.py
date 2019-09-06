@@ -1,4 +1,3 @@
-from aydin.analysis.correlation import correlation_distance
 from aydin.io import io
 from aydin.io.datasets import examples_single
 
