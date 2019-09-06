@@ -25,7 +25,7 @@ class WelcomePage(QWidget):
 
         # Title
         self.title_label = QLabel("AYDIN")
-        self.title_label.setFont(QFont("Times", 146, QFont.Bold))
+        self.title_label.setFont(QFont("Arial", 146, QFont.Bold))
         self.title_label.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(self.title_label)
 
@@ -38,11 +38,13 @@ class WelcomePage(QWidget):
         # Buttons for different services
         self.buttons_layout = QHBoxLayout()
         self.n2s_button = QPushButton("Noise2Self")
+        self.n2s_button.setFont(QFont("Arial", 26, QFont.Bold))
         self.n2s_button.pressed.connect(self.switch_to_n2s)
         self.n2s_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.buttons_layout.addWidget(self.n2s_button)
 
         self.n2t_button = QPushButton("Noise2Truth")
+        self.n2t_button.setFont(QFont("Arial", 26, QFont.Bold))
         self.n2t_button.pressed.connect(self.switch_to_n2t)
         self.n2t_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.buttons_layout.addWidget(self.n2t_button)
