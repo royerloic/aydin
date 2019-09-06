@@ -1,14 +1,11 @@
-import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QPushButton,
-    QHBoxLayout,
     QLabel,
     QProgressBar,
     QSplitter,
-    QPlainTextEdit,
 )
 
 from aydin.gui.components.plot_canvas import PlotCanvas

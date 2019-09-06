@@ -1,6 +1,5 @@
 from keras import layers
-from keras.initializers import VarianceScaling, RandomNormal
-from keras.layers import Input, Dense, LeakyReLU, PReLU, ReLU, GaussianNoise
+from keras.layers import Input, Dense, LeakyReLU, GaussianNoise
 from keras.models import Model
 
 

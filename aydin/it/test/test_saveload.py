@@ -1,7 +1,6 @@
 import time
 import pytest
-from os import remove
-from os.path import join, exists
+from os.path import join
 
 import numpy
 from skimage.data import camera
@@ -14,9 +13,6 @@ from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.io.folders import get_temp_folder
 from aydin.it.it_base import ImageTranslatorBase
 from aydin.it.it_classic import ImageTranslatorClassic
-from aydin.normaliser.minmax import MinMaxNormaliser
-from aydin.normaliser.normaliser_base import NormaliserBase
-from aydin.normaliser.percentile import PercentileNormaliser
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn import NNRegressor
 

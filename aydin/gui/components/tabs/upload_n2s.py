@@ -1,5 +1,5 @@
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout
+from PyQt5.QtWidgets import QVBoxLayout, QLabel, QHBoxLayout
 
 from aydin.gui.components.filepath_picker import FilePathPicker
 from aydin.gui.components.tabs.base_tab import BaseTab

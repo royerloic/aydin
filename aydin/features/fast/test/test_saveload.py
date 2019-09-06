@@ -1,6 +1,5 @@
 import time
-from os import remove
-from os.path import join, exists
+from os.path import join
 
 import numpy
 from skimage.data import camera
