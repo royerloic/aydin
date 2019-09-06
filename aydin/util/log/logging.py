@@ -1,7 +1,6 @@
 import math
 import sys
 import time
-from io import TextIOWrapper
 
 from decorator import contextmanager
 

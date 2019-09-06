@@ -1,4 +1,4 @@
-from os.path import join, exists
+from os.path import join
 
 import numpy
 import random
@@ -15,13 +15,7 @@ from aydin.it.it_base import ImageTranslatorBase
 # All keras calls mst be _AFTER_ the line below:
 from aydin.util.log.logging import lsection, lprint
 
-from keras.engine.saving import model_from_json
-from aydin.regression.nn_utils.callbacks import (
-    NNCallback,
-    # EarlyStopping,
-    # ReduceLROnPlateau,
-    ModelCheckpoint,
-)
+from aydin.regression.nn_utils.callbacks import ModelCheckpoint
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 

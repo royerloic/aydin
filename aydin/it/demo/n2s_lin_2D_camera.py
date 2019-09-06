@@ -11,7 +11,6 @@ from skimage.util import random_noise
 
 from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
-from aydin.regression.gbm import GBMRegressor
 from aydin.regression.linear import LinearRegressor
 
 

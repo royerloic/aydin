@@ -1,4 +1,3 @@
-import math
 import time
 
 import numpy
@@ -216,7 +215,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             #   assert numpy.may_share_memory(target_image, y)
 
             # Compute features for monitoring images:
-            if self.monitor.monitoring_images is not None:
+            if self.monitor is not None and self.monitor.monitoring_images is not None:
                 # Normalise monitoring images:
                 normalised_monitoring_images = [
                     self.input_normaliser.normalise(monitoring_image)

@@ -3,13 +3,10 @@ import time
 import napari
 import numpy
 import numpy as np
-import skimage
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
-from skimage.morphology import disk
-from skimage.restoration import denoise_nl_means, estimate_sigma
 from skimage.util import random_noise
 
 from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures

@@ -5,10 +5,7 @@ import numpy as np
 import psutil
 import pyopencl as cl
 import scipy
-import skimage
 from pyopencl.array import to_device, Array
-from skimage.morphology import rectangle
-from skimage.morphology import disk
 
 from aydin.features.fast.features_1d import collect_feature_1d
 from aydin.features.fast.features_2d import collect_feature_2d
@@ -23,7 +20,7 @@ from aydin.features.fast.integral import (
 from aydin.features.features_base import FeatureGeneratorBase
 from aydin.providers.opencl.opencl_provider import OpenCLProvider
 from aydin.util.log.logging import lsection, lprint
-from aydin.util.nd import nd_range_radii, nd_range
+from aydin.util.nd import nd_range_radii
 from aydin.util.offcore.offcore import offcore_array
 
 

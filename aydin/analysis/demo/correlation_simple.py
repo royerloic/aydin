@@ -6,7 +6,6 @@ import numpy as np
 from skimage import data
 from skimage.color import rgb2gray
 from skimage.draw import circle, circle_perimeter, line_aa
-from skimage.io import imread
 
 from aydin.analysis.correlation import correlation, correlation_distance
 

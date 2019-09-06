@@ -4,7 +4,7 @@ import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 scriptname = os.path.basename(__file__)[:-3]
 os.environ["KERAS_BACKEND"] = 'plaidml.keras.backend'
-import time
+
 
 import numpy as np
 from matplotlib import pyplot as plt
