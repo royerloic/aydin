@@ -1,16 +1,7 @@
 import numpy as np
 from skimage.io import imsave
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QPushButton,
-    QHBoxLayout,
-    QLabel,
-    QProgressBar,
-    QSplitter,
-    QPlainTextEdit,
-)
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QProgressBar, QSplitter
 
 from aydin.gui.components.mininap import Viewer
 from aydin.gui.components.plot_canvas import PlotCanvas
@@ -21,6 +12,9 @@ from aydin.util.resource import read_image_from_path
 
 
 class TestN2STab(BaseTab):
+
+    is_loaded = False
+
     def __init__(self, parent, threadpool):
         super(TestN2STab, self).__init__(parent)
 
@@ -38,7 +32,7 @@ class TestN2STab(BaseTab):
         # Buttons layout where we have run button and other functional methods
         buttons_layout = QVBoxLayout()
         self.pb = PlotCanvas(self)
-        buttons_layout.addWidget(self.pb.canvas.native)
+        buttons_layout.addWidget(self.pb)
 
         self.run_button = QPushButton("Run")
         self.run_button.pressed.connect(
@@ -51,9 +45,8 @@ class TestN2STab(BaseTab):
         self.progress_bar = QProgressBar(self)
         buttons_layout.addWidget(self.progress_bar)
 
-        self.image_data = self.wizard.monitor_image
         self.viewer = Viewer(show=False)
-        self.viewer.add_image(self.image_data)
+        self.viewer.add_image(self.wizard.monitor_images[0][np.newaxis, ...])
         buttons_layout.addWidget(self.viewer.window.qt_viewer)
 
         # Build splitter
@@ -67,9 +60,10 @@ class TestN2STab(BaseTab):
         self.layout.addWidget(def_splitter)
         self.base_layout.insertLayout(0, self.layout)
 
+        self.is_loaded = True
+
     def progressbar_update(self, value):
         if 0 <= value <= 100:
-            self.pb.add_pos(100 + value)
             self.progress_bar.setValue(value)
 
     def run_func(self, **kwargs):
@@ -82,13 +76,15 @@ class TestN2STab(BaseTab):
             output_path = input_path[:-4] + "_denoised" + input_path[-4:]
             self.output_picker.lbl_text.setText(output_path)
 
-        n2s = N2SService(monitoring_variables_emit=self.add_to_mininap)
-        n2s.monitoring_variables = None, 0, -1
+        n2s = N2SService()
+
+        print(self.wizard.monitor_images)
 
         denoised = n2s.run(
             noisy,
             kwargs['progress_callback'],
-            monitoring_images=[self.wizard.monitor_image],
+            monitoring_callbacks=[self.update_test_tab],
+            monitoring_images=self.wizard.monitor_images,
         )
 
         imsave(output_path, denoised)
@@ -98,9 +94,21 @@ class TestN2STab(BaseTab):
         print(output_path)
         return "Done."
 
-    def add_to_mininap(self, arg):
-        image, eval_metric, iter = arg
-        self.image_data = np.dstack(
-            (self.image_data, image[0])
-        )  # Turn this into slider forming
-        self.imgwid.update_image(NImage(self.image_data))
+    def update_test_tab(self, *arg):
+        """
+        This is the function that is evoked as a callback to update UI
+        with results of most updated model.
+
+        :param arg:
+        :return:
+        """
+        iter, eval_metric, image = arg[0]  # Parse callback arguments
+        image = image[0][
+            np.newaxis, ...
+        ]  # Reshape 2D inferred image to 3D for stacking
+
+        self.pb.add_val(eval_metric)
+
+        if image is not None:
+            self.viewer.layers[0].data = np.vstack((self.viewer.layers[0].data, image))
+            self.viewer.window.qt_viewer.dims._update_slider(0)

@@ -8,12 +8,37 @@ from aydin.util.resource import read_image_from_path
 
 
 class ROIPage(BaseTab):
+
+    is_loaded = False
+
     def __init__(self, parent):
         super(ROIPage, self).__init__(parent)
 
         self.wizard = parent
         self.image = None
         self.stt = STTransform()
+
+    def load_tab(self):
+        # Read the input image
+        self.image_data = read_image_from_path(
+            self.wizard.upload_tab.input_picker.lbl_text.text()
+        )
+
+        self.layout = QVBoxLayout()
+
+        # Setup mininap with passed image
+        self.viewer = Viewer(show=False)
+        self.viewer.add_image(self.image_data)
+        self.layout.addWidget(self.viewer.window.qt_viewer)
+
+        # Add buttons to take snapshot of view
+        self.snap_button = QPushButton("Snap")
+        self.snap_button.pressed.connect(self.snap_test)
+        self.layout.addWidget(self.snap_button)
+
+        self.base_layout.insertLayout(0, self.layout)
+
+        self.is_loaded = True
 
     def snap_test(self):
         # Get the image size and visual and canvas size
@@ -61,26 +86,6 @@ class ROIPage(BaseTab):
         print(p1, p2)
 
         # Slice image and replace
-        self.wizard.monitor_image = self.image_data[
-            int(p1[0]) : int(p2[0]), int(p1[1]) : int(p2[1])
-        ]
-
-    def load_tab(self):
-        # Read the input image
-        self.image_data = read_image_from_path(
-            self.wizard.upload_tab.input_picker.lbl_text.text()
+        self.wizard.monitor_images.append(
+            self.image_data[int(p1[0]) : int(p2[0]), int(p1[1]) : int(p2[1])]
         )
-
-        self.layout = QVBoxLayout()
-
-        # Setup mininap with passed image
-        self.viewer = Viewer(show=False)
-        self.viewer.add_image(self.image_data)
-        self.layout.addWidget(self.viewer.window.qt_viewer)
-
-        # Add buttons to take snapshot of view
-        self.snap_button = QPushButton("Snap")
-        self.snap_button.pressed.connect(self.snap_test)
-        self.layout.addWidget(self.snap_button)
-
-        self.base_layout.insertLayout(0, self.layout)

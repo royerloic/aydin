@@ -1,4 +1,5 @@
 import math
+import pytest
 
 import napari
 import numpy
@@ -93,6 +94,7 @@ def lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, display=Tru
     return ssim_value
 
 
+@pytest.mark.heavy
 def test_demo_lgbm_regressor():
     ssim_no_batch = lgbm_regressor(batch=False, display=False)
     ssim_one_batch = lgbm_regressor(batch=True, num_used_batches=1, display=False)

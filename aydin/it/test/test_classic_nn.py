@@ -1,5 +1,5 @@
 import time
-
+import pytest
 import numpy
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
@@ -18,6 +18,7 @@ def n(image):
     )
 
 
+@pytest.mark.heavy
 def test_it_classic_nn():
     """
         Test for self-supervised denoising using camera image with synthetic noise

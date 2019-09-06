@@ -186,7 +186,7 @@ class GBMRegressor(RegressorBase):
 
             # We translate the it classic callback into a lightGBM callback:
             # This avoids propagating annoying 'evaluation_result_list[0][2]'
-            # throughout teh codebase...
+            # throughout the codebase...
             def lgbm_callback(env):
                 try:
                     val_loss = env.evaluation_result_list[0][2]

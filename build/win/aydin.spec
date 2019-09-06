@@ -19,10 +19,10 @@ block_cipher = None
 a = Analysis(['../../aydin/cli/cli.py'],
              # pathex=['/Users/ahmetcan.solak/Dev/AhmetCanSolak/aydin'],
              #binaries = [],
-             binaries=[('C:\\Users\\User\\.conda\\envs\\aydin\\Library\\bin\\plaidml.dll', 'plaidml\\plaidml.dll')],
-             # (r'C:\Users\User\.conda\envs\aydin\Library\bin\plaidml.dll', r'library\bin\plaidml.dll'),
-             datas=[(r'C:\Users\User\.conda\envs\aydin\share\plaidml\experimental.json', r'share\plaidml\experimental.json'),
-                    (r'C:\Users\User\.conda\envs\aydin\share\plaidml\config.json', r'share\plaidml\config.json'),
+             binaries=[('C:\\ProgramData\\Anaconda3\\envs\\aydin\\Library\\bin\\plaidml.dll', 'plaidml\\plaidml.dll')],
+             # (r'C:\ProgramData\Anaconda3\envs\aydin\Library\bin\plaidml.dll', r'library\bin\plaidml.dll'),
+             datas=[(r'C:\ProgramData\Anaconda3\envs\aydin\share\plaidml\experimental.json', r'share\plaidml\experimental.json'),
+                    (r'C:\ProgramData\Anaconda3\envs\aydin\share\plaidml\config.json', r'share\plaidml\config.json'),
                     (os.path.join(os.path.dirname(dask.__file__)), 'dask'),
                     (os.path.join(os.path.dirname(distributed.__file__)), 'distributed'),
                     (os.path.dirname(vispy.glsl.__file__), os.path.join("vispy", "glsl")),
@@ -55,7 +55,7 @@ a = Analysis(['../../aydin/cli/cli.py'],
                                                                      "sentry_sdk.integrations._wsgi_common",
                                                                      "sentry_sdk.integrations.atexit"],
              hookspath=["hooks"],
-             runtime_hooks=["runtimehooks/hook-multiprocessing.py","runtimehooks/hook-plaidml.py"],
+             runtime_hooks=["runtimehooks/hook-multiprocessing.py","runtimehooks/hook-plaidml.py", "runtimehooks/hook-pyopencl.py"],
              excludes=["matplotlib","napari"])
 
 pyz = PYZ(a.pure)

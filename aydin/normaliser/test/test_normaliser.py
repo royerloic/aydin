@@ -1,3 +1,4 @@
+import pytest
 from os import path
 
 import numpy
@@ -9,6 +10,7 @@ from aydin.normaliser.minmax import MinMaxNormaliser
 from aydin.normaliser.percentile import PercentileNormaliser
 
 
+@pytest.mark.heavy
 def test_percentile_normaliser():
 
     input_path = examples_single.hyman_hela.get_path()

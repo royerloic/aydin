@@ -1,19 +1,14 @@
 import atexit
-import json
 import os
-import platform
 import sys
-
-import requests
 
 import click
 import logging
 
 import sentry_sdk
-from google_drive_downloader import GoogleDriveDownloader as gdd
 
-from aydin.cli.progress_bar import ProgressBar
-from aydin.gui import gui
+from aydin.gui.gui import run
+from aydin.util.progress_bar import ProgressBar
 from aydin.io.io import imwrite
 from aydin.services.n2s import N2SService
 from aydin.services.n2t import N2TService
@@ -22,6 +17,8 @@ from aydin.examples.demo_it_2D_cli import demo_aydin_2D
 
 
 import plaidml.keras
+
+from aydin.util.update import get_latest_version_details, download_specific_version
 
 plaidml.keras.install_backend()
 
@@ -57,48 +54,36 @@ VERSION = '0.0.3'
 def aydin(ctx):
     sentry_sdk.init("https://d9d7db5f152546c490995a409023c60a@sentry.io/1498298")
     if ctx.invoked_subcommand is None:
-        # gui.run()
+        run(VERSION)
         print("Run aydin with a command please...")
     else:
         pass
 
 
 @aydin.command()
-def update(**kwargs):
-    # Check if there is a new version
+def update():
+    # Print out current version
     print("this is a test version3 ", VERSION)
-    r = requests.get("https://api.github.com/gists/b99bfed533738200a82dbf22d5406a9e")
-    versions_json = json.loads(r.json()['files']['secret.json']['content'])
-    latest_version = list(versions_json[str(platform.system())].keys())[-1]
-    latest_id = versions_json[str(platform.system())][latest_version]
+
+    # Check updates and download if there is
+    latest_version, latest_id = get_latest_version_details()
 
     if latest_version > VERSION:
         print(
             "There is a more recent version of Aydin, automatically updating and re-running now..."
         )
-        atexit.register(update_app, "aydin_" + latest_version, latest_id)
+        # Download new version
+        path_to_new_version = download_specific_version(latest_version, latest_id)
+
+        # Run new version with same command and args
+        args = click.get_os_args()
+        words = [path_to_new_version] + args
+        path_to_run = ' '.join(words)
+
+        atexit.register(lambda: os.system(path_to_run))
         sys.exit()
     else:
         print("You are running the most updated version of Aydin")
-
-
-def update_app(name, id):
-    # Download newest version
-    if platform.system() == 'Windows':
-        name += ".exe"
-    updated_app_path = os.path.join(str(os.getcwd()), name)
-    gdd.download_file_from_google_drive(
-        file_id=id, dest_path=updated_app_path, unzip=False
-    )
-    print("Please find the most recent version here: ", updated_app_path)
-
-    if platform.system() == 'Darwin':
-        os.system("chmod 755 " + updated_app_path)
-
-    # Run same command with newest version
-    args = click.get_os_args()
-    words = [updated_app_path] + args
-    os.system(' '.join(words))
 
 
 @aydin.command()

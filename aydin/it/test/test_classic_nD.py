@@ -1,5 +1,5 @@
 import time
-
+import pytest
 import napari
 import numpy
 from skimage.data import binary_blobs
@@ -17,34 +17,41 @@ from aydin.regression.nn import NNRegressor
 display_for_debug = False
 
 
+@pytest.mark.heavy
 def test_it_classic_nn_2D():
     it_classic_nD(2, 512, numpy.s_[0:281, 0:413], regressor='nn', min_ssim=0.60)
 
 
+@pytest.mark.heavy
 def test_it_classic_nn_3D():
     it_classic_nD(3, 128, numpy.s_[0:111, 0:113, 0:97], regressor='nn', min_ssim=0.70)
 
 
+@pytest.mark.heavy
 def test_it_classic_nn_4D():
     it_classic_nD(
         4, 64, numpy.s_[0:11, 0:41, 0:57, 0:53], regressor='nn', min_ssim=0.70
     )
 
 
+@pytest.mark.heavy
 def test_it_classic_gbm_2D():
     it_classic_nD(2, 512, numpy.s_[0:201, 0:213], regressor='gbm', min_ssim=0.70)
 
 
+@pytest.mark.heavy
 def test_it_classic_gbm_3D():
     it_classic_nD(3, 48, numpy.s_[0:41, 0:43, 0:37], regressor='gbm', min_ssim=0.70)
 
 
+@pytest.mark.heavy
 def test_it_classic_gbm_4D():
     it_classic_nD(
         4, 24, numpy.s_[0:11, 0:23, 0:22, 0:21], regressor='gbm', min_ssim=0.70
     )
 
 
+@pytest.mark.heavy
 def test_it_classic_gbm_2D_batchdims():
     it_classic_nD(
         2,
@@ -56,6 +63,7 @@ def test_it_classic_gbm_2D_batchdims():
     )
 
 
+@pytest.mark.heavy
 def test_it_classic_gbm_3D_batchdims():
     it_classic_nD(
         3,
@@ -67,6 +75,7 @@ def test_it_classic_gbm_3D_batchdims():
     )
 
 
+@pytest.mark.heavy
 def test_it_classic_gbm_4D_batchdims():
     it_classic_nD(
         4,

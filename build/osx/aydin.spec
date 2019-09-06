@@ -1,4 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
+import sys
+print("python ver:", sys.version[:3])
+if sys.version[:3] < "3.7":
+    sys.exit()
+else:
+    print("python version okay")
 
 import vispy.glsl
 import vispy.io
@@ -50,7 +56,7 @@ a = Analysis(['../../aydin/cli/cli.py'],
                                                                      "sentry_sdk.integrations._wsgi_common",
                                                                      "sentry_sdk.integrations.atexit"],
              hookspath=["hooks"],
-             runtime_hooks=["runtimehooks/hook-multiprocessing.py", "runtimehooks/hook-plaidml.py"],
+             runtime_hooks=["runtimehooks/hook-multiprocessing.py", "runtimehooks/hook-plaidml.py", "runtimehooks/hook-pyopencl.py"],
              excludes=["matplotlib", "napari"])
 
 pyz = PYZ(a.pure)

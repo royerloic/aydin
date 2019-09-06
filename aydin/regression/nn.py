@@ -12,8 +12,12 @@ from aydin.providers.plaidml.plaidml_provider import PlaidMLProvider
 # NOTE: This line should stay exactly here!
 # All keras calls mst be _AFTER_ the line below:
 from aydin.util.log.logging import lsection, lprint
+import click
 
-provider = PlaidMLProvider()
+# Do not initialize anything if help command is passed
+os_args = click.get_os_args()
+if len(os_args) == 0 or ('--help' not in os_args and '-h' not in os_args):
+    provider = PlaidMLProvider()
 
 from keras.engine.saving import model_from_json
 from aydin.regression.nn_utils.callbacks import (

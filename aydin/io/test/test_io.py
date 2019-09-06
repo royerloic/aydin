@@ -1,4 +1,5 @@
 import tempfile
+import pytest
 from os import path
 from os.path import join
 
@@ -71,6 +72,7 @@ def test_opening_with_cache():
     print(f"min,max = {(rmin,rmax)}")
 
 
+@pytest.mark.heavy
 def test_opening_tif_folder():
 
     path = examples_zipped.unser_celegans.get_path()

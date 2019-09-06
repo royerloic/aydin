@@ -1,17 +1,23 @@
+import atexit
+import os
 import sys
 
+import click
 from PyQt5.QtCore import Qt, QThreadPool
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QSplitter
+from PyQt5.QtWidgets import QApplication, QMainWindow, QAction
 import qdarkstyle
 
 from aydin.gui.pages.about import AboutPage
 from aydin.gui.pages.welcome import WelcomePage
+from aydin.util.update import download_specific_version, get_latest_version_details
 
 
 class App(QMainWindow):
-    def __init__(self):
+    def __init__(self, ver):
         super().__init__()
+
+        self.version = ver
 
         self.threadpool = QThreadPool()
 
@@ -54,18 +60,43 @@ class App(QMainWindow):
         aboutButton.triggered.connect(AboutPage.showAbout)
         helpMenu.addAction(aboutButton)
 
+        updateButton = QAction('Update', self)
+        updateButton.setStatusTip('Check updates and apply if there is any')
+        updateButton.triggered.connect(self.update_app)
+        helpMenu.addAction(updateButton)
+
     def setHeight(self, height):
         self.height = height
         self.setGeometry(self.left, self.top, self.width, self.height)
 
+    def update_app(self):
+        # Print out current version
+        print("this is a test version3 ", self.version)
 
-def run():
+        # Check updates and download if there is
+        latest_version, latest_id = get_latest_version_details()
+
+        if latest_version > self.version:
+            print(
+                "There is a more recent version of Aydin, automatically updating and re-running now..."
+            )
+            # Download new version
+            path_to_new_version = download_specific_version(latest_version, latest_id)
+
+            # Run new version with same command and args
+            args = click.get_os_args()
+            words = [path_to_new_version] + args
+            path_to_run = ' '.join(words)
+
+            atexit.register(lambda: os.system(path_to_run))
+            self.close()
+        else:
+            print("You are running the most updated version of Aydin")
+
+
+def run(ver):
     app = QApplication(sys.argv)
     app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
-    ex = App()
+    ex = App(ver)
     ex.show()
     sys.exit(app.exec())
-
-
-if __name__ == '__main__':
-    run()

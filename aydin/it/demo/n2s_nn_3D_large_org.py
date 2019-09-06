@@ -22,8 +22,8 @@ def demo():
     array = array.squeeze()
     array = array[1]
 
-    # train = array  # full
-    train = array[50:250, 300:500, 400:600]
+    train = array  # full
+    # train = array[50:250, 300:500, 400:600]
 
     infer = array  # Full: 320, 865, 1014
     # infer = array[0:160, 0:430, 0:512] # 1/8th

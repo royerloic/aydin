@@ -1,9 +1,9 @@
 import os
 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 scriptname = os.path.basename(__file__)[:-3]
-# os.environ["KERAS_BACKEND"] = 'plaidml.keras.backend'
+os.environ["KERAS_BACKEND"] = 'plaidml.keras.backend'
 import time
 
 import numpy as np
@@ -42,6 +42,7 @@ model = Unet(
     normalization=normalization,
     activation=activation,
     learn_rate=0.001,
+    batch_size=1,
 )
 history = model.fit(
     noisy,
