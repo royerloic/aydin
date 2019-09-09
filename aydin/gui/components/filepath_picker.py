@@ -16,7 +16,8 @@ class FilePathPicker(QWidget):
         self.filename = None
 
         # Button that allows loading of images
-        self.load_button = QPushButton("Load file path")
+        self.load_button = QPushButton("Load file path \n (Drag and drop here...)")
+        self.load_button.setMinimumSize(120, 120)
         self.load_button.clicked.connect(self.load_file_button)
 
         # Path viewing region
