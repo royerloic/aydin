@@ -23,7 +23,6 @@ class TestN2STab(BaseTab):
         self.layout = None
 
         self.input_picker = self.wizard.upload_tab.input_picker
-        self.output_picker = self.wizard.upload_tab.output_picker
 
     def load_tab(self):
         self.setGeometry(0, 0, 700, 800)
@@ -71,10 +70,7 @@ class TestN2STab(BaseTab):
         input_path = self.input_picker.lbl_text.text()
         noisy = read_image_from_path(input_path)
 
-        output_path = self.output_picker.lbl_text.text()
-        if len(output_path) <= 0:
-            output_path = input_path[:-4] + "_denoised" + input_path[-4:]
-            self.output_picker.lbl_text.setText(output_path)
+        output_path = input_path[:-4] + "_denoised" + input_path[-4:]
 
         n2s = N2SService()
 
@@ -89,8 +85,6 @@ class TestN2STab(BaseTab):
 
         imsave(output_path, denoised)
         self.run_button.setText("Re-Run")
-        self.output_picker.filename = output_path
-        self.output_picker.load_file()
         print(output_path)
         return "Done."
 
