@@ -1,6 +1,8 @@
 import os
 
 #### THIS MUST BE CALLED BEFORE PLAIDML OR KERAS ARE IMPORTED!!!
+import platform
+
 from aydin.providers.opencl.opencl_provider import OpenCLProvider
 from aydin.util.log.logging import lprint, lsection
 
@@ -60,6 +62,15 @@ class PlaidMLProvider:
 
     def get_best_device(self, includes=[], excludes=[]):
         opencl = OpenCLProvider()
+
+        excludes = []
+        # On OSX, exclude Opencl devices an favour of Metal:
+        if platform.system() == "Darwin":
+            lprint(
+                f"On OSX we prefer Metal devices for PlaidML, OpenCL devices are excluded from best device search"
+            )
+            excludes.append('OpenCL')
+
         filtered_devices = self.get_filtered_device_list(includes, excludes)
 
         best_device_name = opencl.device.name
@@ -76,7 +87,7 @@ class PlaidMLProvider:
         for device in filtered_devices:
             if device.description.decode() == best_match:
                 return device
-        
+
         return filtered_devices[0]
 
     def test_device(self, device):
