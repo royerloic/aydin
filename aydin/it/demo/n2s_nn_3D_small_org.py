@@ -32,7 +32,7 @@ def demo():
     )
 
     start = time.time()
-    it.train(image, image, max_epochs=15, patience=2, batch_size=50e6)
+    it.train(image, image, max_epochs=15, patience=2)
     stop = time.time()
     print(f"Training: elapsed time:  {stop-start} ")
 

@@ -51,14 +51,7 @@ def demo():
         )
 
         start = time.time()
-        it.train(
-            train,
-            train,
-            batch_dims=batch_dims,
-            batch_size=100e6,
-            max_epochs=30,
-            patience=8,
-        )
+        it.train(train, train, batch_dims=batch_dims, max_epochs=30, patience=8)
         stop = time.time()
         print(f"Training: elapsed time:  {stop-start} ")
 

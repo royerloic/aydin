@@ -131,19 +131,40 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             )
             lprint(f"Memory needed on the cpu: {needed_cpu_mem/ 1E6} MB")
 
+            # Unfortunately, because of float32 precision, integral images cannot be arbitrarily large:
+            max_voxels_in_integral_image = (
+                256 * 256 * 256
+            )  # This was heuristically determined to 'work', more cstarts to be worse
+
             min_nb_batches_cpu = math.ceil(needed_cpu_mem / max_avail_cpu_mem)
             min_nb_batches_gpu = math.ceil(needed_gpu_mem / max_avail_gpu_mem)
-            min_nb_batches = max(min_nb_batches_cpu, min_nb_batches_gpu)
+
+            min_nb_batches_because_of_ii_precision = math.ceil(
+                array.size / max_voxels_in_integral_image
+            )
             lprint(
-                f"Minimum number of batches: {min_nb_batches} ( cpu:{min_nb_batches_cpu}, gpu:{min_nb_batches_gpu} )"
+                f"Because of float32 precision, integral images (ii) must have at most : {max_voxels_in_integral_image} voxels"
+            )
+            lprint(
+                f"Current Image has: {array.size} voxels, requiring at least: {min_nb_batches_because_of_ii_precision} batches"
             )
 
-            max_batch_size = (array.itemsize * array.size) / min_nb_batches
+            min_nb_batches = max(
+                min_nb_batches_cpu,
+                min_nb_batches_gpu,
+                min_nb_batches_because_of_ii_precision,
+            )
+            lprint(
+                f"Minimum number of batches: {min_nb_batches} ( cpu:{min_nb_batches_cpu}, gpu:{min_nb_batches_gpu}, ii:{min_nb_batches_because_of_ii_precision} )"
+            )
+
+            max_batch_size = (array.itemsize * array.size) // min_nb_batches
             is_enough_memory = (
                 needed_cpu_mem < max_avail_cpu_mem
                 and needed_gpu_mem < max_avail_gpu_mem
+                and array.size <= max_voxels_in_integral_image
             )
-            lprint(f"Maximum batch size: {max_batch_size} ")
+            lprint(f"Maximum batch size: {max_batch_size/1E6} MB ")
             lprint(f"Is enough memory: {is_enough_memory} ")
 
             return is_enough_memory, max_batch_size
