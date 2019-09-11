@@ -43,10 +43,22 @@ def demo():
         generator = FastMultiscaleConvolutionalFeatures(max_level=4, dtype=numpy.uint16)
         regressor = NNRegressor()
 
-        it = ImageTranslatorClassic(generator, regressor, normaliser_type='percentile')
+        it = ImageTranslatorClassic(
+            generator,
+            regressor,
+            normaliser_type='percentile',
+            balance_training_data=True,
+        )
 
         start = time.time()
-        it.train(train, train, batch_dims=batch_dims, max_epochs=30, patience=8)
+        it.train(
+            train,
+            train,
+            batch_dims=batch_dims,
+            batch_size=100e6,
+            max_epochs=30,
+            patience=8,
+        )
         stop = time.time()
         print(f"Training: elapsed time:  {stop-start} ")
 

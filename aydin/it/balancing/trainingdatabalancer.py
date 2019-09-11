@@ -9,13 +9,16 @@ class TrainingDataBalancer:
 
     """
 
-    def __init__(self, total_entries, number_of_bins, tolerance=0.05, is_active=True):
+    def __init__(
+        self, total_entries, number_of_bins, factor=1, tolerance=0.01, is_active=True
+    ):
         """
 
         """
         self.is_active = is_active
         self.total_entries = total_entries
         self.number_of_bins = number_of_bins
+        self.factor = factor
         self.tolerance = tolerance
         self.histogram = numpy.ones(number_of_bins)
 
@@ -31,7 +34,7 @@ class TrainingDataBalancer:
 
         value = self.histogram[index]
 
-        if (not self.is_active) or value < self.max_entries_per_bin * (
+        if (not self.is_active) or value < self.factor * self.max_entries_per_bin * (
             1 + self.tolerance
         ):
             self.histogram[index] = value + 1
