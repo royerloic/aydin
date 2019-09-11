@@ -14,6 +14,7 @@ class PlotCanvas(QWidget):
 
         self.values = []
         self.pw.plot(self.values, pen=None, symbol='o')
+        self.pw.plotItem.setTitle("Validation loss / Epoch")
 
     def add_val(self, val):
         self.values += [val]
