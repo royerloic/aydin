@@ -61,7 +61,9 @@ def demo(regressor):
 
         generator = FastMultiscaleConvolutionalFeatures()
 
-        monitor = Monitor(callback)
+        monitor = Monitor(
+            monitoring_callbacks=[callback], monitoring_images=[monitoring_image]
+        )
 
         it = ImageTranslatorClassic(
             feature_generator=generator,
@@ -72,7 +74,7 @@ def demo(regressor):
 
         start = time.time()
 
-        denoised = it.train(noisy, noisy, monitoring_images=[monitoring_image])
+        denoised = it.train(noisy, noisy)
 
         stop = time.time()
         print(f"Training: elapsed time:  {stop-start} ")

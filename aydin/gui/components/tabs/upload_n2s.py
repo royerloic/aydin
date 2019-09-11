@@ -22,13 +22,9 @@ class UploadN2STab(BaseTab):
         self.input_lbl = QLabel(self)
         self.input_picker = FilePathPicker(self, self.input_lbl, self.input_ready)
         paths_layout.addWidget(self.input_picker)
-        paths_layout.addWidget(QLabel("Path to save resulting denoised images: "))
-        self.output_lbl = QLabel(self)
-        self.output_picker = FilePathPicker(self, self.output_lbl)
-        paths_layout.addWidget(self.output_picker)
+
         pixmaps_layout = QHBoxLayout()
         pixmaps_layout.addWidget(self.input_lbl)
-        pixmaps_layout.addWidget(self.output_lbl)
         paths_layout.addLayout(pixmaps_layout)
 
         self.base_layout.insertLayout(0, paths_layout)

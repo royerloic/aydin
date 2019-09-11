@@ -1,5 +1,6 @@
 import atexit
 import os
+import platform
 import sys
 
 import click
@@ -24,8 +25,8 @@ class App(QMainWindow):
         self.title = 'Cool Image Translation'
         self.left = 0
         self.top = 0
-        self.width = 700
-        self.height = 800
+        self.width = 700 * 2 if platform.system() == "Windows" else 700
+        self.height = 800 * 2 if platform.system() == "Windows" else 800
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 

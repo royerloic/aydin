@@ -516,7 +516,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                 # If feature is not None then we are actually computing features and not just counting:
 
                 # Standard features:
-                with lsection(f"Computing median features:"):
+                with lsection(f"Computing standard features:"):
                     # Temporary numpy array to hold the features after their computation on GPU:
                     feature = None
 
