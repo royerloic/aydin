@@ -140,5 +140,12 @@ class TestN2STab(BaseTab):
         self.pb.add_val(eval_metric)
 
         if image is not None:
+            keep_slider_location = False
+            if self.viewer.dims.point[0] == self.viewer.layers[0].data.shape[0] - 1:
+                keep_slider_location = True
+
             self.viewer.layers[0].data = np.vstack((self.viewer.layers[0].data, image))
             self.viewer.window.qt_viewer.dims._update_slider(0)
+
+            if keep_slider_location:
+                self.viewer.dims.set_point(0, self.viewer.layers[0].data.shape[0] - 1)
