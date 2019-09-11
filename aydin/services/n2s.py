@@ -53,14 +53,14 @@ class N2SService:
             monitoring_images=monitoring_images,
         )
 
-        it = ImageTranslatorClassic(
+        self.it = ImageTranslatorClassic(
             feature_generator=generator,
             regressor=regressor,
             normaliser_type='identity',
             monitor=self.monitor,
         )
 
-        response = it.train(noisy_image, noisy_image)
+        response = self.it.train(noisy_image, noisy_image)
         progress_callback.emit(100)
 
         return response
