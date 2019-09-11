@@ -64,7 +64,10 @@ def demo():
     stop = time.time()
     print(f"inference: elapsed time:  {stop-start} ")
 
-    denoised = rescale_intensity(denoised, in_range='image', out_range=(0, 1))
+    image = numpy.clip(image, 0, 1)
+    noisy = numpy.clip(noisy, 0, 1)
+    denoised = numpy.clip(denoised, 0, 1)
+    denoised_inf = numpy.clip(denoised_inf, 0, 1)
 
     image = numpy.clip(image, 0, 1)
     noisy = numpy.clip(noisy, 0, 1)

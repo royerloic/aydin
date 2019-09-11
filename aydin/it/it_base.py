@@ -9,6 +9,7 @@ from statistics import median
 import jsonpickle
 import numpy
 import psutil
+import scipy
 
 from aydin.analysis.correlation import correlation_distance
 from aydin.normaliser.identity import IdentityNormaliser
@@ -100,6 +101,7 @@ class ImageTranslatorBase(ABC):
         target_image,
         batch_dims,
         train_valid_ratio=0.1,
+        use_last_validation_data=False,
         is_batch=False,
         callback_period=3,
     ):
@@ -281,75 +283,80 @@ class ImageTranslatorBase(ABC):
                     )
                 )
 
-                # Here is the current best valisation loss:
-                best_validation_loss = math.inf
+                image_min = input_image.min()
+                image_max = input_image.max()
 
-                # Patience counter:
-                patience_counter = 0
-
-                # We keep track of losses for each batch:
-                batch_val_losses = []
-
-                # Subclasses can decide to limit the number of epochs, possibly to a single one:
-                max_epochs = self.limit_epochs(max_epochs)
-
-                # We iterate through epochs:
-                for epoch in range(0, max_epochs):
-
-                    lprint(f'Image translator epoch: {epoch}/{max_epochs}.')
-
-                    # We iterate through each batch and do training:
-                    for slice_tuple in batch_slices:
-
-                        lprint(f"Current batch slice: {slice_tuple}")
-
-                        input_image_batch = input_image[slice_tuple]
-
-                        if self.self_supervised:
-                            target_image_batch = input_image_batch
-                        else:
-                            target_image_batch = target_image[slice_tuple]
-
-                        # 'Last minute' normalisation:
-                        normalised_input_image_batch = self.input_normaliser.normalise(
-                            input_image_batch
+                with lsection(
+                    f"Computing entropy of each batch image to find best order:"
+                ):
+                    # We use the heuristic that a batch with high entropy is 'richer' and more likely to
+                    # be an interesting (e.g. not all background) part of the image...
+                    entropylist = []
+                    for batch_slice in batch_slices:
+                        input_image_batch = input_image[batch_slice]
+                        histogram, bins = numpy.histogram(
+                            input_image_batch.flatten(),
+                            bins=128,
+                            range=(image_min, image_max),
+                            density=True,
                         )
-                        if self.self_supervised:
-                            normalised_target_image_batch = normalised_input_image_batch
-                        else:
-                            normalised_target_image_batch = self.target_normaliser.normalise(
-                                target_image_batch
-                            )
+                        histogram /= histogram.sum()
+                        entropy = scipy.stats.entropy(histogram)
+                        entropylist.append(entropy)
+                        lprint(f"Batch slice: {batch_slice} has entropy: {entropy}")
 
-                        validation_loss = self._train(
-                            normalised_input_image_batch,
-                            normalised_target_image_batch,
-                            batch_dims,
-                            train_test_ratio,
-                            is_batch=True,
-                            monitoring_images=monitoring_images,
-                            callback_period=callback_period,
+                # We create the decorated batch slice list:
+                slices = zip(batch_slices, entropylist)
+
+                # We sort the slice list based on _increasing_ entropy:
+                # we want more balanced batches at the end...
+                slices = list(
+                    zip(*sorted(slices, key=lambda slice: slice[1], reverse=False))
+                )
+
+                # But we also want to make sure that the first batch is not _too_ weird:
+                # So we do the last (good) batch twice, at the beginning and at the end:
+                # This way we can set the validation data at the beginning:
+                slices[0] = (slices[0][-1],) + slices[0]
+                slices[1] = (slices[1][-1],) + slices[1]
+
+                use_last_validation_data = False
+                counter = 0
+                # We iterate through each batch and do training:
+                for slice_tuple in slices[0]:
+
+                    lprint(f"Batch slice #{counter}/{len(slices[0])}: {slice_tuple}")
+                    counter += 1
+
+                    input_image_batch = input_image[slice_tuple]
+
+                    if self.self_supervised:
+                        target_image_batch = input_image_batch
+                    else:
+                        target_image_batch = target_image[slice_tuple]
+
+                    # 'Last minute' normalisation:
+                    normalised_input_image_batch = self.input_normaliser.normalise(
+                        input_image_batch
+                    )
+                    if self.self_supervised:
+                        normalised_target_image_batch = normalised_input_image_batch
+                    else:
+                        normalised_target_image_batch = self.target_normaliser.normalise(
+                            target_image_batch
                         )
 
-                        batch_val_losses.append(validation_loss)
-
-                    # We compute the median loss for all batches:
-                    current_validation_loss = median(batch_val_losses)
-
-                    lprint(
-                        f'Current validation loss: {current_validation_loss} (best is {best_validation_loss}).'
+                    self._train(
+                        normalised_input_image_batch,
+                        normalised_target_image_batch,
+                        batch_dims,
+                        train_test_ratio,
+                        is_batch=True,
+                        callback_period=callback_period,
+                        use_last_validation_data=use_last_validation_data,
                     )
 
-                    if current_validation_loss < best_validation_loss:
-                        best_validation_loss = current_validation_loss
-                    else:
-                        patience_counter += 1
-
-                    lprint(f'Patience counter: {patience_counter}')
-
-                    if patience_counter > patience:
-                        lprint(f'We ran out of patience... Training aborted.')
-                        break
+                    use_last_validation_data = True
 
                 # TODO: returned inferred image even in the batch case. Reason not to do it: might be a lot of data...
 
@@ -464,9 +471,11 @@ class ImageTranslatorBase(ABC):
 
                 lprint(f"Number of batches (slices): {len(batch_slices)}")
 
-                for slice_margin_tuple, slice_tuple in zip(
-                    batch_slices_margins, batch_slices
-                ):
+                # We create slice list:
+                slicezip = zip(batch_slices_margins, batch_slices)
+
+                for slice_margin_tuple, slice_tuple in slicezip:
+
                     lprint(f"Current batch slice: {slice_tuple}")
 
                     # We first extract the batch image:

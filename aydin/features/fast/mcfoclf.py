@@ -41,7 +41,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         kernel_shapes=None,
         max_level=10,
         exclude_scale_one=True,
-        include_median_features=True,
+        include_median_features=False,
         dtype=numpy.float32,
     ):
         """
