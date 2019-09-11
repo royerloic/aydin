@@ -258,7 +258,7 @@ class ImageTranslatorBase(ABC):
                 return denormalised_inferred_image
 
             else:
-                # There is not enough memory or a small batch size was requested:
+                # There is not enough memory, or a small batch size was requested, or image too large for accurate feature gen (e.g. integral images):
 
                 lprint(
                     f'There is not enough memory (CPU or GPU) -- we have to do batch training.'
