@@ -80,27 +80,23 @@ class TestN2STab(BaseTab):
 
         self.is_loaded = True
 
+    def toggle_button_availablity(self):
+        self.wizard.setTabEnabled(0, not self.wizard.isTabEnabled(0))
+        self.wizard.setTabEnabled(1, not self.wizard.isTabEnabled(1))
+        self.prev_button.setDisabled(self.prev_button.isEnabled())
+        self.next_button.setDisabled(self.next_button.isEnabled())
+        self.run_button.setDisabled(self.run_button.isEnabled())
+        self.stop_button.setDisabled(self.stop_button.isEnabled())
+
     def progressbar_update(self, value):
         if 0 <= value <= 100:
             self.progress_bar.setValue(value)
 
         if value == 100:
-            # TODO: refactor this into a method with check isEnabled()
-            self.stop_button.setDisabled(True)
-            self.run_button.setDisabled(False)
-            self.prev_button.setDisabled(False)
-            self.next_button.setDisabled(False)
-            self.wizard.setTabEnabled(0, True)
-            self.wizard.setTabEnabled(1, True)
+            self.toggle_button_availablity()  # Toggle buttons back by the end of the run
 
     def run_func(self, **kwargs):
-        # TODO: refactor this into a method with check isEnabled()
-        self.wizard.setTabEnabled(0, False)
-        self.wizard.setTabEnabled(1, False)
-        self.prev_button.setDisabled(True)
-        self.next_button.setDisabled(True)
-        self.run_button.setDisabled(True)
-        self.stop_button.setDisabled(False)
+        self.toggle_button_availablity()  # Toggle buttons to prevent multiple run actions and so
 
         input_path = self.input_picker.lbl_text.text()
         noisy = read_image_from_path(input_path)
