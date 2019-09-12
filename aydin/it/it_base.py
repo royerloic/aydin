@@ -163,6 +163,9 @@ class ImageTranslatorBase(ABC):
         """
         with lsection(f"Training on image of dimension {str(input_image.shape)} ."):
 
+            # Verify that input andtarget images have same shape:
+            assert input_image.shape == target_image.shape
+
             # If we use the same image for input and ouput then we are in a self-supervised setting:
             self.self_supervised = input_image is target_image
 
