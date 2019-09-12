@@ -45,7 +45,7 @@ class TestN2STab(BaseTab):
         tab_layout.addWidget(self.pb)
 
         self.stop_button = QPushButton("Stop")
-        self.stop_button.pressed.connect(self.stop_func)
+        self.stop_button.pressed.connect(self.n2s.stop_func)
         self.stop_button.setDisabled(True)
 
         self.run_button = QPushButton("Run")
@@ -116,9 +116,6 @@ class TestN2STab(BaseTab):
         self.run_button.setText("Re-Run")
         print(output_path)
         return "Done."
-
-    def stop_func(self):
-        self.n2s.it.stop_training()
 
     def update_test_tab(self, *arg):
         """
