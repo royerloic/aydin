@@ -64,3 +64,6 @@ class N2SService:
         progress_callback.emit(100)
 
         return response
+
+    def stop_func(self):
+        self.it.stop_training()
