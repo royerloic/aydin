@@ -21,6 +21,7 @@ class UploadN2STab(BaseTab):
         paths_layout.addWidget(QLabel("Path for the input training noisy images: "))
         self.input_lbl = QLabel(self)
         self.input_picker = FilePathPicker(self, self.input_lbl, self.input_ready)
+        self.input_picker.setToolTip("Click the 'Load file path' button to open file dialog or drag and drop your file to here to load your image.")
         paths_layout.addWidget(self.input_picker)
 
         pixmaps_layout = QHBoxLayout()
