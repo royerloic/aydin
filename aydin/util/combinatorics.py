@@ -1,4 +1,4 @@
-def closest_product(values, N, tol_min=0.1, tol_max=0.1):
+def closest_product(values, N, tol_min=-0.1, tol_max=0.1):
     """
 
     Given a list of integers u=[a_0, ..., a_m]  find the set of indices {i_0, ..., i_n} for that list such that the product

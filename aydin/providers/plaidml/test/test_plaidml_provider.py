@@ -9,3 +9,5 @@ def test_plaidml_provider():
 
     for dev in devices:
         print(f"Device:   {dev.id.decode()} : {dev.description.decode()} ")
+
+    assert len(devices) > 0

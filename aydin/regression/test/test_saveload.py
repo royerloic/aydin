@@ -22,11 +22,11 @@ def n(image):
 
 
 def test_gbm_saveload():
-    saveload(GBMRegressor(), min_ssim=0.85)
+    saveload(GBMRegressor(n_estimators=128), min_ssim=0.78)
 
 
 def test_nn_saveload():
-    saveload(NNRegressor(max_epochs=10), min_ssim=0.80)
+    saveload(NNRegressor(max_epochs=4), min_ssim=0.78)
 
 
 def saveload(regressor, min_ssim=0.80):
@@ -40,9 +40,9 @@ def saveload(regressor, min_ssim=0.80):
     noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
     noisy = noisy.astype(numpy.float32)
 
-    generator = FastMultiscaleConvolutionalFeatures(exclude_center=True)
+    generator = FastMultiscaleConvolutionalFeatures()
 
-    features = generator.compute(noisy)
+    features = generator.compute(noisy, exclude_center_value=True)
 
     x = features.reshape(-1, features.shape[-1])
     y = noisy.reshape(-1)

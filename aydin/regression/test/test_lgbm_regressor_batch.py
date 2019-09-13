@@ -30,7 +30,7 @@ def lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, display=Tru
         kernel_widths=widths, kernel_scales=scales, kernel_shapes=['l1'] * len(scales)
     )
 
-    features = generator.compute(noisy)
+    features = generator.compute(noisy, exclude_center_value=True)
 
     x = features.reshape(-1, features.shape[-1])
     y = noisy.reshape(-1)
@@ -47,7 +47,7 @@ def lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, display=Tru
         'learning_rate': 0.01,
         'num_leaves': 127,
         'max_bin': 512,
-        'n_estimators': 512,
+        'n_estimators': 128,
         'patience': 20,
         'verbosity': 0,
     }
@@ -94,7 +94,7 @@ def lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, display=Tru
     return ssim_value
 
 
-@pytest.mark.heavy
+# @pytest.mark.heavy
 def test_demo_lgbm_regressor():
     ssim_no_batch = lgbm_regressor(batch=False, display=False)
     ssim_one_batch = lgbm_regressor(batch=True, num_used_batches=1, display=False)
@@ -106,5 +106,5 @@ def test_demo_lgbm_regressor():
 
     assert ssim_no_batch > ssim_batch
     assert ssim_batch > ssim_one_batch
-    assert ssim_one_batch > 0.79
-    assert ssim_batch > 0.81
+    assert ssim_one_batch > 0.73
+    assert ssim_batch > 0.74

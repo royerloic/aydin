@@ -10,10 +10,10 @@ from aydin.normaliser.minmax import MinMaxNormaliser
 from aydin.normaliser.percentile import PercentileNormaliser
 
 
-@pytest.mark.heavy
+# @pytest.mark.heavy
 def test_percentile_normaliser():
 
-    input_path = examples_single.hyman_hela.get_path()
+    input_path = examples_single.pourquie_elec.get_path()
 
     assert path.exists(input_path)
 
@@ -26,7 +26,7 @@ def _test_percentile_normaliser_internal(input_path, use_dask):
     array, metadata = imread(input_path, zarr_cache=use_dask)
     print(array.shape)
 
-    assert array.dtype == numpy.uint16
+    assert array.dtype == numpy.uint8
 
     percent = 0.001
     normaliser = PercentileNormaliser(percent=percent)
@@ -42,7 +42,7 @@ def _test_percentile_normaliser_internal(input_path, use_dask):
     # normalised_array *= 2
     denormalised_array = normaliser.denormalise(normalised_array)
 
-    assert denormalised_array.dtype == numpy.uint16
+    assert denormalised_array.dtype == numpy.uint8
 
     rmin = percentile(denormalised_array, 100 * percent)
     rmax = percentile(denormalised_array, 100 - 100 * percent)
@@ -53,7 +53,7 @@ def _test_percentile_normaliser_internal(input_path, use_dask):
 
 def test_minmax_normaliser():
 
-    input_path = examples_single.hyman_hela.get_path()
+    input_path = examples_single.pourquie_elec.get_path()
 
     assert path.exists(input_path)
 
@@ -67,7 +67,7 @@ def _test_minmax_normaliser_internal(input_path, use_dask):
     array = array[0]
     print(array.shape)
 
-    assert array.dtype == numpy.uint16
+    assert array.dtype == numpy.uint8
 
     normaliser = MinMaxNormaliser()
     normaliser.calibrate(array)
@@ -80,7 +80,7 @@ def _test_minmax_normaliser_internal(input_path, use_dask):
     # normalised_array *= 2
     denormalised_array = normaliser.denormalise(normalised_array)
 
-    assert denormalised_array.dtype == numpy.uint16
+    assert denormalised_array.dtype == numpy.uint8
 
     rmin = numpy.min(denormalised_array)
     rmax = numpy.max(denormalised_array)
