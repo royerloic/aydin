@@ -384,7 +384,7 @@ class ModelCheckpoint(Callback):
                 current = logs.get(self.monitor)
                 if current is None:
                     lprint(
-                        'Warning: Can save best model only with %s available, skipping {self.monitor}'
+                        f'Warning: Can save best model only with {self.monitor} available, skipping.'
                     )
                 else:
                     if self.monitor_op(current, self.best):

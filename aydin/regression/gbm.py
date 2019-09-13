@@ -218,7 +218,9 @@ class GBMRegressor(RegressorBase):
                     early_stopping_rounds=None if has_valid_dataset else None,
                     num_boost_round=self.n_estimators,
                     # keep_training_booster= is_batch, <-- not working...
-                    callbacks=[lgbm_callback, self.early_stopping_callback],
+                    callbacks=[lgbm_callback, self.early_stopping_callback]
+                    if has_valid_dataset
+                    else [lgbm_callback],
                     verbose_eval=verbose_eval,
                     evals_result=evals_result,
                 )

@@ -13,6 +13,7 @@ from skimage.restoration import denoise_nl_means, estimate_sigma
 from skimage.util import random_noise
 
 from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.io.datasets import newyork
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 from aydin.util.log.logging import set_log_max_depth
@@ -31,7 +32,7 @@ def demo():
 
     set_log_max_depth(5)
 
-    image = camera().astype(np.float32)
+    image = newyork()[256:-256, 256:-256].astype(np.float32)
     image = n(image)
 
     intensity = 5
