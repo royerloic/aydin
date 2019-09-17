@@ -56,7 +56,7 @@ class N2SService:
         self.it = ImageTranslatorClassic(
             feature_generator=generator,
             regressor=regressor,
-            normaliser_type='identity',
+            normaliser_type='percentile',
             monitor=self.monitor,
         )
 
