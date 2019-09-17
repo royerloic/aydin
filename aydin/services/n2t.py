@@ -34,11 +34,7 @@ class N2TService:
         :return: denoised version of the input image, will be np compatible
         """
         progress_callback.emit(0)
-        generator = FastMultiscaleConvolutionalFeatures(
-            kernel_widths=self.widths,
-            kernel_scales=self.scales,
-            kernel_shapes=['l1'] * len(self.scales),
-        )
+        generator = FastMultiscaleConvolutionalFeatures()
 
         progress_callback.emit(15)
         # TODO: for now we go for NNRegressor, later we will implement machinery to choose
