@@ -383,16 +383,14 @@ class ModelCheckpoint(Callback):
             if self.save_best_only:
                 current = logs.get(self.monitor)
                 if current is None:
-                    warnings.warn(
-                        'Can save best model only with %s available, '
-                        'skipping.' % (self.monitor),
-                        RuntimeWarning,
+                    lprint(
+                        f'Warning: Can save best model only with {self.monitor} available, skipping.'
                     )
                 else:
                     if self.monitor_op(current, self.best):
                         if self.verbose > 0:
                             lprint(
-                                'Epoch %05d: %s=%0.5f improved from %0.5f to %0.5f,'
+                                'Epoch %05d: %s=%0.5f improved from %0.5f to %0.5f (saving model),'
                                 % (epoch + 1, self.monitor, current, self.best, current)
                             )
                         self.best = current

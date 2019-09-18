@@ -1,5 +1,6 @@
 import numpy as np
-from PyQt5.QtWidgets import QPushButton, QVBoxLayout
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QLabel
 from vispy.visuals.transforms import STTransform
 
 from aydin.gui.components.mininap import Viewer
@@ -8,11 +9,12 @@ from aydin.util.resource import read_image_from_path
 
 
 class ROIPage(BaseTab):
-
+    roi_ready = pyqtSignal()
     is_loaded = False
 
     def __init__(self, parent):
         super(ROIPage, self).__init__(parent)
+        self.roi_ready.connect(self.on_roi_ready)
 
         self.wizard = parent
         self.image = None
@@ -26,18 +28,22 @@ class ROIPage(BaseTab):
 
         self.layout = QVBoxLayout()
 
+        # Friendly explanation
+        self.layout.addWidget(QLabel("Please select the ROI with help of viewer below or program will continue with the default selection."))
+
         # Setup mininap with passed image
         self.viewer = Viewer(show=False)
         self.viewer.add_image(self.image_data)
         self.layout.addWidget(self.viewer.window.qt_viewer)
 
         # Add buttons to take snapshot of view
-        self.snap_button = QPushButton("Snap")
+        self.snap_button = QPushButton("Set ROI")
         self.snap_button.pressed.connect(self.snap_test)
         self.layout.addWidget(self.snap_button)
 
         self.base_layout.insertLayout(0, self.layout)
 
+        self.next_button.setEnabled(False)
         self.is_loaded = True
 
     def snap_test(self):
@@ -89,3 +95,8 @@ class ROIPage(BaseTab):
         self.wizard.monitor_images.append(
             self.image_data[int(p1[0]) : int(p2[0]), int(p1[1]) : int(p2[1])]
         )
+
+        self.roi_ready.emit()
+
+    def on_roi_ready(self):
+        self.next_button.setEnabled(True)

@@ -1,7 +1,16 @@
+from time import sleep
+
 import numpy as np
 from skimage.io import imsave
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QProgressBar, QSplitter
+from PyQt5.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QPushButton,
+    QProgressBar,
+    QSplitter,
+    QHBoxLayout,
+)
 
 from aydin.gui.components.mininap import Viewer
 from aydin.gui.components.plot_canvas import PlotCanvas
@@ -24,14 +33,20 @@ class TestN2STab(BaseTab):
 
         self.input_picker = self.wizard.upload_tab.input_picker
 
+        self.n2s = N2SService()
+
     def load_tab(self):
         self.setGeometry(0, 0, 700, 800)
         self.layout = QVBoxLayout()
 
         # Buttons layout where we have run button and other functional methods
-        buttons_layout = QVBoxLayout()
+        tab_layout = QVBoxLayout()
         self.pb = PlotCanvas(self)
-        buttons_layout.addWidget(self.pb)
+        tab_layout.addWidget(self.pb)
+
+        self.stop_button = QPushButton("Stop")
+        self.stop_button.pressed.connect(self.n2s.stop_func)
+        self.stop_button.setDisabled(True)
 
         self.run_button = QPushButton("Run")
         self.run_button.pressed.connect(
@@ -39,21 +54,25 @@ class TestN2STab(BaseTab):
                 self.threadpool, self.run_func, self.progressbar_update
             )
         )
+
+        buttons_layout = QHBoxLayout()
+        buttons_layout.addWidget(self.stop_button)
         buttons_layout.addWidget(self.run_button)
+        tab_layout.addLayout(buttons_layout)
 
         self.progress_bar = QProgressBar(self)
-        buttons_layout.addWidget(self.progress_bar)
+        tab_layout.addWidget(self.progress_bar)
 
         self.viewer = Viewer(show=False)
         self.viewer.add_image(self.wizard.monitor_images[0][np.newaxis, ...])
-        buttons_layout.addWidget(self.viewer.window.qt_viewer)
+        tab_layout.addWidget(self.viewer.window.qt_viewer)
 
         # Build splitter
         def_splitter = QSplitter(Qt.Vertical)
 
-        paths_and_buttons = QWidget()
-        paths_and_buttons.setLayout(buttons_layout)
-        def_splitter.addWidget(paths_and_buttons)
+        test_n2s_tab_view = QWidget()
+        test_n2s_tab_view.setLayout(tab_layout)
+        def_splitter.addWidget(test_n2s_tab_view)
 
         # Add splitter into main layout
         self.layout.addWidget(def_splitter)
@@ -61,22 +80,32 @@ class TestN2STab(BaseTab):
 
         self.is_loaded = True
 
+    def toggle_button_availablity(self):
+        self.wizard.setTabEnabled(0, not self.wizard.isTabEnabled(0))
+        self.wizard.setTabEnabled(1, not self.wizard.isTabEnabled(1))
+        self.prev_button.setDisabled(self.prev_button.isEnabled())
+        self.next_button.setDisabled(self.next_button.isEnabled())
+        self.run_button.setDisabled(self.run_button.isEnabled())
+        self.stop_button.setDisabled(self.stop_button.isEnabled())
+
     def progressbar_update(self, value):
         if 0 <= value <= 100:
             self.progress_bar.setValue(value)
 
+        if value == 100:
+            self.toggle_button_availablity()  # Toggle buttons back by the end of the run
+
     def run_func(self, **kwargs):
+        self.toggle_button_availablity()  # Toggle buttons to prevent multiple run actions and so
 
         input_path = self.input_picker.lbl_text.text()
         noisy = read_image_from_path(input_path)
 
         output_path = input_path[:-4] + "_denoised" + input_path[-4:]
 
-        n2s = N2SService()
-
         print(self.wizard.monitor_images)
 
-        denoised = n2s.run(
+        denoised = self.n2s.run(
             noisy,
             kwargs['progress_callback'],
             monitoring_callbacks=[self.update_test_tab],
@@ -104,5 +133,12 @@ class TestN2STab(BaseTab):
         self.pb.add_val(eval_metric)
 
         if image is not None:
+            keep_slider_location = False
+            if self.viewer.dims.point[0] == self.viewer.layers[0].data.shape[0] - 1:
+                keep_slider_location = True
+
             self.viewer.layers[0].data = np.vstack((self.viewer.layers[0].data, image))
             self.viewer.window.qt_viewer.dims._update_slider(0)
+
+            if keep_slider_location:
+                self.viewer.dims.set_point(0, self.viewer.layers[0].data.shape[0] - 1)

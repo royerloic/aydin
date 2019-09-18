@@ -112,6 +112,8 @@ data/
 .DS_Store
 
 build/osx/build/
+build/linux/build/
+build/win/build
 
 .zgroup
 *.png

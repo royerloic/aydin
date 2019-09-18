@@ -30,11 +30,7 @@ class N2SService:
         :return: denoised version of the input image, will be np compatible
         """
         progress_callback.emit(0)
-        generator = FastMultiscaleConvolutionalFeatures(
-            kernel_widths=self.widths,
-            kernel_scales=self.scales,
-            kernel_shapes=['l1'] * len(self.scales),
-        )
+        generator = FastMultiscaleConvolutionalFeatures()
 
         progress_callback.emit(15)
         # TODO: for now we go for NNRegressor, later we will implement machinery to choose
@@ -53,14 +49,17 @@ class N2SService:
             monitoring_images=monitoring_images,
         )
 
-        it = ImageTranslatorClassic(
+        self.it = ImageTranslatorClassic(
             feature_generator=generator,
             regressor=regressor,
-            normaliser_type='identity',
+            normaliser_type='percentile',
             monitor=self.monitor,
         )
 
-        response = it.train(noisy_image, noisy_image)
+        response = self.it.train(noisy_image, noisy_image)
         progress_callback.emit(100)
 
         return response
+
+    def stop_func(self):
+        self.it.stop_training()

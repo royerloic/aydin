@@ -187,6 +187,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         target_image,
         batch_dims,
         train_valid_ratio=0.1,
+        use_last_validation_data=False,
         is_batch=False,
         callback_period=3,
     ):
@@ -292,6 +293,9 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                 lprint(f"Creating random indices for train/val split")
                 nb_split_batches = 1024
 
+                if is_batch and use_last_validation_data == True:
+                    train_valid_ratio = 0
+
                 nb_split_batches_valid = int(train_valid_ratio * nb_split_batches)
                 nb_split_batches_train = nb_split_batches - nb_split_batches_valid
                 train_indices = numpy.full(nb_split_batches, False)
@@ -302,6 +306,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                 nb_entries_per_split_batch = max(1, nb_entries // nb_split_batches)
                 nb_entries_train = nb_split_batches_train * nb_entries_per_split_batch
                 nb_entries_valid = nb_split_batches_valid * nb_entries_per_split_batch
+
                 lprint(
                     f"Number of entries for training: {nb_entries_train}, validation:{nb_entries_valid}"
                 )
@@ -336,7 +341,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                         xsrc = x[src_start:src_stop]
                         ysrc = y[src_start:src_stop]
 
-                        if is_train:
+                        if is_train or use_last_validation_data:
 
                             if balancer.add_entry(ysrc):
                                 dst_start = jt * nb_entries_per_split_batch
@@ -360,6 +365,20 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
                             numpy.copyto(xdst, xsrc)
                             numpy.copyto(ydst, ysrc)
+
+                    if is_batch:
+                        if use_last_validation_data:
+                            lprint("Using validation data from first batch...")
+                            # We play safe and make fresh copies, otherwise there is a risk that we loose the original values:
+                            x_valid = numpy.copy(self.last_x_valid)
+                            y_valid = numpy.copy(self.last_y_valid)
+                        else:
+                            lprint(
+                                "Keeping validation data from first batch for next batches..."
+                            )
+                            # We play safe and make fresh copies, otherwise there is a risk that we loose the original values:
+                            self.last_x_valid = numpy.copy(x_valid)
+                            self.last_y_valid = numpy.copy(y_valid)
 
                     lprint(f"Histogram: {balancer.get_histogram_as_string()}")
                     lprint(

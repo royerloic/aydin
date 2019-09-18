@@ -171,7 +171,7 @@ class NNRegressor(RegressorBase):
                 if x_train.dtype == numpy.uint8:
                     y_train *= 255
                     y_train = y_train.astype(numpy.uint8)
-                    if not y_valid is None:
+                    if has_valid_dataset:
                         y_valid *= 255
                         y_valid = y_valid.astype(numpy.uint8)
                     self.original_y_scale = 1 / 255.0
@@ -179,7 +179,7 @@ class NNRegressor(RegressorBase):
                 elif x_train.dtype == numpy.uint16:
                     y_train *= 255 * 255
                     y_train = y_train.astype(numpy.uint16)
-                    if not y_valid is None:
+                    if has_valid_dataset:
                         y_valid *= 255 * 255
                         y_valid = y_valid.astype(numpy.uint16)
                     self.original_y_scale = 1 / (255.0 * 255.0)
@@ -230,15 +230,17 @@ class NNRegressor(RegressorBase):
             lprint(f"Keras batch size for training: {batch_size}")
 
             # Effective number of epochs:
-            effective_number_of_epochs = 2 if is_batch else self.max_epochs
+            effective_number_of_epochs = self.max_epochs  # 2 if is_batch else
             lprint(f"Effective max number of epochs: {effective_number_of_epochs}")
 
             # Early stopping patience:
-            early_stopping_patience = 2 if is_batch else self.patience
+            early_stopping_patience = self.patience  # 2 if is_batch else
             lprint(f"Early stopping patience: {early_stopping_patience}")
 
             # Effective LR patience:
-            effective_lr_patience = 1 if is_batch else max(1, self.patience // 2)
+            effective_lr_patience = (
+                self.patience
+            )  # 1 if is_batch else max(1, self.patience // 2)
             lprint(f"Effective LR patience: {effective_lr_patience}")
 
             # Here is the list of callbacks:
@@ -306,13 +308,18 @@ class NNRegressor(RegressorBase):
                 )
                 lprint(f"NN regressor fitting done.")
 
+            del x_train
+            del y_train
             gc.collect()
 
             # Reload the best weights:
             if exists(self.model_file_path):
+                lprint(f"Loading best model to date.")
                 self.model.load_weights(self.model_file_path)
 
-            loss = train_history.history['loss']
+            loss_history = train_history.history['loss']
+
+            lprint(f"Loss history after training: {loss_history}")
 
             if 'val_loss' in train_history.history:
                 val_loss = train_history.history['val_loss'][0]
@@ -369,7 +376,7 @@ class NNRegressor(RegressorBase):
             )
             lprint(f"NN regressor predicting done!")
 
-            # We cast back yp to teh correct type and range:
+            # We cast back yp to the correct type and range:
             if not self.original_y_dtype is None:
                 yp = yp.astype(self.original_y_dtype)
                 yp *= self.original_y_scale
