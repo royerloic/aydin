@@ -26,12 +26,15 @@ from aydin.util.log.logging import lsection, lprint
 
 
 def is_batch(code, shape, axes):
-
     # special case:
     if len(shape) == 3 and 'X' in axes and 'Y' in axes and 'I' in code:
         return False
 
     return not code in 'XYZ'
+
+
+def is_channel(code):
+    return code is "C"
 
 
 class FileMetadata:
@@ -42,13 +45,13 @@ class FileMetadata:
     dtype = None
     format = None
     batch_dim = None
+    channel_dim = None
 
     def __str__(self) -> str:
-        return f" is_folder={self.is_folder}, ext={self.extension}, axes={self.axes}, shape={self.shape}, batch_dim={self.batch_dim}, dtype={self.dtype}, format={self.format} "
+        return f" is_folder={self.is_folder}, ext={self.extension}, axes={self.axes}, shape={self.shape}, batch_dim={self.batch_dim}, channel_dim={self.channel_dim}, dtype={self.dtype}, format={self.format} "
 
 
 def analyse(input_path):
-
     with lsection(f"Analysing file at: {input_path}"):
 
         metadata = FileMetadata()
@@ -169,11 +172,12 @@ def analyse(input_path):
                 is_batch(axis, metadata.shape, metadata.axes) for axis in metadata.axes
             )
 
+            metadata.channel_dim = tuple(is_channel(axis) for axis in metadata.axes)
+
         return metadata
 
 
 def cache_as_zarr(input_path):
-
     with lsection("Caching file at: {input_path} as ZARR"):
         if is_zarr_storage(input_path):
             return input_path
@@ -261,7 +265,6 @@ def convert_to_zarr(
 
 
 def imread(input_path, zarr_cache=False):
-
     with lsection(f"Reading image file at: {input_path} (zarr_cache={zarr_cache})"):
 
         if zarr_cache:
@@ -314,7 +317,6 @@ def imread(input_path, zarr_cache=False):
 
 @contextmanager
 def imwrite(output_path, shape, dtype):
-
     array = memmap(output_path, shape=shape, dtype=dtype)
     try:
         yield array
