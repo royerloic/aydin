@@ -8,12 +8,12 @@ from aydin.gui.components.tabs.base_tab import BaseTab
 from aydin.util.resource import read_image_from_path
 
 
-class ROIPage(BaseTab):
+class ROITab(BaseTab):
     roi_ready = pyqtSignal()
     is_loaded = False
 
     def __init__(self, parent):
-        super(ROIPage, self).__init__(parent)
+        super(ROITab, self).__init__(parent)
         self.roi_ready.connect(self.on_roi_ready)
 
         self.wizard = parent
@@ -23,13 +23,17 @@ class ROIPage(BaseTab):
     def load_tab(self):
         # Read the input image
         self.image_data = read_image_from_path(
-            self.wizard.upload_tab.input_picker.lbl_text.text()
+            self.wizard.upload_noisy_tab.input_picker.lbl_text.text()
         )
 
         self.layout = QVBoxLayout()
 
         # Friendly explanation
-        self.layout.addWidget(QLabel("Please select the ROI with help of viewer below or program will continue with the default selection."))
+        self.layout.addWidget(
+            QLabel(
+                "Please select the ROI with help of viewer below or program will continue with the default selection."
+            )
+        )
 
         # Setup mininap with passed image
         self.viewer = Viewer(show=False)

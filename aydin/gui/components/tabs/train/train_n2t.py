@@ -17,23 +17,26 @@ from aydin.gui.components.plot_canvas import PlotCanvas
 from aydin.gui.components.tabs.base_tab import BaseTab
 from aydin.gui.components.workers.worker import Worker
 from aydin.services.n2s import N2SService
+from aydin.services.n2t import N2TService
 from aydin.util.resource import read_image_from_path
 
 
-class TestN2STab(BaseTab):
+class TrainN2TTab(BaseTab):
 
     is_loaded = False
 
     def __init__(self, parent, threadpool):
-        super(TestN2STab, self).__init__(parent)
+        super(TrainN2TTab, self).__init__(parent)
 
         self.wizard = parent
         self.threadpool = threadpool
         self.layout = None
 
-        self.input_picker = self.wizard.upload_tab.input_picker
+        self.noisy_input_picker = self.wizard.upload_noisy_tab.input_picker
+        self.truth_input_picker = self.wizard.upload_truth_tab.input_picker
+        self.test_input_picker = self.wizard.upload_test_tab.input_picker
 
-        self.n2s = N2SService()
+        self.n2s = N2TService()
 
     def load_tab(self):
         self.setGeometry(0, 0, 700, 800)
@@ -67,24 +70,18 @@ class TestN2STab(BaseTab):
         self.viewer.add_image(self.wizard.monitor_images[0][np.newaxis, ...])
         tab_layout.addWidget(self.viewer.window.qt_viewer)
 
-        # Build splitter
-        def_splitter = QSplitter(Qt.Vertical)
-
-        test_n2s_tab_view = QWidget()
-        test_n2s_tab_view.setLayout(tab_layout)
-        def_splitter.addWidget(test_n2s_tab_view)
-
-        # Add splitter into main layout
-        self.layout.addWidget(def_splitter)
+        # Add into main layout
+        self.layout = tab_layout
         self.base_layout.insertLayout(0, self.layout)
 
+        self.next_button.setEnabled(False)
         self.is_loaded = True
 
     def toggle_button_availablity(self):
         self.wizard.setTabEnabled(0, not self.wizard.isTabEnabled(0))
         self.wizard.setTabEnabled(1, not self.wizard.isTabEnabled(1))
         self.prev_button.setDisabled(self.prev_button.isEnabled())
-        self.next_button.setDisabled(self.next_button.isEnabled())
+        # self.next_button.setDisabled(self.next_button.isEnabled())
         self.run_button.setDisabled(self.run_button.isEnabled())
         self.stop_button.setDisabled(self.stop_button.isEnabled())
 
@@ -98,15 +95,21 @@ class TestN2STab(BaseTab):
     def run_func(self, **kwargs):
         self.toggle_button_availablity()  # Toggle buttons to prevent multiple run actions and so
 
-        input_path = self.input_picker.lbl_text.text()
-        noisy = read_image_from_path(input_path)
+        noisy_path = self.noisy_input_picker.lbl_text.text()
+        noisy = read_image_from_path(noisy_path)
+        truth_path = self.truth_input_picker.lbl_text.text()
+        truth = read_image_from_path(truth_path)
+        test_path = self.test_input_picker.lbl_text.text()
+        noisy_test = read_image_from_path(test_path)
 
-        output_path = input_path[:-4] + "_denoised" + input_path[-4:]
+        output_path = test_path[:-4] + "_denoised" + test_path[-4:]
 
         print(self.wizard.monitor_images)
 
         denoised = self.n2s.run(
             noisy,
+            truth,
+            noisy_test,
             kwargs['progress_callback'],
             monitoring_callbacks=[self.update_test_tab],
             monitoring_images=self.wizard.monitor_images,
@@ -114,6 +117,7 @@ class TestN2STab(BaseTab):
 
         imsave(output_path, denoised)
         self.run_button.setText("Re-Run")
+        self.next_button.setEnabled(True)
         print(output_path)
         return "Done."
 
