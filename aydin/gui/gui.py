@@ -22,7 +22,7 @@ class App(QMainWindow):
 
         self.threadpool = QThreadPool()
 
-        self.title = 'Cool Image Translation'
+        self.title = 'aydin - Cool Image Translation'
         self.left = 0
         self.top = 0
         self.width = 700 * 2 if platform.system() == "Windows" else 700
@@ -57,7 +57,7 @@ class App(QMainWindow):
 
         # Help Menu
         aboutButton = QAction('About', self)
-        aboutButton.setStatusTip('About pitl and its authors')
+        aboutButton.setStatusTip('About aydin and its authors')
         aboutButton.triggered.connect(AboutPage.showAbout)
         helpMenu.addAction(aboutButton)
 

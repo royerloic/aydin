@@ -40,7 +40,6 @@ def demo_aydin_2D():
         it = ImageTranslatorClassic(feature_generator=generator, regressor=regressor)
 
         denoised = it.train(noisy, noisy)
-        # denoised_predict = pitl.predict(noisy)
 
         print("noisy", psnr(noisy, image), ssim(noisy, image))
         print("denoised", psnr(denoised, image), ssim(denoised, image))
