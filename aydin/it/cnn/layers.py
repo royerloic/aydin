@@ -2,37 +2,88 @@ import numpy as np
 from keras import backend as K
 from keras.layers import (
     Conv2D,
+    Conv3D,
     LeakyReLU,
     ZeroPadding2D,
+    ZeroPadding3D,
     Cropping2D,
+    Cropping3D,
     Lambda,
     BatchNormalization,
     Layer,
     multiply,
     MaxPooling2D,
+    MaxPooling3D,
     Activation,
 )
 from aydin.it.cnn.intancenormalization import InstanceNormalization
 
+# def rot90(xx, kk=1, lyrname=None):  # rotate tensor by 90 degrees on the HW plane
+#     out_shape = list(K.int_shape(xx))
+#     assert (
+#             4 <= len(out_shape) <= 5
+#     ), 'Input shape has to be 4D or 5D. e.g. (Batch, (depth), longitudinal, horizontal, channel)'
+#
+#     def rot(x1, out_shape, k=1):
+#         if len(out_shape) == 4:
+#             tp_axis = (0, 2, 1, 3)  # (batch, longitudinal, horizontal, channel)
+#         elif len(out_shape) == 5:
+#             tp_axis = (0, 1, 3, 2, 4)  # (batch, z-direction, longitudinal, horizontal, channel)
+#
+#         if k < 0:
+#             direction = -2
+#         else:
+#             direction = -3
+#         for _ in range(abs(k)):
+#             x1 = K.reverse(K.permute_dimensions(x1, tp_axis), axes=direction)
+#         return x1
+#
+#     if kk % 2 == 1:
+#         out_shape[1:3] = np.flip(out_shape[1:3], 0)
+#     return Lambda(lambda xx: rot(xx, out_shape, kk), output_shape=out_shape[1:], name=lyrname)
 
-def rot90(xx, kk=1, lyrname=None):  # rotate tensor by 90 degrees on the HW plane
-    def rot(x1, k=1):
-        if k < 0:
-            direction = 2
-        else:
-            direction = 1
-        for _ in range(abs(k)):
-            x1 = K.reverse(K.transpose(x1), axes=direction)
-            if k % 2 == 1:
-                pattern = (3, 1, 2, 0)
-            else:
-                pattern = (0, 1, 2, 3)
-        return K.permute_dimensions(x1, pattern)
 
+def rot90(xx, kk=1, lyrname=None):  # rotate tensor by 90 degrees for 2D, 3D images
     out_shape = list(K.int_shape(xx))
-    if kk % 2 == 1:
+
+    def rot(x1, out_shape, k=1):
+
+        if len(out_shape) == 4:
+            tp_axis = (0, 2, 1, 3)  # (batch, longitudinal, horizontal, channel)
+        elif len(out_shape) == 5:
+            tp_axis = (
+                0,
+                1,
+                3,
+                2,
+                4,
+            )  # (batch, z-direction, longitudinal, horizontal, channel)
+            tp_axis2 = (0, 3, 2, 1, 4)  # rotation along another axis
+        else:
+            raise ValueError(
+                'Input shape has to be 4D or 5D. e.g. (Batch, (depth), longitudinal, horizontal, channel)'
+            )
+
+        if k < 0:
+            direction = [-2, -2, 1]
+        else:
+            direction = [-3, 1, -2]
+        if k % 6 == 5 and len(out_shape) == 5:
+            x1 = K.reverse(K.permute_dimensions(x1, tp_axis2), axes=direction[1])
+        elif k % 6 == 0 and len(out_shape) == 5:
+            x1 = K.reverse(K.permute_dimensions(x1, tp_axis2), axes=direction[2])
+        elif 0 < k % 6 < 5:
+            for i in range(abs(k)):
+                x1 = K.reverse(K.permute_dimensions(x1, tp_axis), axes=direction[0])
+        return x1
+
+    if kk % 2 == 1 and 0 < kk % 6 < 5:
+        out_shape[-3:-1] = np.flip(out_shape[-3:-1], 0)
+    elif kk % 6 == 5 or kk % 6 == 0:
         out_shape[1:3] = np.flip(out_shape[1:3], 0)
-    return Lambda(lambda xx: rot(xx, kk), output_shape=out_shape[1:], name=lyrname)
+    return Lambda(
+        lambda xx: rot(xx, out_shape, kk), output_shape=out_shape[1:], name=lyrname
+    )
 
 
 def split(x, idx, batchsize=1, lyrname=None):  # split tensor at the batch axis
@@ -40,7 +91,9 @@ def split(x, idx, batchsize=1, lyrname=None):  # split tensor at the batch axis
     # assert (int(out_shape / 4)) * 4 == out_shape
     # batchsize = int(out_shape / 4)
     return Lambda(
-        lambda xx: xx[idx : idx + batchsize], output_shape=out_shape, name=lyrname
+        lambda xx: xx[idx * batchsize : (idx + 1) * batchsize],
+        output_shape=out_shape,
+        name=lyrname,
     )
 
 
@@ -51,6 +104,23 @@ def conv2d_bn(xx, unit, shiftconv, norm, act, lyrname=None):
         x1 = Cropping2D(((0, 0), (0, 1)), name=lyrname + '_crp')(x1)
     else:
         x1 = Conv2D(unit, (3, 3), padding='same', name=lyrname + '_cv2')(xx)
+    if norm == 'instance':
+        x1 = InstanceNormalization(name=lyrname + '_in')(x1)
+    elif norm == 'batch':
+        x1 = BatchNormalization(name=lyrname + '_bn')(x1)
+    if act == 'ReLU':
+        return Activation('relu', name=lyrname + '_relu')(x1)
+    else:
+        return LeakyReLU(alpha=0.1, name=lyrname + '_lrel')(x1)
+
+
+def conv3d_bn(xx, unit, shiftconv, norm, act, lyrname=None):
+    if shiftconv:
+        x1 = ZeroPadding3D(((0, 0), (0, 0), (1, 0)), name=lyrname + '_0pd')(xx)
+        x1 = Conv3D(unit, (3, 3, 3), padding='same', name=lyrname + '_cv')(x1)
+        x1 = Cropping3D(((0, 0), (0, 0), (0, 1)), name=lyrname + '_crp')(x1)
+    else:
+        x1 = Conv3D(unit, (3, 3, 3), padding='same', name=lyrname + '_cv')(xx)
     if norm == 'instance':
         x1 = InstanceNormalization(name=lyrname + '_in')(x1)
     elif norm == 'batch':
@@ -73,6 +143,18 @@ def conv2d_bn_noshift(xx, unit, norm, act, lyrname=None):
         return LeakyReLU(alpha=0.1, name=lyrname + '_lrel')(x1)
 
 
+def conv3d_bn_noshift(xx, unit, norm, act, lyrname=None):
+    x1 = Conv3D(unit, (1, 1, 1), padding='same', name=lyrname + '_cv')(xx)
+    if norm == 'instance':
+        x1 = InstanceNormalization(name=lyrname + '_in')(x1)
+    elif norm == 'batch':
+        x1 = BatchNormalization(name=lyrname + '_bn')(x1)
+    if act == 'ReLU':
+        return Activation('relu', name=lyrname + '_relu')(x1)
+    else:
+        return LeakyReLU(alpha=0.1, name=lyrname + '_lrel')(x1)
+
+
 def mxpooling_down(xx, shiftconv, lyrname=None):
     if shiftconv:
         x1 = ZeroPadding2D(((0, 0), (1, 0)), name=lyrname + '_0pd')(xx)
@@ -80,6 +162,16 @@ def mxpooling_down(xx, shiftconv, lyrname=None):
     else:
         x1 = xx
     x1 = MaxPooling2D((2, 2), name=lyrname + '_mpl')(x1)
+    return x1
+
+
+def mxpooling_down3D(xx, shiftconv, lyrname=None):
+    if shiftconv:
+        x1 = ZeroPadding3D(((0, 0), (0, 0), (1, 0)), name=lyrname + '_0pd')(xx)
+        x1 = Cropping3D(((0, 0), (0, 0), (0, 1)), name=lyrname + '_crp')(x1)
+    else:
+        x1 = xx
+    x1 = MaxPooling3D((2, 2, 2), name=lyrname + '_mpl')(x1)
     return x1
 
 
@@ -94,7 +186,6 @@ class Maskout(Layer):  # A layer that mutiply mask with image
 
     def call(self, x, training=None):
         assert isinstance(x, list)
-
         return K.in_train_phase(multiply(x), x[0], training=training)
 
     def compute_output_shape(self, input_shape):

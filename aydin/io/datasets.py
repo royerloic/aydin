@@ -16,6 +16,7 @@ try:
 except:
     pass
 
+# TODO: download file form here.
 # Convenience shortcuts:
 def newyork():
     return examples_single.generic_newyork.get_array()

@@ -39,14 +39,12 @@ class ImageTranslatorCNN(ImageTranslatorBase):
     ):
 
         super().__init__(normaliser_type, analyse_correlation, monitor)
-
-        # create model at training time instead of here:
-        self.model = unet_model(input_dim)
-        self.supervised = supervised
-        self.shiftconv = shiftconv
-        self.input_dim = input_dim  # TODO: check if can be removed
-        self.max_epochs = None  # TODO:  check if can be removed
-        self.patience = None  # TODO:  check if can be removed
+        self.model = None
+        self.supervised = None
+        self.shiftconv = None
+        self.input_dim = None
+        self.max_epochs = None
+        self.patience = None
         self.checkpoint = None
 
     def save(self, path: str):
@@ -62,6 +60,19 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             frozen += self.regressor.save(path) + '\n'
 
             # TODO: save keras model here, check how it is done in nn
+        super().save(path)
+        if not self.model is None:
+            # serialize model to JSON:
+            keras_model_file = join(path, 'keras_model.txt')
+            model_json = self.model.to_json()
+            with open(keras_model_file, "w") as json_file:
+                json_file.write(model_json)
+
+            # serialize weights to HDF5:
+            keras_model_file = join(path, 'keras_weights.txt')
+            self.model.save_weights(keras_model_file)
+
+        return model_json
 
         return frozen
 
@@ -106,8 +117,10 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
     def train(
         self,
-        input_image,
-        target_image,
+        input_image,  # dimension (batch, H, W, C)
+        target_image,  # dimension (batch, H, W, C)
+        supervised=False,
+        shiftconv=True,
         train_test_ratio=0.1,  # TODO: remove this argument from base and add it to the rest of it_xxx. !!WAIT!!
         batch_dims=None,
         batch_size=None,
@@ -121,6 +134,12 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.max_epochs = max_epochs
         self.patience = patience
         self.checkpoint = None
+        self.input_dim = input_image.shape[1:]
+        self.model = unet_model(
+            input_image.shape[1:], supervised=supervised, shiftconv=shiftconv
+        )
+        self.supervised = supervised
+        self.shiftconv = shiftconv
 
         # TODO: THIS IS WHERE YOU HAVE TO RESET YOUR KERAS MODEL, which means you create the model here.
 
@@ -174,12 +193,12 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     for i in range(numpy.prod(mask_shape).astype(int)):
                         mask = masker(batch_vol, i, mask_shape)
                         masknega = numpy.broadcast_to(
-                            numpy.expand_dims(numpy.expand_dims(mask, 0), 3),
+                            numpy.expand_dims(numpy.expand_dims(mask, 0), -1),
                             image_batch.shape,
                         )
                         train_img = (
                             numpy.broadcast_to(
-                                numpy.expand_dims(numpy.expand_dims(~mask, 0), 3),
+                                numpy.expand_dims(numpy.expand_dims(~mask, 0), -1),
                                 image_batch.shape,
                             )
                             * image_batch
