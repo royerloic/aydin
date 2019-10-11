@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import QTabWidget
 
-from aydin.gui.components.tabs.roi import ROIPage
-from aydin.gui.components.tabs.run_n2s import RunN2STab
-from aydin.gui.components.tabs.test_n2s import TestN2STab
-from aydin.gui.components.tabs.upload_n2s import UploadN2STab
+from aydin.gui.components.tabs.roi.roi import ROITab
+from aydin.gui.components.tabs.predict.predict_n2s import PredictN2STab
+from aydin.gui.components.tabs.train.train_n2s import TrainN2STab
+from aydin.gui.components.tabs.load.load_n2s import LoadN2STab
 
 
 class Noise2SelfWizard(QTabWidget):
@@ -16,17 +16,17 @@ class Noise2SelfWizard(QTabWidget):
         )  # TODO: check the best scheme for handling this in the end
 
         # Add tabs
-        self.upload_tab = UploadN2STab(self)
-        self.addTab(self.upload_tab, "Upload")
+        self.upload_noisy_tab = LoadN2STab(self)
+        self.addTab(self.upload_noisy_tab, "Load")
 
-        self.roi_tab = ROIPage(self)
-        self.addTab(self.roi_tab, "ROI")
+        self.roi_tab = ROITab(self)
+        self.addTab(self.roi_tab, "Region-Of-Interest")
 
-        self.test_tab = TestN2STab(self, f)
-        self.addTab(self.test_tab, "Test")
+        self.test_tab = TrainN2STab(self, f)
+        self.addTab(self.test_tab, "Train")
 
-        # self.run_tab = RunN2STab(self, f)
-        # self.addTab(self.run_tab, "Run")
+        # self.run_tab = PredictN2STab(self, f)
+        # self.addTab(self.run_tab, "Predict")
 
         # Disable all tabs except first one
         self.setTabEnabled(1, False)
@@ -41,21 +41,11 @@ class Noise2SelfWizard(QTabWidget):
 
     def handle_tab_change(self):
         idx = self.currentIndex()
-        if idx == 0:
-            self.setTabEnabled(0, True)
-            self.setTabEnabled(1, False)
-            self.setTabEnabled(2, False)
-            self.setTabEnabled(3, False)
-        elif idx == 1:
+        self.setTabEnabled(idx, True)
+
+        if idx == 1:
             if not self.roi_tab.is_loaded:
                 self.roi_tab.load_tab()
-            self.setTabEnabled(1, True)
-            self.setTabEnabled(2, False)
-            self.setTabEnabled(3, False)
         elif idx == 2:
             if not self.test_tab.is_loaded:
                 self.test_tab.load_tab()
-            self.setTabEnabled(2, True)
-            self.setTabEnabled(3, False)
-        elif idx == 3:
-            self.setTabEnabled(3, True)
