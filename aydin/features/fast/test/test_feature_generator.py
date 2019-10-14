@@ -2,7 +2,7 @@ import numpy
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 
 
 def n(image):

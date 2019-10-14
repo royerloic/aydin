@@ -1,4 +1,5 @@
 import math
+import random
 
 import numpy
 
@@ -10,7 +11,12 @@ class TrainingDataBalancer:
     """
 
     def __init__(
-        self, total_entries, number_of_bins, factor=1, tolerance=0.01, is_active=True
+        self,
+        total_entries,
+        number_of_bins,
+        keep_ratio=1,
+        tolerance=0.01,
+        is_active=True,
     ):
         """
 
@@ -18,7 +24,7 @@ class TrainingDataBalancer:
         self.is_active = is_active
         self.total_entries = total_entries
         self.number_of_bins = number_of_bins
-        self.factor = factor
+        self.keep_ratio = keep_ratio
         self.tolerance = tolerance
         self.histogram = numpy.ones(number_of_bins)
 
@@ -34,8 +40,9 @@ class TrainingDataBalancer:
 
         value = self.histogram[index]
 
-        if (not self.is_active) or value < self.factor * self.max_entries_per_bin * (
-            1 + self.tolerance
+        if (not self.is_active) or (
+            (value < self.max_entries_per_bin * (1 + self.tolerance))
+            and random.random() <= self.keep_ratio
         ):
             self.histogram[index] = value + 1
             return True

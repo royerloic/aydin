@@ -100,9 +100,9 @@ class ImageTranslatorBase(ABC):
         input_image,
         target_image,
         batch_dims,
+        train_data_ratio=1,
+        max_voxels_for_training=math.inf,
         train_valid_ratio=0.1,
-        use_last_validation_data=False,
-        is_batch=False,
         callback_period=3,
     ):
         raise NotImplemented()
@@ -128,34 +128,18 @@ class ImageTranslatorBase(ABC):
         """
         raise NotImplemented()
 
-    @abstractmethod
-    def is_enough_memory(self, array):
-        """
-        Returns the memory needed (can be CPU, GPU or other) given an image.
-        :param array: image
-        """
-        raise NotImplemented()
-
-    @abstractmethod
-    def limit_epochs(self, max_epochs: int) -> int:
-        """
-        Returns a modified max epochs if nescessary.
-        :param max_epochs: max epochs to be changes
-        """
-        return max_epochs
-
     def train(
         self,
         input_image,
         target_image,
-        train_test_ratio=0.1,
         batch_dims=None,
-        batch_size=None,
-        batch_shuffle=False,
+        train_data_ratio=1,
+        max_voxels_for_training=math.inf,
+        train_valid_ratio=0.1,
         callback_period=3,
+        max_epochs=1024,
         patience=3,
         patience_epsilon=0.000001,
-        max_epochs=1024,
     ):
         """
             Train to translate a given input image to a given output image
@@ -215,189 +199,26 @@ class ImageTranslatorBase(ABC):
             # Sanity check when not default batch dims:
             assert len(batch_dims) == len(input_image.shape)
 
-            # We compute the ideal number of batches and whether there is enough memory:
-            ideal_number_of_batches, is_enough_memory = self._get_number_of_batches(
-                batch_size, input_image
-            )
-
-            if (batch_size is None) and is_enough_memory:
-
-                # If there is enough memory, we don' need to batch:
-
-                lprint(
-                    f'There is enough memory -- we do full training (no batches, i.e. single batch).'
-                )
-                # array = np.zeros(shape, dtype=np.float32)
-
-                # In that case the batch strategy is None:
-                batch_strategy = None
-
-                # 'Last minute' normalisation:
-                normalised_input_image = self.input_normaliser.normalise(input_image)
-                if not self.self_supervised:
-                    normalised_target_image = normalised_input_image
-                else:
-                    normalised_target_image = self.target_normaliser.normalise(
-                        target_image
-                    )
-
-                # We do one batch training:
-                inferred_image = self._train(
-                    normalised_input_image,
-                    normalised_target_image,
-                    batch_dims,
-                    train_test_ratio,
-                    is_batch=False,
-                    callback_period=callback_period,
-                )
-
-                denormalised_inferred_image = self.input_normaliser.denormalise(
-                    inferred_image
-                )
-
-                return denormalised_inferred_image
-
+            # 'Last minute' normalisation:
+            normalised_input_image = self.input_normaliser.normalise(input_image)
+            if not self.self_supervised:
+                normalised_target_image = normalised_input_image
             else:
-                # There is not enough memory, or a small batch size was requested, or image too large for accurate feature gen (e.g. integral images):
+                normalised_target_image = self.target_normaliser.normalise(target_image)
 
-                lprint(
-                    f'There is not enough memory (CPU or GPU) -- we have to do batch training.'
-                )
-
-                # Ok, now we can start iterating through the batches:
-                # strategy is a list in which each integer is the number of chunks per dimension.
-                batch_strategy = self._get_batching_strategy(
-                    batch_dims, ideal_number_of_batches, shape
-                )
-
-                # How large the margins need to be to account for the receptive field:
-                margins = self._get_margins(shape, batch_strategy)
-                lprint(
-                    f'Batch margins: {margins}, receptive field: {self.get_receptive_field_radius(len(shape))}.'
-                )
-
-                # We compute the slices objects to cut the input and target images into batches:
-                batch_slices = list(
-                    nd_split_slices(
-                        shape, batch_strategy, do_shuffle=batch_shuffle, margins=margins
-                    )
-                )
-
-                image_min = input_image.min()
-                image_max = input_image.max()
-
-                with lsection(
-                    f"Computing entropy of each batch image to find best order:"
-                ):
-                    # We use the heuristic that a batch with high entropy is 'richer' and more likely to
-                    # be an interesting (e.g. not all background) part of the image...
-                    entropylist = []
-                    for batch_slice in batch_slices:
-                        input_image_batch = input_image[batch_slice]
-                        histogram, bins = numpy.histogram(
-                            input_image_batch.flatten(),
-                            bins=128,
-                            range=(image_min, image_max),
-                            density=True,
-                        )
-                        histogram /= histogram.sum()
-                        entropy = scipy.stats.entropy(histogram)
-                        entropylist.append(entropy)
-                        lprint(f"Batch slice: {batch_slice} has entropy: {entropy}")
-
-                # We create the decorated batch slice list:
-                slices = zip(batch_slices, entropylist)
-
-                # We sort the slice list based on _increasing_ entropy:
-                # we want more balanced batches at the end...
-                slices = list(
-                    zip(*sorted(slices, key=lambda slice: slice[1], reverse=False))
-                )
-
-                # But we also want to make sure that the first batch is not _too_ weird:
-                # So we do the last (good) batch twice, at the beginning and at the end:
-                # This way we can set the validation data at the beginning:
-                slices[0] = (slices[0][-1],) + slices[0]
-                slices[1] = (slices[1][-1],) + slices[1]
-
-                use_last_validation_data = False
-                counter = 0
-                # We iterate through each batch and do training:
-                for slice_tuple in slices[0]:
-
-                    lprint(f"Batch slice #{counter}/{len(slices[0])}: {slice_tuple}")
-                    counter += 1
-
-                    input_image_batch = input_image[slice_tuple]
-
-                    if self.self_supervised:
-                        target_image_batch = input_image_batch
-                    else:
-                        target_image_batch = target_image[slice_tuple]
-
-                    # 'Last minute' normalisation:
-                    normalised_input_image_batch = self.input_normaliser.normalise(
-                        input_image_batch
-                    )
-                    if self.self_supervised:
-                        normalised_target_image_batch = normalised_input_image_batch
-                    else:
-                        normalised_target_image_batch = self.target_normaliser.normalise(
-                            target_image_batch
-                        )
-
-                    self._train(
-                        normalised_input_image_batch,
-                        normalised_target_image_batch,
-                        batch_dims,
-                        train_test_ratio,
-                        is_batch=True,
-                        callback_period=callback_period,
-                        use_last_validation_data=use_last_validation_data,
-                    )
-
-                    use_last_validation_data = True
-
-                # TODO: returned inferred image even in the batch case. Reason not to do it: might be a lot of data...
-
-                return None
-
-    def _get_number_of_batches(self, batch_size, input_image):
-
-        with lsection(
-            "Calculate the number of batches and whether there is enough memory:"
-        ):
-
-            # Compute the data data sizes:
-            dataset_size_in_bytes = (input_image.size * 4) * (
-                1 if self.self_supervised else 2
+            # We do one batch training:
+            self._train(
+                normalised_input_image,
+                normalised_target_image,
+                batch_dims=batch_dims,
+                train_data_ratio=train_data_ratio,
+                max_voxels_for_training=max_voxels_for_training,
+                train_valid_ratio=train_valid_ratio,
+                callback_period=callback_period,
             )
-
-            # Obtain free memory:
-            free_cpu_mem_in_bytes = psutil.virtual_memory().free
-            lprint(f'Dataset is {(dataset_size_in_bytes / 1E6)} MB. (as float!)')
-            lprint(f'There is {int(free_cpu_mem_in_bytes / 1E6)} MB of free CPU memory')
-
-            is_enough_memory, max_batch_size = self.is_enough_memory(input_image)
-
-            if batch_size is None:
-                # No forcing of batch size requested, so we proceed with the calculated value:
-                effective_batch_size = max_batch_size
-                lprint(f'Batch size is: {(effective_batch_size / 1E6)} MB.')
-            else:
-                # If the batch size has been specified then we use that
-                lprint(f'Batch size has been forced: {(batch_size / 1E6)} MB.')
-                effective_batch_size = min(batch_size, max_batch_size)
-
-            # This is the ideal number of batches so that we partition just enough:
-            ideal_number_of_batches = max(
-                2, int(math.ceil(dataset_size_in_bytes // effective_batch_size))
-            )
-
-            return ideal_number_of_batches, is_enough_memory
 
     def translate(
-        self, input_image, translated_image=None, batch_dims=None, batch_size=None
+        self, input_image, translated_image=None, batch_dims=None, tile_size=None
     ):
         """
         Translates an input image into an output image according to the learned function.
@@ -429,12 +250,7 @@ class ImageTranslatorBase(ABC):
                     shape, dtype=self.target_normaliser.original_dtype
                 )
 
-            # We compute the parameters for batching (can be different than from training!):
-            ideal_number_of_batches, is_enough_memory = self._get_number_of_batches(
-                batch_size, input_image
-            )
-
-            if (batch_size is None) and is_enough_memory:
+            if tile_size is None:
                 # We did not batch during training so we can directly translate:
 
                 # First we normalise the input:
@@ -451,198 +267,106 @@ class ImageTranslatorBase(ABC):
                 return denormalised_translated_image
 
             else:
-                # We do need to do batch training because of a lack of memory or because a small batch size was requested:
+                # We do need to do tiled inference because of a lack of memory or because a small batch size was requested:
 
-                # We get the batch strategy:
-                batch_strategy = self._get_batching_strategy(
-                    batch_dims, ideal_number_of_batches, shape
+                # Receptive field:
+                receptive_field_radius = self.get_receptive_field_radius(len(shape))
+
+                # We get the tilling strategy but adjust for the margins:
+                tilling_strategy = self._get_tilling_strategy(
+                    batch_dims, max(1, tile_size - 2 * receptive_field_radius), shape
                 )
-                lprint(f"Batch strategy: {batch_strategy}")
+                lprint(f"Tilling strategy: {tilling_strategy}")
 
                 # First we compute the margins:
-                margins = self._get_margins(shape, batch_strategy)
-                lprint(f"Margins for batches: {margins} .")
+                margins = self._get_margins(shape, tilling_strategy)
+                lprint(f"Margins for tiles: {margins} .")
 
-                # batch slice objects (with and without margins):
-                batch_slices_margins = list(
-                    nd_split_slices(shape, batch_strategy, margins=margins)
+                # tile slice objects (with and without margins):
+                tile_slices_margins = list(
+                    nd_split_slices(shape, tilling_strategy, margins=margins)
                 )
-                batch_slices = list(nd_split_slices(shape, batch_strategy))
+                tile_slices = list(nd_split_slices(shape, tilling_strategy))
 
-                lprint(f"Number of batches (slices): {len(batch_slices)}")
+                # Number of tiles:
+                number_of_tiles = len(tile_slices)
+                lprint(f"Number of tiles (slices): {number_of_tiles}")
 
                 # We create slice list:
-                slicezip = zip(batch_slices_margins, batch_slices)
+                slicezip = zip(tile_slices_margins, tile_slices)
 
+                counter = 1
                 for slice_margin_tuple, slice_tuple in slicezip:
+                    with lsection(
+                        f"Current tile: {counter}/{number_of_tiles}, slice: {slice_tuple} "
+                    ):
 
-                    lprint(f"Current batch slice: {slice_tuple}")
+                        # We first extract the tile image:
+                        input_image_tile = input_image[slice_margin_tuple]
 
-                    # We first extract the batch image:
-                    input_image_batch = input_image[slice_margin_tuple]
+                        # Then we normalise this tile:
+                        lprint(f"Normalising...")
+                        normalised_input_image_tile = self.input_normaliser.normalise(
+                            input_image_tile
+                        )
 
-                    # Then we normalise this batch:
-                    lprint(f"Normalising...")
-                    normalised_input_image_batch = self.input_normaliser.normalise(
-                        input_image_batch
-                    )
+                        # We do the actual translation:
+                        lprint(f"Translating...")
+                        inferred_image_tile = self._translate(
+                            normalised_input_image_tile, batch_dims
+                        )
 
-                    # We do the actual translation:
-                    lprint(f"Translating...")
-                    inferred_image_batch = self._translate(
-                        normalised_input_image_batch, batch_dims
-                    )
+                        # We denormalise that result:
+                        lprint(f"Denormalising...")
+                        denormalised_inferred_image_tile = self.target_normaliser.denormalise(
+                            inferred_image_tile
+                        )
 
-                    # We denormalise that result:
-                    lprint(f"Denormalising...")
-                    denormalised_inferred_image_batch = self.target_normaliser.denormalise(
-                        inferred_image_batch
-                    )
+                        # We compute the slice needed to cut out the margins:
+                        lprint(f"Removing margins...")
+                        remove_margin_slice_tuple = remove_margin_slice(
+                            shape, slice_margin_tuple, slice_tuple
+                        )
 
-                    # We compute the slice needed to cut out the margins:
-                    lprint(f"Removing margins...")
-                    remove_margin_slice_tuple = remove_margin_slice(
-                        shape, slice_margin_tuple, slice_tuple
-                    )
+                        # We plug in the batch without margins into the destination image:
+                        lprint(f"Inserting translated batch into result image...")
+                        translated_image[
+                            slice_tuple
+                        ] = denormalised_inferred_image_tile[remove_margin_slice_tuple]
 
-                    # We plug in the batch without margins into the destination image:
-                    lprint(f"Inserting translated batch into result image...")
-                    translated_image[slice_tuple] = denormalised_inferred_image_batch[
-                        remove_margin_slice_tuple
-                    ]
+                        counter += 1
 
                 return translated_image
 
-    def _get_batching_strategy(self, batch_dims, ideal_number_of_batches, shape):
+    def _get_tilling_strategy(self, batch_dims, tile_size, shape):
 
         # We will store the batch strategy as a list of integers representing the number of chunks per dimension:
-        with lsection(f"Determine tbatching startegy:"):
+        with lsection(f"Determine tilling strategy:"):
 
             lprint(f"shape                   = {shape}")
             lprint(f"batch_dims              = {batch_dims}")
-            lprint(f"ideal_number_of_batches = {ideal_number_of_batches}")
+            lprint(f"tile_size               = {tile_size}")
 
-            # This is the total number of batches that we would get if we were to use all batch dimensions:
-            num_provided_batches = reduce(
-                mul,
-                [
-                    (dim_size if is_batch else 1)
-                    for dim_size, is_batch in zip(shape, batch_dims)
-                ],
-                1,
+            # This is the tile strategy, essentially how to split each dimension...
+            tilling_strategy = tuple(
+                (1 if is_batch else max(1, int(math.ceil(dim / tile_size))))
+                for dim, is_batch in zip(shape, batch_dims)
             )
-            lprint(f"num_provided_batches = {num_provided_batches}")
+            lprint(f"Tilling strategy is: {tilling_strategy}")
 
-            # We can use that to already determine whether the provided batch dimensions are enough:
-            if num_provided_batches >= ideal_number_of_batches:
-                # In this case we can make use of these dimensions, but there might be too many batches if we don't chunk...
-                lprint(f"We can use providedbatch dimensions:")
-                lprint(f"num_provided_batches >= ideal_number_of_batches")
+            return tilling_strategy
 
-                # Batch dimensions -- other dimensions are set to 1:
-                batch_dimensions_sizes = [
-                    (dim_size if is_batch else 1)
-                    for dim_size, is_batch in zip(shape, batch_dims)
-                ]
+    def _get_margins(self, shape, tilling_strategy):
 
-                # Considering the dimensions marked by the client of this method as 'batch dimensions',
-                # if possible, what combination of such dimensions is best for creating batches?
-                best_batch_dimensions = closest_product(
-                    batch_dimensions_sizes, ideal_number_of_batches, 1.0, 5.0
-                )
-                lprint(f"best_batch_dimensions = {best_batch_dimensions}")
-
-                # At this point, the strategy is simply to use the provided batch dimensions:
-                batch_strategy = batch_dimensions_sizes
-
-                # But, it might not be possible to do so because of too large batch dimensions...
-                if best_batch_dimensions is None:
-                    # We could ignore this case, but this might lead to very inefficient processing due to excessive batching.
-                    # Also, regressors perform worse (e.g. lGBM) when there are many batches.
-                    # Please note that the feature generation and regression will take into account the information
-                    lprint(
-                        f"We can't use the batch dimensions as is, we need to consolidate batches:"
-                    )
-
-                    # In the following we take the heuristic to consolidate the longest batch dimension.
-
-                    # First, we identify the largest batch dimension:
-                    index_of_largest_batch_dimension = batch_dimensions_sizes.index(
-                        max(batch_dimensions_sizes)
-                    )
-                    lprint(
-                        f"Index_of_largest_batch_dimension = {index_of_largest_batch_dimension}"
-                    )
-
-                    # Then we determine the number of batches excluding that dimension:
-                    num_batches_without_dimension = (
-                        num_provided_batches
-                        / batch_dimensions_sizes[index_of_largest_batch_dimension]
-                    )
-
-                    # Then we can determine the optimal batching for that dimension:
-                    optimum = int(
-                        math.ceil(
-                            ideal_number_of_batches / num_batches_without_dimension
-                        )
-                    )
-                    lprint(f"Optimum batching:  = {optimum}")
-
-                    # the strategy is then:
-                    batch_strategy[index_of_largest_batch_dimension] = optimum
-
-            else:
-                # In this case we have too few batches provided, so we need to further split the dataset:
-                lprint(
-                    f"Too few batches provided, so we need to further split the dataset"
-                )
-                lprint(f"num_provided_batches >= ideal_number_of_batches")
-
-                # This is the amount of batching still required beyond what batching dimensions provide:
-                extra_batching = int(
-                    math.ceil(ideal_number_of_batches / num_provided_batches)
-                )
-
-                # Now the question is how to distribute this among the other dimensions (non-batch).
-
-                # First, what is the number of non-batch dimensions?
-                num_non_batch_dimensions = sum(
-                    [(0 if is_batch else 1) for is_batch in batch_dims]
-                )
-
-                # Then, we distribute batching fairly based on the length of each dimension:
-
-                # This is the product of non-batch dimensions:
-                product_non_batch_dim = numpy.prod(
-                    [
-                        dim_size
-                        for dim_size, is_batch in zip(shape, batch_dims)
-                        if not is_batch
-                    ]
-                )
-
-                # A little of logarythmic magic to find the 'geometric' (versus arithmetic) proportionality:
-                alpha = math.log2(extra_batching) / math.log2(product_non_batch_dim)
-
-                # The strategy is then:
-                batch_strategy = [
-                    (dim_size if is_batch else int(math.ceil(dim_size ** alpha)))
-                    for dim_size, is_batch in zip(shape, batch_dims)
-                ]
-            lprint(f"Batching strategy is: {batch_strategy}")
-
-            return batch_strategy
-
-    def _get_margins(self, shape, batch_strategy):
+        # Receptive field:
+        receptive_field_radius = self.get_receptive_field_radius(len(shape))
 
         # We compute the margin from the receptive field but limit it to 33% of the tile size:
-        margins = tuple(
-            min(self.get_receptive_field_radius(len(shape)), (dim // split) // 3)
-            for (dim, split) in zip(shape, batch_strategy)
-        )
+        margins = (receptive_field_radius,) * len(shape)
+
         # We only need margins if we split a dimension:
         margins = tuple(
             (0 if split == 1 else margin)
-            for margin, split in zip(margins, batch_strategy)
+            for margin, split in zip(margins, tilling_strategy)
         )
         return margins

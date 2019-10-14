@@ -59,7 +59,7 @@ def lprint(*args, sep=' ', end='\n'):
 
 
 @contextmanager
-def lsection(section_header: str, intersept_print=False):
+def lsection(section_header: str):
     global ___current_section
     global ___depth
 
@@ -67,6 +67,11 @@ def lsection(section_header: str, intersept_print=False):
 
     if ___depth + 1 <= ___max_depth:
         __native_print(__vl__ * ___depth + __bd__ + ' ' + section_header)  # ≡
+    elif ___depth + 1 == ___max_depth + 1:
+        __native_print(
+            __vl__ * ___depth + __br__ + f'≡ {section_header} (log tree truncated here)'
+        )
+
     ___depth += 1
 
     start = time.time()

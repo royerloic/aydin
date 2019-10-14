@@ -23,14 +23,15 @@ from aydin.util.log.logging import lsection, lprint
 from aydin.util.nd import nd_range_radii
 from aydin.util.offcore.offcore import offcore_array
 
-
+# TODO:  rename to FastMultiscaleConvolutionalFeatureGenerator
 class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
     """
     Multiscale convolutional feature generator.
-    Uses OpenCL to acheive very fast integral image based feature generation.
+    Uses OpenCL and integral images to acheive very fast feature generation.
 
-    #TODO: There is some residual non-J-invariance on the borders...
-    #TODO: There is still a weird issue in the 4D case... numerical overflow?
+    However, for images that have more than 256^3 voxels problems start to appear
+    because of our usage of integral images. For such large images it is better to
+    use a tiled feature generator.
 
     """
 
@@ -61,8 +62,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
         """
 
-        self.check_nans = False
-        self.debug_force_memmap = False
+        super().__init__()
 
         self.kernel_widths = kernel_widths
         self.kernel_scales = kernel_scales
@@ -79,6 +79,10 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
         assert dtype == numpy.float32 or dtype == numpy.uint8 or dtype == numpy.uint16
 
+    def _ensure_opencl_prodider_initialised(self):
+        if not hasattr(self, 'opencl_provider') or self.opencl_provider is None:
+            self.opencl_provider = OpenCLProvider()
+
     def _load_internals(self, path: str):
 
         # We can't use the loaded provider,
@@ -92,96 +96,6 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         if 'opencl_provider' in state:
             del state['opencl_provider']
         return state
-
-    def _ensure_opencl_prodider_initialised(self):
-        if not hasattr(self, 'opencl_provider') or self.opencl_provider is None:
-            self.opencl_provider = OpenCLProvider()
-
-    def is_enough_memory(self, array):
-
-        with lsection('Is enough memory for feature generation ?'):
-
-            # Ensure we have an openCL provider initialised:
-            self._ensure_opencl_prodider_initialised()
-
-            # 20% buffer:
-            buffer = 1.2
-
-            max_avail_cpu_mem = 0.9 * psutil.virtual_memory().total
-            max_avail_gpu_mem = 0.9 * self.opencl_provider.device.global_mem_size
-            lprint(f"Maximum cpu mem: {max_avail_cpu_mem / 1E6} MB")
-            lprint(f"Maximum gpu mem: {max_avail_gpu_mem / 1E6} MB")
-
-            # This is what we need on the GPU to store the image and one feature:
-            needed_gpu_mem = 2 * int(buffer * 4 * array.size * 1)
-            lprint(
-                f"Memory needed on the gpu: {needed_gpu_mem / 1E6} MB (image + 1 feature)"
-            )
-
-            nb_dim = len(array.shape)
-            approximate_num_features = len(self.get_feature_descriptions(nb_dim, False))
-            lprint(f"Approximate number of features: {approximate_num_features}")
-
-            # This is what we need on the CPU:
-            needed_cpu_mem = int(
-                buffer
-                * np.dtype(self.dtype).itemsize
-                * array.size
-                * approximate_num_features
-            )
-            lprint(f"Memory needed on the cpu: {needed_cpu_mem/ 1E6} MB")
-
-            # Unfortunately, because of float32 precision, integral images cannot be arbitrarily large:
-            max_voxels_in_integral_image = (
-                256 * 256 * 256
-            )  # This was heuristically determined to 'work', more cstarts to be worse
-
-            min_nb_batches_cpu = math.ceil(needed_cpu_mem / max_avail_cpu_mem)
-            min_nb_batches_gpu = math.ceil(needed_gpu_mem / max_avail_gpu_mem)
-
-            min_nb_batches_because_of_ii_precision = math.ceil(
-                array.size / max_voxels_in_integral_image
-            )
-            lprint(
-                f"Because of float32 precision, integral images (ii) must have at most : {max_voxels_in_integral_image} voxels"
-            )
-            lprint(
-                f"Current Image has: {array.size} voxels, requiring at least: {min_nb_batches_because_of_ii_precision} batches"
-            )
-
-            min_nb_batches = max(
-                min_nb_batches_cpu,
-                min_nb_batches_gpu,
-                min_nb_batches_because_of_ii_precision,
-            )
-            lprint(
-                f"Minimum number of batches: {min_nb_batches} ( cpu:{min_nb_batches_cpu}, gpu:{min_nb_batches_gpu}, ii:{min_nb_batches_because_of_ii_precision} )"
-            )
-
-            max_batch_size = (array.itemsize * array.size) // min_nb_batches
-            is_enough_memory = (
-                needed_cpu_mem < max_avail_cpu_mem
-                and needed_gpu_mem < max_avail_gpu_mem
-                and array.size <= max_voxels_in_integral_image
-            )
-            lprint(f"Maximum batch size: {max_batch_size/1E6} MB ")
-            lprint(f"Is enough memory: {is_enough_memory} ")
-
-            return is_enough_memory, max_batch_size
-
-    def get_receptive_field_radius(self, nb_dim):
-
-        radius = 0
-        counter = 0
-        for width, scale in zip(self.kernel_widths, self.kernel_scales):
-
-            if counter > self.max_level:
-                break
-
-            radius = max(radius, width * scale // 2)
-            counter += 1
-
-        return radius
 
     def save(self, path: str):
         """
@@ -200,6 +114,26 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
         return super().load(path)
 
+    def get_receptive_field_radius(self, nb_dim):
+
+        radius = 0
+        counter = 0
+        for width, scale in zip(self.kernel_widths, self.kernel_scales):
+
+            if counter > self.max_level:
+                break
+
+            radius = max(radius, width * scale // 2)
+            counter += 1
+
+        return radius
+
+    def max_non_batch_dims(self):
+        return 4
+
+    def max_voxels(self):
+        return 256 ** 3
+
     def compute(
         self,
         image,
@@ -207,17 +141,10 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         exclude_center_feature=False,
         exclude_center_value=False,
         features=None,
+        feature_last_dim=True,
     ):
-        """
-        Computes the features given an image. If the input image is of shape (d,h,w),
-        resulting features are of shape (d,h,w,n) where n is the number of features.
-        :param image: image for which features are computed
-        :type image:
-        :return: feature array
-        :rtype:
-        """
 
-        with lsection('Computing multi-scale convolutional features '):
+        with lsection('Computing multi-scale convolutional features'):
 
             # Ensure we have an openCL provider initialised:
             self._ensure_opencl_prodider_initialised()
@@ -397,7 +324,8 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             # 'collect_fesatures_nD' puts the feature vector in axis 0.
             # The following line creates a view of the array
             # in which the features are indexed by the last dimension instead:
-            features = np.moveaxis(features, 0, -1)
+            if feature_last_dim:
+                features = np.moveaxis(features, 0, -1)
 
             # computes the inverse permutation from the permutation use to consolidate batch dimensions:
             axes_inverse_permutation = [
@@ -405,47 +333,10 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             ] + [image_dimension]
 
             # permutates dimensions back:
-            image = numpy.transpose(image, axes=axes_inverse_permutation[:-1])
+            # image = numpy.transpose(image, axes=axes_inverse_permutation[:-1])
             features = numpy.transpose(features, axes=axes_inverse_permutation)
 
             return features
-
-    def create_feature_array(self, image, nb_features):
-        """
-        Creates a feature array of the right size and possibly in a 'lazy' way using memory mapping.
-
-        :param image: image for which features are created
-        :type image:
-        :param nb_features: number of features needed
-        :type nb_features:
-        :return: feature array
-        :rtype:
-        """
-
-        with lsection(f'Creating feature array for image of shape: {image.shape}'):
-
-            size_in_bytes = nb_features * image.size * np.dtype(self.dtype).itemsize
-            free_mem_in_bytes = psutil.virtual_memory().free
-            lprint(f'There is {int(free_mem_in_bytes/1E6)} MB of free memory')
-            lprint(f'Feature array will be {(size_in_bytes/1E6)} MB.')
-
-            # We take the heuristic that we need 20% extra memory available to be confortable:
-            is_enough_memory = 1.2 * size_in_bytes < free_mem_in_bytes
-
-            # That's the shape we need:
-            shape = (nb_features,) + image.shape
-
-            if not self.debug_force_memmap and is_enough_memory:
-                lprint(
-                    f'There is enough memory -- we do not need to use a mem mapped array.'
-                )
-                array = np.zeros(shape, dtype=self.dtype)
-
-            else:
-                lprint(f'There is not enough memory -- we will use a mem mapped array.')
-                array = offcore_array(shape=shape, dtype=self.dtype)
-
-            return array
 
     def compute_integral_image(
         self, image_gpu, image_integral_gpu_1, image_integral_gpu_2
@@ -516,6 +407,8 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         with lsection(
             f'{ "Counting" if features is None else "Collecting"} features of dimension {len(image_gpu.shape)}'
         ):
+            if not features is None:
+                lprint(f"Features array provided has shape: {features.shape} ")
 
             # Ensure we have an openCL provider initialised:
             self._ensure_opencl_prodider_initialised()
@@ -578,6 +471,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                             )
 
                         # We copy the GPU computed feature back into CPU memory:
+                        # lprint(f"Copying from GPU VRAM {feature_gpu.shape} to CPU RAM {feature.shape}")
                         cl.enqueue_copy(
                             self.opencl_provider.queue, feature, feature_gpu.data
                         )

@@ -30,21 +30,13 @@ class SupportVectorRegressor:
         pass
 
     def fit(
-        self,
-        x_train,
-        y_train,
-        x_valid=None,
-        y_valid=None,
-        is_batch=False,
-        regressor_callback=None,
+        self, x_train, y_train, x_valid=None, y_valid=None, regressor_callback=None
     ):
         """
         Fits function y=f(x) given training pairs (x_train, y_train).
         Stops when performance stops improving on the test dataset: (x_test, y_test).
 
         """
-        if is_batch:
-            raise NotImplemented("Batch training not het implemented!")
         self.svr = self.svr.fit(x_train, y_train)
 
     def predict(self, x, model_to_use=None):

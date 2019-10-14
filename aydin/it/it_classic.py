@@ -1,8 +1,9 @@
+import math
 import time
 
 import numpy
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.features.features_base import FeatureGeneratorBase
 from aydin.it.balancing.trainingdatabalancer import TrainingDataBalancer
 from aydin.it.it_base import ImageTranslatorBase
@@ -76,44 +77,34 @@ class ImageTranslatorClassic(ImageTranslatorBase):
     def get_receptive_field_radius(self, nb_dim):
         return self.feature_generator.get_receptive_field_radius(nb_dim)
 
-    def is_enough_memory(self, array):
-        return self.feature_generator.is_enough_memory(array)
-
-    def limit_epochs(self, max_epochs: int) -> int:
-        # If the regressor is not progressive (supports training through multiple epochs) then we limit epochs to 1
-        return max_epochs if self.regressor.progressive else 1
-
     def train(
         self,
         input_image,
         target_image,
-        train_test_ratio=0.1,
         batch_dims=None,
-        batch_size=None,
-        batch_shuffle=False,
+        train_data_ratio=1,
+        max_voxels_for_training=math.inf,
+        train_valid_ratio=0.1,
         callback_period=3,
+        max_epochs=1024,
         patience=3,
         patience_epsilon=0.000001,
-        max_epochs=1024,
     ):
 
         # Resetting regressor:
         self.regressor.reset()
 
-        if self.regressor.progressive:
-            self.regressor.max_epochs = max_epochs
-            self.regressor.patience = patience
-
-        return super().train(
+        super().train(
             input_image,
             target_image,
-            train_test_ratio,
-            batch_dims,
-            batch_size,
-            batch_shuffle,
-            callback_period,
-            patience,
-            patience_epsilon,
+            batch_dims=batch_dims,
+            train_data_ratio=train_data_ratio,
+            max_voxels_for_training=max_voxels_for_training,
+            train_valid_ratio=train_valid_ratio,
+            callback_period=callback_period,
+            max_epochs=max_epochs,
+            patience=patience,
+            patience_epsilon=patience_epsilon,
         )
 
     def stop_training(self):
@@ -186,23 +177,12 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         input_image,
         target_image,
         batch_dims,
+        train_data_ratio=1,
+        max_voxels_for_training=math.inf,
         train_valid_ratio=0.1,
-        use_last_validation_data=False,
-        is_batch=False,
         callback_period=3,
     ):
-        """
-            Train to translate a given input image to a given output image
-            :param input_image: input image
-            :param target_image: target image
-            :param batch_dims: batch dimensions
-            :param train_valid_ratio: ratio between train and validation data
-            :param is_batch: is training batched ? (i.e. should we be able to call train again and continue training?)
-            :param monitoring_images: images to use for mon itoring progress
-            :param callback_period: callback max period
-            :return:
 
-        """
         with lsection(
             f"Training image translator from image of shape {input_image.shape} to image of shape {target_image.shape}:"
         ):
@@ -237,6 +217,9 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
             # Regressor callback:
             def regressor_callback(iteration, val_loss, model):
+
+                if val_loss is None:
+                    return
 
                 current_time_sec = time.time()
 
@@ -293,9 +276,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                 lprint(f"Creating random indices for train/val split")
                 nb_split_batches = 1024
 
-                if is_batch and use_last_validation_data == True:
-                    train_valid_ratio = 0
-
                 nb_split_batches_valid = int(train_valid_ratio * nb_split_batches)
                 nb_split_batches_train = nb_split_batches - nb_split_batches_valid
                 train_indices = numpy.full(nb_split_batches, False)
@@ -319,16 +299,25 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
                 with lsection(f"Copying data for training and validation sets..."):
 
+                    num_of_voxels = input_image.size
+                    train_data_ratio = min(
+                        train_data_ratio, float(max_voxels_for_training) / num_of_voxels
+                    )
+
                     balancer = TrainingDataBalancer(
                         total_entries=nb_split_batches,
                         number_of_bins=nb_split_batches // 8,
                         is_active=self.balance_training_data,
+                        keep_ratio=train_data_ratio,
                     )
 
                     # We use a random permutation to avoid having the balancer drop only from the 'end' of the image
                     permutation = numpy.random.permutation(nb_split_batches)
 
                     i, jt, jv = 0, 0, 0
+                    dst_stop_train = 0
+                    dst_stop_valid = 0
+
                     for is_train in numpy.nditer(train_indices):
                         if i % 64 == 0:
                             lprint(f"Copying section [{i},{i+64}]")
@@ -341,72 +330,50 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                         xsrc = x[src_start:src_stop]
                         ysrc = y[src_start:src_stop]
 
-                        if is_train or use_last_validation_data:
-
+                        if is_train:
                             if balancer.add_entry(ysrc):
-                                dst_start = jt * nb_entries_per_split_batch
-                                dst_stop = (jt + 1) * nb_entries_per_split_batch
+                                dst_start_train = jt * nb_entries_per_split_batch
+                                dst_stop_train = (jt + 1) * nb_entries_per_split_batch
+
                                 jt += 1
 
-                                xdst = x_train[dst_start:dst_stop]
-                                ydst = y_train[dst_start:dst_stop]
+                                xdst = x_train[dst_start_train:dst_stop_train]
+                                ydst = y_train[dst_start_train:dst_stop_train]
 
                                 numpy.copyto(xdst, xsrc)
                                 numpy.copyto(ydst, ysrc)
 
                         else:
+                            dst_start_valid = jv * nb_entries_per_split_batch
+                            dst_stop_valid = (jv + 1) * nb_entries_per_split_batch
 
-                            dst_start = jv * nb_entries_per_split_batch
-                            dst_stop = (jv + 1) * nb_entries_per_split_batch
                             jv += 1
 
-                            xdst = x_valid[dst_start:dst_stop]
-                            ydst = y_valid[dst_start:dst_stop]
+                            xdst = x_valid[dst_start_valid:dst_stop_valid]
+                            ydst = y_valid[dst_start_valid:dst_stop_valid]
 
                             numpy.copyto(xdst, xsrc)
                             numpy.copyto(ydst, ysrc)
 
-                    if is_batch:
-                        if use_last_validation_data:
-                            lprint("Using validation data from first batch...")
-                            # We play safe and make fresh copies, otherwise there is a risk that we loose the original values:
-                            x_valid = numpy.copy(self.last_x_valid)
-                            y_valid = numpy.copy(self.last_y_valid)
-                        else:
-                            lprint(
-                                "Keeping validation data from first batch for next batches..."
-                            )
-                            # We play safe and make fresh copies, otherwise there is a risk that we loose the original values:
-                            self.last_x_valid = numpy.copy(x_valid)
-                            self.last_y_valid = numpy.copy(y_valid)
+                    # Now we actually truncate out all the zeros at the end of the arrays:
+                    x_train = x_train[0:dst_stop_train]
+                    y_train = y_train[0:dst_stop_train]
+                    x_valid = x_valid[0:dst_stop_valid]
+                    y_valid = y_valid[0:dst_stop_valid]
 
                     lprint(f"Histogram: {balancer.get_histogram_as_string()}")
                     lprint(
-                        f"Percentage of data kept: {100*balancer.percentage_kept():.2f}%"
+                        f"Percentage of data kept: {100*balancer.percentage_kept():.2f}% (train_data_ratio={train_data_ratio}) "
                     )
 
             lprint("Training now...")
-            if is_batch:
-                validation_loss = self.regressor.fit(
-                    x_train,
-                    y_train,
-                    x_valid=x_valid,
-                    y_valid=y_valid,
-                    is_batch=True,
-                    regressor_callback=regressor_callback if self.monitor else None,
-                )
-                return validation_loss
-            else:
-                self.regressor.fit(
-                    x_train,
-                    y_train,
-                    x_valid=x_valid,
-                    y_valid=y_valid,
-                    is_batch=False,
-                    regressor_callback=regressor_callback if self.monitor else None,
-                )
-                inferred_image = self._predict_from_features(x, input_image.shape)
-                return inferred_image
+            self.regressor.fit(
+                x_train,
+                y_train,
+                x_valid=x_valid,
+                y_valid=y_valid,
+                regressor_callback=regressor_callback if self.monitor else None,
+            )
 
     def _translate(self, input_image, batch_dims=None):
         """

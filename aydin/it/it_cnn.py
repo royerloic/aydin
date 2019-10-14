@@ -64,9 +64,6 @@ class ImageTranslatorCNN(ImageTranslatorBase):
     def is_enough_memory(self, array):
         return MemoryCheckCNN(self.model.count_params()).is_enough_memory(array)
 
-    def limit_epochs(self, max_epochs: int) -> int:
-        pass
-
     def _load_internals(self, path: str):
         pass
 

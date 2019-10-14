@@ -8,7 +8,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.io.folders import get_temp_folder
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn import NNRegressor

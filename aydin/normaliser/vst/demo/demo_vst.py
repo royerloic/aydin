@@ -6,7 +6,7 @@ from skimage.data import camera
 from skimage.exposure import rescale_intensity
 from skimage.util import random_noise
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.normaliser.vst.vst import vst_classical, vst_transform, vst_adaptive
 from aydin.regression.gbm import GBMRegressor

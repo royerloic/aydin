@@ -4,7 +4,7 @@ import napari
 import numpy as np
 from skimage.exposure import rescale_intensity
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.io import io
 from aydin.io.datasets import examples_single
 from aydin.it.it_classic import ImageTranslatorClassic
@@ -26,14 +26,14 @@ def demo(image):
         it = ImageTranslatorClassic(generator, regressor, normaliser_type='identity')
 
         start = time.time()
-        denoised = it.train(image, image, batch_dims=batch_dims)
+        it.train(image, image, batch_dims=batch_dims)
         stop = time.time()
         print(f"Training: elapsed time:  {stop-start} ")
 
-        # start = time.time()
-        # denoised = it.translate(image)
-        # stop = time.time()
-        # print(f"inference: elapsed time:  {stop-start} ")
+        start = time.time()
+        denoised = it.translate(image)
+        stop = time.time()
+        print(f"inference: elapsed time:  {stop-start} ")
 
         viewer.add_image(
             rescale_intensity(denoised, in_range='image', out_range=(0, 1)),
