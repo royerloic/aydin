@@ -41,7 +41,8 @@ class N2SService(BaseService):
             ),
         )
 
-        response = self.it.train(noisy_image, noisy_image)
+        self.it.train(noisy_image, noisy_image)
         progress_callback.emit(100)
 
+        response = self.it.translate(noisy_image)
         return response

@@ -17,6 +17,9 @@ ___log_elapsed_time = True
 
 
 def __native_print(*args, sep=' ', end='\n', file=None):
+    if "pytest" in sys.modules:
+        return
+
     print(*args, sep=sep, end=end, file=sys.__stdout__)
 
 
@@ -50,6 +53,9 @@ def set_log_max_depth(max_depth: int):
 
 
 def lprint(*args, sep=' ', end='\n'):
+    if "pytest" in sys.modules:
+        return
+
     global ___depth
 
     if ___depth <= ___max_depth:
