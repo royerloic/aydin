@@ -1,3 +1,4 @@
+import time
 from os.path import join
 
 import numpy
@@ -15,8 +16,10 @@ from aydin.it.it_base import ImageTranslatorBase
 
 from aydin.util.log.logging import lsection, lprint
 
-from aydin.regression.nn_utils.callbacks import ModelCheckpoint
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from aydin.regression.nn_utils.callbacks import ModelCheckpoint  # , EarlyStopping
+from aydin.it.cnn.callbacks import NNCallback, EarlyStopping, ReduceLROnPlateau
+
+# from keras.callbacks import ReduceLROnPlateau  # , EarlyStopping
 
 
 class ImageTranslatorCNN(ImageTranslatorBase):
@@ -46,6 +49,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.max_epochs = None
         self.patience = None
         self.checkpoint = None
+        self.stop_training = False
 
     def save(self, path: str):
         """
@@ -113,7 +117,8 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
     # TODO: implement:
     def stop_training(self):
-        pass
+        self.model.stop_training = True
+        return self.model.stop_training
 
     def train(
         self,
@@ -208,6 +213,50 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                             'input': train_img,
                             'input_msk': masknega.astype(numpy.float32),
                         }, target_img
+
+        # Regressor callback:
+        def regressor_callback(iteration, val_loss, model):
+
+            current_time_sec = time.time()
+
+            # Correct for dtype range:
+            # if self.feature_generator.dtype == numpy.uint8:
+            #     val_loss /= 255
+            # elif self.feature_generator.dtype == numpy.uint16:
+            #     val_loss /= 255 * 255
+
+            if current_time_sec > self.last_callback_time_sec + self.callback_period:
+                # TODO: predict image for display on the end of every epoch
+                if self.monitoring_datasets and self.monitor:
+                    predicted_monitoring_datasets = [
+                        self.regressor.predict(x_m, model_to_use=model)
+                        for x_m in self.monitoring_datasets
+                    ]
+                    inferred_images = [
+                        y_m.reshape(image.shape)
+                        for (image, y_m) in zip(
+                            self.monitor.monitoring_images,
+                            predicted_monitoring_datasets,
+                        )
+                    ]
+
+                    denormalised_inferred_images = [
+                        self.target_normaliser.denormalise(inferred_image)
+                        for inferred_image in inferred_images
+                    ]
+
+                    self.monitor.variables = (
+                        iteration,
+                        val_loss,
+                        denormalised_inferred_images,
+                    )
+                elif self.monitor:
+                    self.monitor.variables = (iteration, val_loss, None)
+
+                self.last_callback_time_sec = current_time_sec
+            else:
+                pass
+            # print(f"Iteration={iteration} metric value: {eval_metric_value} ")
 
         # The bigger the batch size the faster training in terms of time per epoch,
         # but small batches are also better for convergence (inherent batch noise).
