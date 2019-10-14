@@ -1,11 +1,15 @@
+import math
 import os
 from abc import ABC, abstractmethod
 from os.path import join
 
 import jsonpickle
+import numpy
+import psutil
 
 from aydin.util.json import encode_indent
-from aydin.util.log.logging import lprint
+from aydin.util.log.logging import lprint, lsection
+from aydin.util.offcore.offcore import offcore_array
 
 
 class FeatureGeneratorBase(ABC):
@@ -18,6 +22,12 @@ class FeatureGeneratorBase(ABC):
         """
         Constructs a feature generator
         """
+
+        self.check_nans = False
+        self.debug_force_memmap = False
+
+        # Impelmentations must initialise the dtype so that feature arrays can be created with correct type:
+        self.dtype = None
 
     def save(self, path: str):
         """
@@ -56,14 +66,6 @@ class FeatureGeneratorBase(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def is_enough_memory(self, array):
-        """
-        Returns true if there is enough memory to generate features
-        :param array: image (voxels)
-        """
-        raise NotImplemented()
-
-    @abstractmethod
     def get_receptive_field_radius(self, nb_dim):
         """
         Returns the receptive field radius in pixels.
@@ -73,6 +75,23 @@ class FeatureGeneratorBase(ABC):
         raise NotImplemented()
 
     @abstractmethod
+    def max_non_batch_dims(self):
+        """
+        Returns the maximum number of non-batch dimensions that this generator supports.
+        :return: max non-batch dimensions.
+        :rtype: int
+        """
+        raise NotImplemented()
+
+    def max_voxels(self):
+        """
+        Returns the maximum number of voxels that this generator supports.
+        :return: maximum number of voxels.
+        :rtype: int
+        """
+        return math.inf
+
+    @abstractmethod
     def compute(
         self,
         image,
@@ -80,6 +99,7 @@ class FeatureGeneratorBase(ABC):
         exclude_center_value=False,
         batch_dims=None,
         features=None,
+        feature_last_dim=True,
     ):
         """
         Computes the features given an image. If the input image is of shape (d,h,w),
@@ -96,3 +116,42 @@ class FeatureGeneratorBase(ABC):
         :return: feature array
         :rtype: ndarray
         """
+
+        raise NotImplemented()
+
+    def create_feature_array(self, image, nb_features):
+        """
+        Creates a feature array of the right size and possibly in a 'lazy' way using memory mapping.
+
+        :param image: image for which features are created
+        :type image:
+        :param nb_features: number of features needed
+        :type nb_features:
+        :return: feature array
+        :rtype:
+        """
+
+        with lsection(f'Creating feature array for image of shape: {image.shape}'):
+
+            size_in_bytes = nb_features * image.size * numpy.dtype(self.dtype).itemsize
+            free_mem_in_bytes = psutil.virtual_memory().free
+            lprint(f'There is {int(free_mem_in_bytes / 1E6)} MB of free memory')
+            lprint(f'Feature array will be {(size_in_bytes / 1E6)} MB.')
+
+            # We take the heuristic that we need 20% extra memory available to be confortable:
+            is_enough_memory = 1.2 * size_in_bytes < free_mem_in_bytes
+
+            # That's the shape we need:
+            shape = (nb_features,) + image.shape
+
+            if not self.debug_force_memmap and is_enough_memory:
+                lprint(
+                    f'There is enough memory -- we do not need to use a mem mapped array.'
+                )
+                array = numpy.zeros(shape, dtype=self.dtype)
+
+            else:
+                lprint(f'There is not enough memory -- we will use a mem mapped array.')
+                array = offcore_array(shape=shape, dtype=self.dtype)
+
+            return array

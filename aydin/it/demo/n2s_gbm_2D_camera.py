@@ -12,7 +12,8 @@ from skimage.morphology import disk
 from skimage.restoration import denoise_nl_means, estimate_sigma
 from skimage.util import random_noise
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
+from aydin.features.tiled.tiled_features import TiledFeatureGenerator
 from aydin.io.datasets import newyork
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
@@ -32,7 +33,7 @@ def demo():
 
     set_log_max_depth(5)
 
-    image = newyork()[256:-256, 256:-256].astype(np.float32)
+    image = camera().astype(np.float32)  # newyork()[256:-256, 256:-256]
     image = n(image)
 
     intensity = 5
@@ -55,29 +56,26 @@ def demo():
     )
 
     start = time.time()
-    denoised = it.train(noisy, noisy)
+    it.train(noisy, noisy)
     stop = time.time()
     print(f"Training: elapsed time:  {stop-start} ")
 
     # in case of batching we have to do this:
     start = time.time()
-    denoised_inf = it.translate(noisy)
+    denoised = it.translate(noisy)
     stop = time.time()
     print(f"inference: elapsed time:  {stop-start} ")
 
     image = numpy.clip(image, 0, 1)
     noisy = numpy.clip(noisy, 0, 1)
     denoised = numpy.clip(denoised, 0, 1)
-    denoised_inf = numpy.clip(denoised_inf, 0, 1)
 
     image = numpy.clip(image, 0, 1)
     noisy = numpy.clip(noisy, 0, 1)
     denoised = numpy.clip(denoised, 0, 1)
-    denoised_inf = numpy.clip(denoised_inf, 0, 1)
 
     print("noisy       :", psnr(image, noisy), ssim(noisy, image))
     print("denoised    :", psnr(image, denoised), ssim(denoised, image))
-    print("denoised_inf:", psnr(image, denoised_inf), ssim(denoised_inf, image))
 
     with napari.gui_qt():
         viewer = napari.Viewer()
@@ -88,7 +86,6 @@ def demo():
         viewer.add_image(n(median2), name='median2')
         viewer.add_image(n(median5), name='median5')
         viewer.add_image(n(denoised), name='denoised')
-        viewer.add_image(n(denoised_inf), name='denoised_inf')
 
 
 demo()

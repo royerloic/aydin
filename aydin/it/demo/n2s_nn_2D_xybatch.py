@@ -9,7 +9,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.nn import NNRegressor
 
@@ -46,18 +46,15 @@ def demo():
         )
 
         start = time.time()
-        denoised = it.train(
-            noisy, noisy, batch_size=400 * 1e3, patience=10, max_epochs=100
-        )
+        it.train(noisy, noisy, patience=10, max_epochs=100)
         stop = time.time()
         print(f"Training: elapsed time:  {stop-start} ")
 
-        if denoised is None:
-            # in case of batching we have to do this:
-            start = time.time()
-            denoised = it.translate(noisy)
-            stop = time.time()
-            print(f"inference: elapsed time:  {stop-start} ")
+        # in case of batching we have to do this:
+        start = time.time()
+        denoised = it.translate(noisy)
+        stop = time.time()
+        print(f"inference: elapsed time:  {stop-start} ")
 
         image = numpy.clip(image, 0, 1)
         noisy = numpy.clip(noisy, 0, 1)

@@ -9,7 +9,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.io.folders import get_temp_folder
 from aydin.it.it_base import ImageTranslatorBase
 from aydin.it.it_classic import ImageTranslatorClassic
@@ -27,14 +27,14 @@ def test_saveload_1():
     saveload('percentile', FastMultiscaleConvolutionalFeatures(), GBMRegressor())
 
 
-@pytest.mark.heavy
+# @pytest.mark.heavy
 def test_saveload_2():
     saveload(
         'minmax', FastMultiscaleConvolutionalFeatures(), NNRegressor(max_epochs=10)
     )
 
 
-@pytest.mark.heavy
+# @pytest.mark.heavy
 def test_saveload_3():
     saveload(
         'minmax',
@@ -62,7 +62,7 @@ def saveload(normaliser_type, generator, regressor, batch_size=None):
         regressor=regressor,
     )
 
-    it.train(noisy, noisy, batch_size=batch_size)
+    it.train(noisy, noisy)
 
     temp_file = join(get_temp_folder(), "test_it_saveload" + str(time.time()))
     it.save(temp_file)
