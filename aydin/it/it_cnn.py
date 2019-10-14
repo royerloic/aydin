@@ -141,7 +141,12 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.checkpoint = None
         self.input_dim = input_image.shape[1:]
         self.model = unet_model(
-            input_image.shape[1:], supervised=supervised, shiftconv=shiftconv
+            input_image.shape[1:],
+            rot_batch_size=1,
+            num_lyr=5,
+            normalization='batch',
+            supervised=supervised,
+            shiftconv=shiftconv,
         )
         self.supervised = supervised
         self.shiftconv = shiftconv

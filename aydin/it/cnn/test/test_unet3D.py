@@ -30,6 +30,7 @@ class ImageTranslatorCNN:
         self.model = unet3D_model(
             input_dim,
             num_lyr=5,
+            normalization='batch',
             shiftconv=shiftconv,
             supervised=supervised,
             rot_batch_size=rot_batch,

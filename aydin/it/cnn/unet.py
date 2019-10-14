@@ -144,7 +144,7 @@ def unet3D_model(
     input_dim,
     rot_batch_size=1,
     num_lyr=4,
-    normalization=None,  # 'instance',
+    normalization='batch',  # None,  # 'instance',
     activation='ReLU',
     supervised=False,
     shiftconv=True,
