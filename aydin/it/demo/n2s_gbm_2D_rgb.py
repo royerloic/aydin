@@ -7,21 +7,24 @@ from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 
 
 def n(image):
     return rescale_intensity(
-        image.astype(np.float32), in_range='image', out_range=(0, 1)
+        image.astype(np.float32), in_range='image', out_range=(0, 255)
     )
 
 
-def demo(image: np.ndarray):
+def demo():
     """
         Demo for self-supervised denoising using camera image with synthetic noise
     """
+
+    image = astronaut()
+
     amplitude = 128
     noisy = image.astype(np.int16) + np.random.randint(
         -amplitude, amplitude, size=image.shape, dtype=np.int16
@@ -33,25 +36,27 @@ def demo(image: np.ndarray):
 
     with napari.gui_qt():
         viewer = napari.Viewer()
-        viewer.add_image(n(image), name='image', multichannel=True)
-        viewer.add_image(n(noisy), name='noisy', multichannel=True)
+        viewer.add_image(image, name='image', multichannel=True)
+        viewer.add_image(noisy, name='noisy', multichannel=True)
 
         generator = FastMultiscaleConvolutionalFeatures()
         regressor = GBMRegressor()
 
         it = ImageTranslatorClassic(
-            feature_generator=generator, regressor=regressor, normaliser_type='identity'
+            feature_generator=generator,
+            regressor=regressor,
+            normaliser_type='percentile',
         )
 
         start = time.time()
-        denoised = it.train(noisy, noisy)
+        it.train(noisy, noisy)
         stop = time.time()
         print(f"Training: elapsed time:  {stop-start} ")
 
-        # start = time.time()
-        # denoised = it.translate(noisy)
-        # stop = time.time()
-        # print(f"inference: elapsed time:  {stop-start} ")
+        start = time.time()
+        denoised = it.translate(noisy)
+        stop = time.time()
+        print(f"Inference: elapsed time:  {stop-start} ")
 
         print(
             "noisy",
@@ -65,7 +70,7 @@ def demo(image: np.ndarray):
         )
         # print("denoised_predict", psnr(denoised_predict, image), ssim(denoised_predict, image))
 
-        viewer.add_image(n(denoised), name='denoised', multichannel=True)
+        viewer.add_image(denoised, name='denoised', multichannel=True)
 
 
-demo(astronaut())
+demo()

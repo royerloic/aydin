@@ -5,7 +5,9 @@ def test_opencl_provider():
 
     opencl = OpenCLProvider()
 
-    assert len(opencl.get_all_devices()) != 0
+    devices = opencl.get_all_devices()
 
-    for device in opencl.get_all_devices():
+    for device in devices:
         print(device)
+
+    assert len(devices) > 0

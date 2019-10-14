@@ -9,7 +9,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.nn import NNRegressor
 
@@ -34,8 +34,6 @@ def demo():
     noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
     noisy = noisy.astype(np.float32)
 
-    start_time = time.time()
-
     generator = FastMultiscaleConvolutionalFeatures(dtype=numpy.uint8)
     regressor = NNRegressor()
 
@@ -43,10 +41,15 @@ def demo():
         feature_generator=generator, regressor=regressor, normaliser_type='identity'
     )
 
-    denoised = it.train(noisy, noisy, max_epochs=15, patience=20)
-
+    start_time = time.time()
+    it.train(noisy, noisy, max_epochs=15, patience=20)
     elapsedtime = time.time() - start_time
     print(f"time elapsed: {elapsedtime} s")
+
+    start = time.time()
+    denoised = it.translate(noisy)
+    stop = time.time()
+    print(f"inference: elapsed time:  {stop - start} ")
 
     image = numpy.clip(image, 0, 1)
     noisy = numpy.clip(noisy, 0, 1)

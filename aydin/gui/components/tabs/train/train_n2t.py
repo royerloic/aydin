@@ -17,23 +17,26 @@ from aydin.gui.components.plot_canvas import PlotCanvas
 from aydin.gui.components.tabs.base_tab import BaseTab
 from aydin.gui.components.workers.worker import Worker
 from aydin.services.n2s import N2SService
+from aydin.services.n2t import N2TService
 from aydin.util.resource import read_image_from_path
 
 
-class TestN2STab(BaseTab):
+class TrainN2TTab(BaseTab):
 
     is_loaded = False
 
     def __init__(self, parent, threadpool):
-        super(TestN2STab, self).__init__(parent)
+        super(TrainN2TTab, self).__init__(parent)
 
         self.wizard = parent
         self.threadpool = threadpool
         self.layout = None
 
-        self.input_picker = self.wizard.upload_tab.input_picker
+        self.noisy_input_picker = self.wizard.upload_noisy_tab.input_picker
+        self.truth_input_picker = self.wizard.upload_truth_tab.input_picker
+        self.test_input_picker = self.wizard.upload_test_tab.input_picker
 
-        self.n2s = N2SService()
+        self.n2s = N2TService()
 
     def load_tab(self):
         self.setGeometry(0, 0, 700, 800)
@@ -45,7 +48,7 @@ class TestN2STab(BaseTab):
         tab_layout.addWidget(self.pb)
 
         self.stop_button = QPushButton("Stop")
-        self.stop_button.pressed.connect(self.stop_func)
+        self.stop_button.pressed.connect(self.n2s.stop_func)
         self.stop_button.setDisabled(True)
 
         self.run_button = QPushButton("Run")
@@ -67,50 +70,46 @@ class TestN2STab(BaseTab):
         self.viewer.add_image(self.wizard.monitor_images[0][np.newaxis, ...])
         tab_layout.addWidget(self.viewer.window.qt_viewer)
 
-        # Build splitter
-        def_splitter = QSplitter(Qt.Vertical)
-
-        test_n2s_tab_view = QWidget()
-        test_n2s_tab_view.setLayout(tab_layout)
-        def_splitter.addWidget(test_n2s_tab_view)
-
-        # Add splitter into main layout
-        self.layout.addWidget(def_splitter)
+        # Add into main layout
+        self.layout = tab_layout
         self.base_layout.insertLayout(0, self.layout)
 
+        self.next_button.setEnabled(False)
         self.is_loaded = True
+
+    def toggle_button_availablity(self):
+        self.wizard.setTabEnabled(0, not self.wizard.isTabEnabled(0))
+        self.wizard.setTabEnabled(1, not self.wizard.isTabEnabled(1))
+        self.prev_button.setDisabled(self.prev_button.isEnabled())
+        # self.next_button.setDisabled(self.next_button.isEnabled())
+        self.run_button.setDisabled(self.run_button.isEnabled())
+        self.stop_button.setDisabled(self.stop_button.isEnabled())
 
     def progressbar_update(self, value):
         if 0 <= value <= 100:
             self.progress_bar.setValue(value)
 
         if value == 100:
-            # TODO: refactor this into a method with check isEnabled()
-            self.stop_button.setDisabled(True)
-            self.run_button.setDisabled(False)
-            self.prev_button.setDisabled(False)
-            self.next_button.setDisabled(False)
-            self.wizard.setTabEnabled(0, True)
-            self.wizard.setTabEnabled(1, True)
+            self.toggle_button_availablity()  # Toggle buttons back by the end of the run
 
     def run_func(self, **kwargs):
-        # TODO: refactor this into a method with check isEnabled()
-        self.wizard.setTabEnabled(0, False)
-        self.wizard.setTabEnabled(1, False)
-        self.prev_button.setDisabled(True)
-        self.next_button.setDisabled(True)
-        self.run_button.setDisabled(True)
-        self.stop_button.setDisabled(False)
+        self.toggle_button_availablity()  # Toggle buttons to prevent multiple run actions and so
 
-        input_path = self.input_picker.lbl_text.text()
-        noisy = read_image_from_path(input_path)
+        noisy_path = self.noisy_input_picker.lbl_text.text()
+        noisy = read_image_from_path(noisy_path)
+        truth_path = self.truth_input_picker.lbl_text.text()
+        truth = read_image_from_path(truth_path)
+        test_path = self.test_input_picker.lbl_text.text()
+        noisy_test = read_image_from_path(test_path)
 
-        output_path = input_path[:-4] + "_denoised" + input_path[-4:]
+        output_path = test_path[:-4] + "_denoised" + test_path[-4:]
 
         print(self.wizard.monitor_images)
 
         denoised = self.n2s.run(
             noisy,
+            truth,
+            noisy_test,
             kwargs['progress_callback'],
             monitoring_callbacks=[self.update_test_tab],
             monitoring_images=self.wizard.monitor_images,
@@ -118,11 +117,9 @@ class TestN2STab(BaseTab):
 
         imsave(output_path, denoised)
         self.run_button.setText("Re-Run")
+        self.next_button.setEnabled(True)
         print(output_path)
         return "Done."
-
-    def stop_func(self):
-        self.n2s.it.stop_training()
 
     def update_test_tab(self, *arg):
         """
@@ -140,5 +137,12 @@ class TestN2STab(BaseTab):
         self.pb.add_val(eval_metric)
 
         if image is not None:
+            keep_slider_location = False
+            if self.viewer.dims.point[0] == self.viewer.layers[0].data.shape[0] - 1:
+                keep_slider_location = True
+
             self.viewer.layers[0].data = np.vstack((self.viewer.layers[0].data, image))
             self.viewer.window.qt_viewer.dims._update_slider(0)
+
+            if keep_slider_location:
+                self.viewer.dims.set_point(0, self.viewer.layers[0].data.shape[0] - 1)

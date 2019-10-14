@@ -5,7 +5,7 @@ import numpy
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.features.features_base import FeatureGeneratorBase
 from aydin.io.folders import get_temp_folder
 
@@ -21,7 +21,10 @@ def test_fg_saveload():
     scales = [1, 5, 7]
     widths = [5, 5, 5]
     generator = FastMultiscaleConvolutionalFeatures(
-        kernel_widths=widths, kernel_scales=scales, kernel_shapes=['l1'] * len(scales)
+        kernel_widths=widths,
+        kernel_scales=scales,
+        kernel_shapes=['l1'] * len(scales),
+        exclude_scale_one=False,
     )
 
     temp_file = join(get_temp_folder(), "test_fg_saveload.json" + str(time.time()))

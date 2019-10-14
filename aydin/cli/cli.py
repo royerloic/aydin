@@ -126,6 +126,7 @@ def noise2truth(**kwargs):
     path_source = os.path.abspath(kwargs['train_source'])
     path_truth = os.path.abspath(kwargs['train_truth'])
     path_target = os.path.abspath(kwargs['predict_target'])
+
     noisy = read_image_from_path(path_source)
     noisy = eval('noisy' + kwargs['slicing'])
     truth = read_image_from_path(path_truth)

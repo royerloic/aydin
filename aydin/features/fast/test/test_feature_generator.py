@@ -2,7 +2,7 @@ import numpy
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 
 
 def n(image):
@@ -17,7 +17,10 @@ def test_collect_feature_2d():
     widths = [3, 3, 3]
 
     generator = FastMultiscaleConvolutionalFeatures(
-        kernel_widths=widths, kernel_scales=scales, kernel_shapes=['l1'] * len(scales)
+        kernel_widths=widths,
+        kernel_scales=scales,
+        kernel_shapes=['l1'] * len(scales),
+        exclude_scale_one=False,
     )
 
     image = n(camera().astype(numpy.float32))

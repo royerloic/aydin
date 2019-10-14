@@ -6,7 +6,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.regression.gbm import GBMRegressor
 
 
@@ -17,7 +17,7 @@ def n(image):
 
 
 def test_lgbm_regressor():
-    display = True
+    display = False
 
     image = camera().astype(numpy.float32)
     image = n(image)
@@ -28,22 +28,22 @@ def test_lgbm_regressor():
     noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
     noisy = noisy.astype(numpy.float32)
 
-    generator = FastMultiscaleConvolutionalFeatures()
+    generator = FastMultiscaleConvolutionalFeatures(exclude_scale_one=True)
 
-    regressor = GBMRegressor(verbosity=100)
+    regressor = GBMRegressor(n_estimators=600)
 
-    features = generator.compute(noisy)
+    features = generator.compute(noisy, exclude_center_value=True)
 
     x = features.reshape(-1, features.shape[-1])
     y = noisy.reshape(-1)
 
-    regressor.force_verbose_eval = True
-
-    regressor.fit(x, y)  # , x_valid=x, y_valid=y)
+    regressor.fit(x, y, x_valid=x, y_valid=y)
 
     yp = regressor.predict(x)
 
     denoised = yp.reshape(image.shape)
+
+    denoised = numpy.clip(denoised, 0, 1)
 
     ssim_value = ssim(denoised, image)
     psnr_value = psnr(denoised, image)

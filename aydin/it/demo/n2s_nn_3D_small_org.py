@@ -4,7 +4,8 @@ import napari
 import numpy
 from skimage.exposure import rescale_intensity
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
+from aydin.features.tiled.tiled_features import TiledFeatureGenerator
 from aydin.io import io
 from aydin.io.datasets import examples_single
 from aydin.it.it_classic import ImageTranslatorClassic
@@ -25,14 +26,16 @@ def demo():
     image = image.astype(numpy.float32)
     image = rescale_intensity(image, in_range='image', out_range=(0, 1))
 
-    generator = FastMultiscaleConvolutionalFeatures(max_level=4, dtype=numpy.uint8)
+    generator = TiledFeatureGenerator(
+        FastMultiscaleConvolutionalFeatures(max_level=4, dtype=numpy.uint8)
+    )
     regressor = NNRegressor()
     it = ImageTranslatorClassic(
         generator, regressor, normaliser_type='identity', balance_training_data=True
     )
 
     start = time.time()
-    it.train(image, image, max_epochs=15, patience=2, batch_size=50e6)
+    it.train(image, image, max_epochs=30, patience=10, train_data_ratio=0.1)
     stop = time.time()
     print(f"Training: elapsed time:  {stop-start} ")
 

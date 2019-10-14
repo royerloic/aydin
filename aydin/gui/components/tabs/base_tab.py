@@ -6,6 +6,7 @@ class BaseTab(QWidget):
         super(QWidget, self).__init__(parent)
         self.wizard = parent
         self.base_layout = QVBoxLayout()
+        self.base_layout.addStretch(1)
 
         # Horizontal Line Break
         self.wizard_ops_layout = QVBoxLayout()

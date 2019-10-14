@@ -4,7 +4,8 @@ from os.path import join
 import napari
 import numpy
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
+from aydin.features.tiled.tiled_features import TiledFeatureGenerator
 from aydin.io import io
 from aydin.io.datasets import examples_single
 from aydin.io.folders import get_temp_folder
@@ -23,7 +24,7 @@ def demo():
     array = array[1]
 
     train = array  # full
-    # train = array[50:250, 300:500, 400:600]
+    train = array[50:250, 300:500, 400:600]
 
     infer = array  # Full: 320, 865, 1014
     # infer = array[0:160, 0:430, 0:512] # 1/8th
@@ -40,7 +41,9 @@ def demo():
 
         batch_dims = (False,) * len(array.shape)
 
-        generator = FastMultiscaleConvolutionalFeatures(max_level=4, dtype=numpy.uint16)
+        generator = TiledFeatureGenerator(
+            FastMultiscaleConvolutionalFeatures(max_level=4, dtype=numpy.uint16)
+        )
         regressor = NNRegressor()
 
         it = ImageTranslatorClassic(
@@ -55,9 +58,10 @@ def demo():
             train,
             train,
             batch_dims=batch_dims,
-            batch_size=100e6,
             max_epochs=30,
             patience=8,
+            train_data_ratio=0.2,
+            max_voxels_for_training=1e6,
         )
         stop = time.time()
         print(f"Training: elapsed time:  {stop-start} ")
@@ -73,7 +77,10 @@ def demo():
 
             start = time.time()
             denoised = it.translate(
-                infer, translated_image=denoised_tiff, batch_dims=batch_dims
+                infer,
+                translated_image=denoised_tiff,
+                batch_dims=batch_dims,
+                tile_size=generator.tile_size,
             )
             stop = time.time()
 

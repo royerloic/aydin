@@ -60,15 +60,6 @@ class RegressorBase(ABC):
         """
         raise NotImplementedError()
 
-    @property
-    @abstractmethod
-    def progressive(self) -> bool:
-        """
-        A regressor is progressive if it supports training through multiple epochs.
-        If that is teh case, the properties: max_epochs and patience should be defined.
-        """
-        raise NotImplementedError()
-
     @abstractmethod
     def reset(self) -> None:
         """
@@ -78,15 +69,7 @@ class RegressorBase(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def fit(
-        self,
-        x_train,
-        y_train,
-        x_valid,
-        y_valid,
-        is_batch=False,
-        regressor_callback=None,
-    ):
+    def fit(self, x_train, y_train, x_valid, y_valid, regressor_callback=None):
         """
         Fits function y=f(x) given training pairs (x_train, y_train).
         Stops when performance stops improving on the test dataset: (x_test, y_test).

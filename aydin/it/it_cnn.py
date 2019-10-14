@@ -115,6 +115,9 @@ class ImageTranslatorCNN(ImageTranslatorBase):
     def limit_epochs(self, max_epochs: int) -> int:
         return max_epochs
 
+    def _load_internals(self, path: str):
+        pass
+
     # TODO: implement:
     def stop_training(self):
         self.model.stop_training = True

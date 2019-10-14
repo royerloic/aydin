@@ -16,9 +16,9 @@ from aydin.util.resource import read_image_from_path
 from skimage.io import imsave
 
 
-class RunN2STab(BaseTab):
+class PredictN2TTab(BaseTab):
     def __init__(self, parent, threadpool):
-        super(RunN2STab, self).__init__(parent)
+        super(PredictN2TTab, self).__init__(parent)
 
         self.setGeometry(0, 0, 700, 800)
 
@@ -38,14 +38,14 @@ class RunN2STab(BaseTab):
         # Buttons layout where we have run button and other functional methods
         buttons_layout = QVBoxLayout()
         self.pb = PlotCanvas(self)
-        buttons_layout.addWidget(self.pb.canvas.native)
+        # buttons_layout.addWidget(self.pb.canvas.native)
 
         self.run_button = QPushButton("Run")
-        self.run_button.pressed.connect(
-            lambda: Worker.enqueue_funcname(
-                self.threadpool, self.run_func, self.progressbar_update
-            )
-        )
+        # self.run_button.pressed.connect(
+        #     lambda: Worker.enqueue_funcname(
+        #         self.threadpool, self.run_func, self.progressbar_update
+        #     )
+        # )
         buttons_layout.addWidget(self.run_button)
 
         self.progress_bar = QProgressBar(self)
