@@ -33,7 +33,7 @@ class TrainN2STab(BaseTab):
 
         self.input_picker = self.wizard.upload_noisy_tab.input_picker
 
-        self.n2t = N2SService()
+        self.n2s = N2SService()
 
     def load_tab(self):
         self.setGeometry(0, 0, 700, 800)
