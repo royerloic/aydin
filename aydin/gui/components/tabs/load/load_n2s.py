@@ -25,7 +25,7 @@ class LoadN2STab(BaseTab):
             self, self.input_lbl, self.image_info_lbl, self.input_ready
         )
         self.input_picker.setToolTip(
-            "Click the 'Load File' button to open file dialog or drag and drop your file to here to load your image."
+            "Click here to open file dialog or drag and drop your file to here to load your image."
         )
         paths_layout.addWidget(self.input_picker)
 

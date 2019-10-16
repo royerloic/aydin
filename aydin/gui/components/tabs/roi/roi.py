@@ -42,6 +42,7 @@ class ROITab(BaseTab):
 
         # Add buttons to take snapshot of view
         self.snap_button = QPushButton("Set ROI")
+        self.snap_button.setToolTip("Select Region-Of-Interest that would be monitored")
         self.snap_button.pressed.connect(self.snap_test)
         self.layout.addWidget(self.snap_button)
 
