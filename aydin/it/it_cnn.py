@@ -4,7 +4,7 @@ from os.path import join
 import numpy
 import random
 
-from aydin.it.cnn.memorycheck import MemoryCheckCNN
+from aydin.it.cnn.cnn_util.memorycheck import MemoryCheckCNN
 from aydin.io.folders import get_temp_folder
 from aydin.providers.plaidml.plaidml_provider import PlaidMLProvider
 
@@ -17,7 +17,7 @@ from aydin.it.it_base import ImageTranslatorBase
 from aydin.util.log.logging import lsection, lprint
 
 from aydin.regression.nn_utils.callbacks import ModelCheckpoint  # , EarlyStopping
-from aydin.it.cnn.callbacks import NNCallback, EarlyStopping, ReduceLROnPlateau
+from aydin.it.cnn.cnn_util.callbacks import EarlyStopping, ReduceLROnPlateau
 
 # from keras.callbacks import ReduceLROnPlateau  # , EarlyStopping
 
