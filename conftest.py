@@ -1,6 +1,18 @@
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def run_around_tests():
+    # Code that will run before your test, for example:
+    import os
+
+    # os.environ["PYOPENCL_CTX"] = "0:2"
+
+    # A test function will be run at this point
+    yield
+    # Code that will run after your test, for example:
+
+
 def pytest_addoption(parser):
     parser.addoption(
         "--runheavy", action="store_true", default=False, help="run heavy tests"
