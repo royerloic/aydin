@@ -45,10 +45,14 @@ class TrainN2STab(BaseTab):
         tab_layout.addWidget(self.pb)
 
         self.stop_button = QPushButton("Stop")
+        self.stop_button.setToolTip("Stop currently running Noise2Self method")
         self.stop_button.pressed.connect(self.n2s.stop_func)
         self.stop_button.setDisabled(True)
 
         self.run_button = QPushButton("Run")
+        self.run_button.setToolTip(
+            "Start running Noise2Self method with selected input and options"
+        )
         self.run_button.pressed.connect(
             lambda: Worker.enqueue_funcname(
                 self.threadpool, self.run_func, self.progressbar_update
