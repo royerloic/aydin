@@ -4,7 +4,7 @@ import time
 import numpy
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
-from aydin.features.features_base import FeatureGeneratorBase
+from aydin.features.base import FeatureGeneratorBase
 from aydin.it.balancing.trainingdatabalancer import TrainingDataBalancer
 from aydin.it.it_base import ImageTranslatorBase
 from aydin.regression.gbm import GBMRegressor
@@ -108,7 +108,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         )
 
     def stop_training(self):
-        return self.regressor.stop_fit()
+        self.regressor.stop_fit()
 
     def _compute_features(
         self, image, batch_dims, exclude_center_feature, exclude_center_value

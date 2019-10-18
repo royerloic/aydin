@@ -6,7 +6,7 @@ from skimage.data import camera
 from skimage.exposure import rescale_intensity
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
-from aydin.features.features_base import FeatureGeneratorBase
+from aydin.features.base import FeatureGeneratorBase
 from aydin.features.tiled.tiled_features import TiledFeatureGenerator
 from aydin.io.folders import get_temp_folder
 

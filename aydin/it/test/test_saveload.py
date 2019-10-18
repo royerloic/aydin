@@ -1,5 +1,4 @@
 import time
-import pytest
 from os.path import join
 
 import numpy
