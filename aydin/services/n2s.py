@@ -3,6 +3,9 @@ from aydin.services.base import BaseService
 
 
 class N2SService(BaseService):
+    """Noise2Self Service.
+    """
+
     def __init__(self, scales=None, widths=None):
         super(N2SService, self).__init__(scales=scales, widths=widths)
 
@@ -13,8 +16,7 @@ class N2SService(BaseService):
         monitoring_callbacks=None,
         monitoring_images=None,
     ):
-        """
-        Method to run Noise2Self service
+        """Method to run Noise2Self service
 
         :param monitoring_callbacks:
         :param monitoring_images:

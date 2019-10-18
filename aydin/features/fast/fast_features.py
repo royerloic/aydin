@@ -17,7 +17,7 @@ from aydin.features.fast.integral import (
     integral_3d,
     integral_4d,
 )
-from aydin.features.features_base import FeatureGeneratorBase
+from aydin.features.base import FeatureGeneratorBase
 from aydin.providers.opencl.opencl_provider import OpenCLProvider
 from aydin.util.log.logging import lsection, lprint
 from aydin.util.nd import nd_range_radii

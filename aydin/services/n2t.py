@@ -3,6 +3,9 @@ from aydin.services.base import BaseService
 
 
 class N2TService(BaseService):
+    """Noise2Self Service.
+    """
+
     def __init__(self, scales=None, widths=None):
         super(N2TService, self).__init__(scales=scales, widths=widths)
 
