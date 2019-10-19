@@ -1,10 +1,8 @@
 import atexit
 import os
 import sys
-
 import click
 import logging
-
 import sentry_sdk
 
 from aydin.gui.gui import run
@@ -13,7 +11,6 @@ from aydin.io.io import imwrite
 from aydin.services.n2s import N2SService
 from aydin.services.n2t import N2TService
 from aydin.util.resource import read_image_from_path
-from aydin.examples.demo_it_2D_cli import demo_aydin_2D
 
 
 import plaidml.keras
@@ -84,16 +81,6 @@ def update():
         sys.exit()
     else:
         print("You are running the most updated version of Aydin")
-
-
-@aydin.command()
-@click.argument('mode')
-def demo(**kwargs):
-    if kwargs['mode'] == '2D':
-        print("Running demo_aydin_2D")
-        demo_aydin_2D()
-    else:
-        print("Rest of the demos not support by cli yet, sorry :(")
 
 
 @aydin.command()

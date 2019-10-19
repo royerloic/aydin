@@ -16,7 +16,7 @@ from keras.layers import (
     MaxPooling3D,
     Activation,
 )
-from aydin.it.cnn.intancenormalization import InstanceNormalization
+from aydin.it.cnn.instancenormalization import InstanceNormalization
 
 # def rot90(xx, kk=1, lyrname=None):  # rotate tensor by 90 degrees on the HW plane
 #     out_shape = list(K.int_shape(xx))
