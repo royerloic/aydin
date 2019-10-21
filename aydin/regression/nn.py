@@ -227,7 +227,9 @@ class NNRegressor(RegressorBase):
             lprint(f"Early stopping patience: {early_stopping_patience}")
 
             # Effective LR patience:
-            effective_lr_patience = self.patience // 2
+            effective_lr_patience = (
+                self.patience
+            )  # 1 if is_batch else max(1, self.patience // 2)
             lprint(f"Effective LR patience: {effective_lr_patience}")
 
             # Here is the list of callbacks:
