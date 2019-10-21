@@ -48,7 +48,7 @@ class EarlyStopping(Callback):
     """Stop training when a monitored quantity has stopped improving.
 
     # Arguments
-        nn_regressor: parent regressor
+        it_cnn: parent it_cnn
         monitor: quantity to be monitored.
         min_delta: minimum change in the monitored quantity
             to qualify as an improvement, i.e. an absolute
@@ -75,7 +75,7 @@ class EarlyStopping(Callback):
 
     def __init__(
         self,
-        nn_regressor,
+        parent,
         monitor='val_loss',
         min_delta=0,
         patience=0,
@@ -85,7 +85,7 @@ class EarlyStopping(Callback):
     ):
         super(EarlyStopping, self).__init__()
 
-        self.nn_regressor = nn_regressor
+        self.parent = parent
         self.monitor = monitor
         self.baseline = baseline
         self.patience = patience
@@ -145,8 +145,8 @@ class EarlyStopping(Callback):
                     lprint('Restoring model weights from the end of ' 'the best epoch')
                     self.model.set_weights(self.best_weights)
 
-        # This is where we stop training:
-        if self.nn_regressor.stop_training:
+        # This is where we stop training externally:
+        if self.parent.stop_training:
             lprint('Training externally stopped!')
             self.model.stop_training = True
 

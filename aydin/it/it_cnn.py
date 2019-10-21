@@ -120,8 +120,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
     # TODO: implement:
     def stop_training(self):
-        self.model.stop_training = True
-        return self.model.stop_training
+        self.stop_training = True
 
     def train(
         self,
@@ -301,7 +300,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
         # Early stopping callback:
         self.early_stopping = EarlyStopping(
-            # self,
+            self,
             monitor='loss',
             min_delta=min_delta,  # 0.000001 if is_batch else 0.0001,
             patience=early_stopping_patience,
