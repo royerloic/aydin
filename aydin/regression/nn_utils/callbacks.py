@@ -75,7 +75,7 @@ class EarlyStopping(Callback):
 
     def __init__(
         self,
-        parent,
+        nn_regressor,
         monitor='val_loss',
         min_delta=0,
         patience=0,
@@ -85,7 +85,7 @@ class EarlyStopping(Callback):
     ):
         super(EarlyStopping, self).__init__()
 
-        self.parent = parent
+        self.nn_regressor = nn_regressor
         self.monitor = monitor
         self.baseline = baseline
         self.patience = patience
@@ -146,7 +146,7 @@ class EarlyStopping(Callback):
                     self.model.set_weights(self.best_weights)
 
         # This is where we stop training:
-        if self.parent._stop_fit:
+        if self.nn_regressor._stop_fit:
             lprint('Training externally stopped!')
             self.model.stop_training = True
 
