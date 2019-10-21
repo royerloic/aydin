@@ -113,13 +113,7 @@ class NNRegressor(RegressorBase):
         self.checkpoint = None
 
     def fit(
-        self,
-        x_train,
-        y_train,
-        x_valid=None,
-        y_valid=None,
-        is_batch=False,
-        regressor_callback=None,
+        self, x_train, y_train, x_valid=None, y_valid=None, regressor_callback=None
     ):
         """
         Fits function y=f(x) given training pairs (x_train, y_train).
@@ -128,12 +122,7 @@ class NNRegressor(RegressorBase):
         """
 
         super().fit(
-            x_train,
-            y_train,
-            x_valid,
-            y_valid,
-            is_batch=is_batch,
-            regressor_callback=regressor_callback,
+            x_train, y_train, x_valid, y_valid, regressor_callback=regressor_callback
         )
 
         with lsection(f"NN Regressor fitting:"):
@@ -253,7 +242,7 @@ class NNRegressor(RegressorBase):
             self.early_stopping = EarlyStopping(
                 self,
                 monitor='val_loss',
-                min_delta=0.000001 if is_batch else 0.0001,
+                min_delta=0.0001,
                 patience=early_stopping_patience,
                 mode='auto',
                 restore_best_weights=True,
@@ -293,7 +282,7 @@ class NNRegressor(RegressorBase):
             # y_valid = y_valid.astype(numpy.float64)
 
             # Training happens here:
-            with lsection("NN regressor fitting now:", intersept_print=True):
+            with lsection("NN regressor fitting now:"):
                 train_history = self.model.fit(
                     x_train,
                     y_train,

@@ -8,8 +8,9 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.io.folders import get_temp_folder
+from aydin.providers.plaidml.plaidml_provider import PlaidMLProvider
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn import NNRegressor
 from aydin.regression.regressor_base import RegressorBase
@@ -30,6 +31,7 @@ def test_nn_saveload():
 
 
 def saveload(regressor, min_ssim=0.80):
+    provider = PlaidMLProvider()  # Needed to run in pytest
 
     image = camera().astype(numpy.float32)
     image = rescale_intensity(image, in_range='image', out_range=(0, 1))

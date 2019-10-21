@@ -18,7 +18,9 @@ class BaseTab(QWidget):
         # Wizard navigation buttons
         self.buttons_layout = QHBoxLayout()
         self.prev_button = QPushButton("Previous")
+        self.prev_button.setToolTip("Go to previous tab")
         self.next_button = QPushButton("Next")
+        self.next_button.setToolTip("Go to next tab")
         self.prev_button.clicked.connect(self.wizard.prev_tab)
         self.next_button.clicked.connect(self.wizard.next_tab)
         self.buttons_layout.addWidget(self.prev_button)

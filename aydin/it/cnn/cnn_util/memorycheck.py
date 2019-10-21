@@ -38,6 +38,8 @@ class MemoryCheckCNN:
 
             # This is what we need on the GPU to store the image and one feature:
             # needed_gpu_mem = 2 * int(buffer * 4 * array.size * 1)
+
+            # TODO: CHECK: this assumes floats, is this correct? use dtype:
             needed_gpu_mem = 2 * int(buffer * 4 * self.CNNparams * 1)
             lprint(f"Memory needed on the gpu: {needed_gpu_mem / 1E6} MB (CNN model)")
 

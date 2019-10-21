@@ -4,7 +4,7 @@ import napari
 import numpy
 from skimage.exposure import rescale_intensity
 
-from aydin.features.fast.mcfoclf import FastMultiscaleConvolutionalFeatures
+from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.io import io
 from aydin.io.datasets import examples_single
 from aydin.it.it_classic import ImageTranslatorClassic

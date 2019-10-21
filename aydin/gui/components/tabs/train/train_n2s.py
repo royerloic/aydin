@@ -33,7 +33,7 @@ class TrainN2STab(BaseTab):
 
         self.input_picker = self.wizard.upload_noisy_tab.input_picker
 
-        self.n2t = N2SService()
+        self.n2s = N2SService()
 
     def load_tab(self):
         self.setGeometry(0, 0, 700, 800)
@@ -45,10 +45,14 @@ class TrainN2STab(BaseTab):
         tab_layout.addWidget(self.pb)
 
         self.stop_button = QPushButton("Stop")
+        self.stop_button.setToolTip("Stop currently running Noise2Self method")
         self.stop_button.pressed.connect(self.n2s.stop_func)
         self.stop_button.setDisabled(True)
 
         self.run_button = QPushButton("Run")
+        self.run_button.setToolTip(
+            "Start running Noise2Self method with selected input and options"
+        )
         self.run_button.pressed.connect(
             lambda: Worker.enqueue_funcname(
                 self.threadpool, self.run_func, self.progressbar_update

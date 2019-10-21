@@ -68,6 +68,7 @@ Once you're ready to share your contribution with us you should submit it as a P
 ```bash
 conda create --name aydin python=3.6
 source activate aydin
+pip install -r pre-requirements.txt
 pip install -r requirements.txt
 
 # For development

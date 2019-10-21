@@ -1,22 +1,25 @@
+import time
 from os.path import join
 
 import numpy
 import random
 
-from aydin.it.cnn.memorycheck import MemoryCheckCNN
+from aydin.it.cnn.cnn_util.memorycheck import MemoryCheckCNN
 from aydin.io.folders import get_temp_folder
 from aydin.providers.plaidml.plaidml_provider import PlaidMLProvider
 
-provider = PlaidMLProvider()
+provider = (
+    PlaidMLProvider()
+)  # NOTE: This line should stay exactly here! All keras calls must be _AFTER_ the line below:
 from aydin.it.cnn.unet import unet_model
 from aydin.it.it_base import ImageTranslatorBase
 
-# NOTE: This line should stay exactly here!
-# All keras calls mst be _AFTER_ the line below:
 from aydin.util.log.logging import lsection, lprint
 
-from aydin.regression.nn_utils.callbacks import ModelCheckpoint
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from aydin.regression.nn_utils.callbacks import ModelCheckpoint  # , EarlyStopping
+from aydin.it.cnn.cnn_util.callbacks import EarlyStopping, ReduceLROnPlateau
+
+# from keras.callbacks import ReduceLROnPlateau  # , EarlyStopping
 
 
 class ImageTranslatorCNN(ImageTranslatorBase):
@@ -35,16 +38,18 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         normaliser_type: str = 'percentile',
         analyse_correlation: bool = False,
         monitor=None,
+        # set model to None...
     ):
 
         super().__init__(normaliser_type, analyse_correlation, monitor)
-        self.model = unet_model(input_dim)
-        self.supervised = supervised
-        self.shiftconv = shiftconv
-        self.input_dim = input_dim
+        self.model = None
+        self.supervised = None
+        self.shiftconv = None
+        self.input_dim = None
         self.max_epochs = None
         self.patience = None
         self.checkpoint = None
+        self.stop_training = False
 
     def save(self, path: str):
         """
@@ -53,11 +58,54 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         """
         with lsection(f"Saving CNN image translator to {path}"):
             frozen = super().save(path)
+
+            # TODO: We don't have feature gen or regressors here:
             frozen += self.feature_generator.save(path) + '\n'
             frozen += self.regressor.save(path) + '\n'
 
+            # TODO: save keras model here, check how it is done in nn
+        super().save(path)
+        if not self.model is None:
+            # serialize model to JSON:
+            keras_model_file = join(path, 'keras_model.txt')
+            model_json = self.model.to_json()
+            with open(keras_model_file, "w") as json_file:
+                json_file.write(model_json)
+
+            # serialize weights to HDF5:
+            keras_model_file = join(path, 'keras_weights.txt')
+            self.model.save_weights(keras_model_file)
+
+        return model_json
+
         return frozen
 
+    ##TODO: We exclude certain fields from saving:
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # exclude fields below that should/cannot be saved properly:
+        del state['early_stopping']
+        del state['reduce_learning_rate']
+        del state['checkpoint']
+        del state['model']
+        del state['keras_callback']
+        return state
+
+    # TODO: SPECIAL please fix the naming of the file for the weights here and in nn.
+
+    # TODO: implement this method:
+    def _load_internals(self, path: str):
+        pass
+        # # load JSON and create model:
+        # keras_model_file = join(path, 'keras_model.txt')
+        # with open(keras_model_file, 'r') as json_file:
+        #     loaded_model_json = json_file.read()
+        #     self.model = model_from_json(loaded_model_json)
+        # # load weights into new model:
+        # keras_model_file = join(path, 'keras_weights.txt')
+        # self.model.load_weights(keras_model_file)
+
+    # TODO: get an estimate, upper bound is ok:
     def get_receptive_field_radius(self, nb_dim):
         pass
 
@@ -65,19 +113,22 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         return MemoryCheckCNN(self.model.count_params()).is_enough_memory(array)
 
     def limit_epochs(self, max_epochs: int) -> int:
-        pass
+        return max_epochs
 
     def _load_internals(self, path: str):
         pass
 
+    # TODO: implement:
     def stop_training(self):
-        pass
+        self.stop_training = True
 
     def train(
         self,
-        input_image,
-        target_image,
-        train_test_ratio=0.1,  # TODO: remove this argument from base and add it to the rest of it_xxx.
+        input_image,  # dimension (batch, H, W, C)
+        target_image,  # dimension (batch, H, W, C)
+        supervised=False,
+        shiftconv=True,
+        train_test_ratio=0.1,  # TODO: remove this argument from base and add it to the rest of it_xxx. !!WAIT!!
         batch_dims=None,
         batch_size=None,
         batch_shuffle=False,
@@ -90,11 +141,26 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.max_epochs = max_epochs
         self.patience = patience
         self.checkpoint = None
+        self.input_dim = input_image.shape[1:]
+        self.model = unet_model(
+            input_image.shape[1:],
+            rot_batch_size=1,
+            num_lyr=5,
+            normalization='batch',
+            supervised=supervised,
+            shiftconv=shiftconv,
+        )
+        self.supervised = supervised
+        self.shiftconv = shiftconv
+
+        # TODO: THIS IS WHERE YOU HAVE TO RESET YOUR KERAS MODEL, which means you create the model here.
+
+        # TODO: Indeed, instanciate here model given the correct dimension obtained from the input/target image
 
         return super().train(
             input_image,
             target_image,
-            train_test_ratio,  # TODO: to be removed as this will not be used in it_cnn
+            train_test_ratio,  # TODO: to be removed as this will not be used in it_cnn   !!WAIT!!
             batch_dims,
             batch_size,
             batch_shuffle,
@@ -113,8 +179,8 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         is_batch=False,
         monitoring_images=None,
         callback_period=3,
-        EStop_patience=8,
-        ReduceLR_patience=4,
+        EStop_patience=8,  # TODO: THIS METHOD MUST STRICTKLY ADHERE TO THE CONTRACT DEFINED IN THE BASE CLASS
+        ReduceLR_patience=4,  # TODO Set both patience to the 'master' patience ( self.patience )
         min_delta=1e-6,
     ):
 
@@ -139,12 +205,12 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     for i in range(numpy.prod(mask_shape).astype(int)):
                         mask = masker(batch_vol, i, mask_shape)
                         masknega = numpy.broadcast_to(
-                            numpy.expand_dims(numpy.expand_dims(mask, 0), 3),
+                            numpy.expand_dims(numpy.expand_dims(mask, 0), -1),
                             image_batch.shape,
                         )
                         train_img = (
                             numpy.broadcast_to(
-                                numpy.expand_dims(numpy.expand_dims(~mask, 0), 3),
+                                numpy.expand_dims(numpy.expand_dims(~mask, 0), -1),
                                 image_batch.shape,
                             )
                             * image_batch
@@ -154,6 +220,50 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                             'input': train_img,
                             'input_msk': masknega.astype(numpy.float32),
                         }, target_img
+
+        # Regressor callback:
+        def regressor_callback(iteration, val_loss, model):
+
+            current_time_sec = time.time()
+
+            # Correct for dtype range:
+            # if self.feature_generator.dtype == numpy.uint8:
+            #     val_loss /= 255
+            # elif self.feature_generator.dtype == numpy.uint16:
+            #     val_loss /= 255 * 255
+
+            if current_time_sec > self.last_callback_time_sec + self.callback_period:
+                # TODO: predict image for display on the end of every epoch
+                if self.monitoring_datasets and self.monitor:
+                    predicted_monitoring_datasets = [
+                        self.regressor.predict(x_m, model_to_use=model)
+                        for x_m in self.monitoring_datasets
+                    ]
+                    inferred_images = [
+                        y_m.reshape(image.shape)
+                        for (image, y_m) in zip(
+                            self.monitor.monitoring_images,
+                            predicted_monitoring_datasets,
+                        )
+                    ]
+
+                    denormalised_inferred_images = [
+                        self.target_normaliser.denormalise(inferred_image)
+                        for inferred_image in inferred_images
+                    ]
+
+                    self.monitor.variables = (
+                        iteration,
+                        val_loss,
+                        denormalised_inferred_images,
+                    )
+                elif self.monitor:
+                    self.monitor.variables = (iteration, val_loss, None)
+
+                self.last_callback_time_sec = current_time_sec
+            else:
+                pass
+            # print(f"Iteration={iteration} metric value: {eval_metric_value} ")
 
         # The bigger the batch size the faster training in terms of time per epoch,
         # but small batches are also better for convergence (inherent batch noise).
@@ -190,7 +300,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
         # Early stopping callback:
         self.early_stopping = EarlyStopping(
-            # self,
+            self,
             monitor='loss',
             min_delta=min_delta,  # 0.000001 if is_batch else 0.0001,
             patience=early_stopping_patience,
@@ -230,7 +340,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
             lprint("Training now...")
             if is_batch:
-                # TODO: implement fit for batching process
+                # TODO: YOU DON"T HAVE TO WORRY ABOUT THIS (for now)
                 pass
             else:
                 if self.supervised:
@@ -240,6 +350,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                         batch_size=batch_size,
                         epochs=self.max_epochs,
                         callbacks=callbacks,
+                        verbose=0,
                     )
                 elif self.shiftconv:
                     history = self.model.fit(
@@ -248,6 +359,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                         batch_size=batch_size,
                         epochs=self.max_epochs,
                         callbacks=callbacks,
+                        verbose=0,
                     )
                 else:
                     history = self.model.fit_generator(
@@ -259,6 +371,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                         * numpy.ceil(input_image.shape[0] / self.batch_size).astype(
                             int
                         ),
+                        verbose=0
                         # callbacks=callbacks,
                     )
 

@@ -17,6 +17,9 @@ ___log_elapsed_time = True
 
 
 def __native_print(*args, sep=' ', end='\n', file=None):
+    if "pytest" in sys.modules:
+        return
+
     print(*args, sep=sep, end=end, file=sys.__stdout__)
 
 
@@ -50,6 +53,9 @@ def set_log_max_depth(max_depth: int):
 
 
 def lprint(*args, sep=' ', end='\n'):
+    if "pytest" in sys.modules:
+        return
+
     global ___depth
 
     if ___depth <= ___max_depth:
@@ -59,7 +65,7 @@ def lprint(*args, sep=' ', end='\n'):
 
 
 @contextmanager
-def lsection(section_header: str, intersept_print=False):
+def lsection(section_header: str):
     global ___current_section
     global ___depth
 
@@ -67,6 +73,11 @@ def lsection(section_header: str, intersept_print=False):
 
     if ___depth + 1 <= ___max_depth:
         __native_print(__vl__ * ___depth + __bd__ + ' ' + section_header)  # ≡
+    elif ___depth + 1 == ___max_depth + 1:
+        __native_print(
+            __vl__ * ___depth + __br__ + f'≡ {section_header} (log tree truncated here)'
+        )
+
     ___depth += 1
 
     start = time.time()
