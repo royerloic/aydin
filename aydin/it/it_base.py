@@ -1,15 +1,8 @@
 import math
 import os
 from abc import ABC, abstractmethod
-from functools import reduce
-from operator import mul
 from os.path import join
-from statistics import median
-
 import jsonpickle
-import numpy
-import psutil
-import scipy
 
 from aydin.analysis.correlation import correlation_distance
 from aydin.normaliser.identity import IdentityNormaliser
@@ -17,15 +10,13 @@ from aydin.normaliser.minmax import MinMaxNormaliser
 from aydin.normaliser.normaliser_base import NormaliserBase
 from aydin.normaliser.percentile import PercentileNormaliser
 from aydin.util.log.logging import lprint, lsection
-from aydin.util.combinatorics import closest_product
 from aydin.util.json import encode_indent
 from aydin.util.nd import nd_split_slices, remove_margin_slice
 from aydin.util.offcore.offcore import offcore_array
 
 
 class ImageTranslatorBase(ABC):
-    """
-        Image Translator base class
+    """Image Translator base class
 
     """
 
@@ -33,7 +24,6 @@ class ImageTranslatorBase(ABC):
         self, normaliser_type='percentile', analyse_correlation=False, monitor=None
     ):
         """
-
         """
 
         self.normaliser_type = normaliser_type
@@ -46,8 +36,8 @@ class ImageTranslatorBase(ABC):
         self.last_callback_time_sec = -math.inf
 
     def save(self, path: str):
-        """
-        Saves a 'all-batteries-included' image translation model at a given path (folder).
+        """Saves a 'all-batteries-included' image translation model at a given path (folder).
+
         :param path: path to save to
         """
         os.makedirs(path, exist_ok=True)
@@ -65,8 +55,8 @@ class ImageTranslatorBase(ABC):
 
     @staticmethod
     def load(path: str):
-        """
-        Returns a 'all-batteries-included' image translation model at a given path (folder).
+        """Returns a 'all-batteries-included' image translation model at a given path (folder).
+
         :param model_path: path to load from.
         """
 
