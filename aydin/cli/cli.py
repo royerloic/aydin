@@ -2,7 +2,6 @@ import atexit
 import os
 import sys
 import click
-import logging
 import sentry_sdk
 
 from aydin.gui.gui import run
@@ -10,35 +9,13 @@ from aydin.util.progress_bar import ProgressBar
 from aydin.io.io import imwrite
 from aydin.services.n2s import N2SService
 from aydin.services.n2t import N2TService
+from aydin.util.slicing_helper import apply_slicing
 from aydin.util.resource import read_image_from_path
-
+from aydin.util.update import get_latest_version_details, download_specific_version
 
 import plaidml.keras
 
-from aydin.util.update import get_latest_version_details, download_specific_version
-
 plaidml.keras.install_backend()
-
-logger = logging.getLogger(__name__)
-
-
-def absPath(myPath):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
-    import sys
-
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-        logger.debug(
-            "found MEIPASS: %s " % os.path.join(base_path, os.path.basename(myPath))
-        )
-
-        return os.path.join(base_path, os.path.basename(myPath))
-    except Exception as e:
-        logger.debug("did not find MEIPASS: %s " % e)
-
-        base_path = os.path.abspath(os.path.dirname(__file__))
-        return os.path.join(base_path, myPath)
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -91,7 +68,7 @@ def noise2self(**kwargs):
     path = os.path.abspath(kwargs['path_source'])
 
     noisy = read_image_from_path(path)
-    noisy = eval('noisy' + kwargs['slicing'])
+    noisy = apply_slicing(noisy, kwargs['slicing'])
 
     # Run N2S service and save the result
     pbar = ProgressBar(total=100)
@@ -115,11 +92,11 @@ def noise2truth(**kwargs):
     path_target = os.path.abspath(kwargs['predict_target'])
 
     noisy = read_image_from_path(path_source)
-    noisy = eval('noisy' + kwargs['slicing'])
+    noisy = apply_slicing(noisy, kwargs['slicing'])
     truth = read_image_from_path(path_truth)
-    truth = eval('truth' + kwargs['slicing'])
+    truth = apply_slicing(truth, kwargs['slicing'])
     target = read_image_from_path(path_target)
-    target = eval('target' + kwargs['slicing'])
+    target = apply_slicing(target, kwargs['slicing'])
 
     # Run N2T service and save the result
     pbar = ProgressBar(total=100)

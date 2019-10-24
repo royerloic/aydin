@@ -15,9 +15,13 @@ class N2SService(BaseService):
         progress_callback,
         monitoring_callbacks=None,
         monitoring_images=None,
+        generator=None,
+        regressor=None,
     ):
         """Method to run Noise2Self service
 
+        :param regressor:
+        :param generator:
         :param monitoring_callbacks:
         :param monitoring_images:
         :param progress_callback:
@@ -27,10 +31,12 @@ class N2SService(BaseService):
         """
         progress_callback.emit(0)
         self.set_image_metrics(noisy_image.shape)
-        generator = self.get_generator()
+
+        progress_callback.emit(5)
+        generator = generator if generator is not None else self.get_generator()
 
         progress_callback.emit(15)
-        regressor = self.get_regressor()
+        regressor = regressor if regressor is not None else self.get_regressor()
 
         progress_callback.emit(41)
         self.it = self.get_translator(
