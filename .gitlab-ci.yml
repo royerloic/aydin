@@ -1,3 +1,11 @@
+unit tests osx:
+  tags:
+    - osx
+  script:
+    - conda activate py37test
+    - python -m pytest .
+
+
 black style windows:
   tags:
     - windows
