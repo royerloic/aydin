@@ -295,7 +295,7 @@ class ImageTranslatorBase(ABC):
                     ):
 
                         # We first extract the tile image:
-                        input_image_tile = input_image[slice_margin_tuple]
+                        input_image_tile = input_image[slice_margin_tuple].copy()
 
                         # Then we normalise this tile:
                         lprint(f"Normalising...")
