@@ -1,5 +1,4 @@
 import time
-
 import napari
 import numpy
 import skimage
@@ -12,7 +11,6 @@ from skimage.restoration import denoise_nl_means, estimate_sigma
 from skimage.util import random_noise
 
 from aydin.it.it_cnn import ImageTranslatorCNN
-from aydin.util.log.logging import set_log_max_depth
 
 
 def n(image):
@@ -25,8 +23,6 @@ def demo():
     """
         Demo for self-supervised denoising using camera image with synthetic noise
     """
-
-    set_log_max_depth(5)
 
     image = camera().astype(numpy.float32)
     image = n(image)
@@ -51,8 +47,7 @@ def demo():
     )
 
     start = time.time()
-    denoised = it.train(noisy, noisy)
-    denoised = denoised.reshape(image.shape)
+    it.train(noisy, noisy)
     stop = time.time()
     print(f"Training: elapsed time:  {stop-start} ")
 
@@ -63,15 +58,11 @@ def demo():
     stop = time.time()
     print(f"inference: elapsed time:  {stop-start} ")
 
-    denoised = rescale_intensity(denoised, in_range='image', out_range=(0, 1))
-
     image = numpy.clip(image, 0, 1)
     noisy = numpy.clip(noisy.reshape(image.shape), 0, 1)
-    denoised = numpy.clip(denoised, 0, 1)
     denoised_inf = numpy.clip(denoised_inf, 0, 1)
 
     print("noisy       :", psnr(image, noisy), ssim(noisy, image))
-    print("denoised    :", psnr(image, denoised), ssim(denoised, image))
     print("denoised_inf:", psnr(image, denoised_inf), ssim(denoised_inf, image))
 
     with napari.gui_qt():
@@ -82,7 +73,6 @@ def demo():
         viewer.add_image(n(median1), name='median1')
         viewer.add_image(n(median2), name='median2')
         viewer.add_image(n(median5), name='median5')
-        viewer.add_image(n(denoised), name='denoised')
         viewer.add_image(n(denoised_inf), name='denoised_inf')
 
 
