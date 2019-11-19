@@ -2,7 +2,7 @@ import numpy
 from scipy.stats import entropy
 
 
-def random_sample(input_img, tile_size, num_tile, adoption_rate=0.5):
+def random_sample_patches(input_img, tile_size, num_tile, adoption_rate=0.5):
     img_dim = input_img.shape
     tiles_per_img = numpy.ceil(
         numpy.ceil(num_tile / img_dim[0]) / adoption_rate
