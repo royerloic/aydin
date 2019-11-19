@@ -146,7 +146,7 @@ class EarlyStopping(Callback):
                     self.model.set_weights(self.best_weights)
 
         # This is where we stop training externally:
-        if self.parent.stop_training:
+        if self.parent.stop_fitting:
             lprint('Training externally stopped!')
             self.model.stop_training = True
 
