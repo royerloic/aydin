@@ -115,6 +115,10 @@ class ImageTranslatorCNN(ImageTranslatorBase):
     def stop_training(self):
         self.stop_fitting = True
 
+    # TODO: check the order of dimensions e.g. (B, H, W, C)
+    def dim_order(self):
+        pass
+
     def train(
         self,
         input_image,  # dimension (batch, H, W, C)

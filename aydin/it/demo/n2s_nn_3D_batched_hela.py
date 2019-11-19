@@ -31,7 +31,7 @@ def demo(image):
         print(f"Training: elapsed time:  {stop-start} ")
 
         start = time.time()
-        denoised = it.translate(image)
+        denoised = it.translate(image, batch_dims=batch_dims)
         stop = time.time()
         print(f"inference: elapsed time:  {stop-start} ")
 
