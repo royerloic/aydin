@@ -1,4 +1,4 @@
-import time
+import time, math
 from os.path import join
 
 import numpy
@@ -13,11 +13,11 @@ provider = (
 )  # NOTE: This line should stay exactly here! All keras calls must be _AFTER_ the line below:
 from aydin.it.cnn.unet import unet_model
 from aydin.it.it_base import ImageTranslatorBase
-
 from aydin.util.log.logging import lsection, lprint
-
+from aydin.it.cnn.layers import Maskout, split, rot90
 from aydin.regression.nn_utils.callbacks import ModelCheckpoint  # , EarlyStopping
 from aydin.it.cnn.cnn_util.callbacks import EarlyStopping, ReduceLROnPlateau
+from keras.engine.saving import model_from_json
 
 # from keras.callbacks import ReduceLROnPlateau  # , EarlyStopping
 
@@ -32,9 +32,6 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
     def __init__(
         self,
-        input_dim: tuple,
-        supervised: bool = False,
-        shiftconv: bool = True,
         normaliser_type: str = 'percentile',
         analyse_correlation: bool = False,
         monitor=None,
@@ -49,22 +46,20 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.max_epochs = None
         self.patience = None
         self.checkpoint = None
-        self.stop_training = False
+        self.stop_fitting = False
 
     def save(self, path: str):
         """
         Saves a 'all-batteries-included' image translation model at a given path (folder).
         :param path: path to save to
         """
-        with lsection(f"Saving CNN image translator to {path}"):
+        with lsection(f"Saving 'CNN' image translator to {path}"):
             frozen = super().save(path)
+            frozen += self.save_cnn(path) + '\n'
+        return frozen
 
-            # TODO: We don't have feature gen or regressors here:
-            frozen += self.feature_generator.save(path) + '\n'
-            frozen += self.regressor.save(path) + '\n'
-
-            # TODO: save keras model here, check how it is done in nn
-        super().save(path)
+    def save_cnn(self, path: str):
+        # super().save(path)
         if not self.model is None:
             # serialize model to JSON:
             keras_model_file = join(path, 'keras_model.txt')
@@ -75,10 +70,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             # serialize weights to HDF5:
             keras_model_file = join(path, 'keras_weights.txt')
             self.model.save_weights(keras_model_file)
-
         return model_json
-
-        return frozen
 
     ##TODO: We exclude certain fields from saving:
     def __getstate__(self):
@@ -88,22 +80,26 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         del state['reduce_learning_rate']
         del state['checkpoint']
         del state['model']
-        del state['keras_callback']
+        # del state['input_normaliser']
+        # del state['target_normaliser']
         return state
 
     # TODO: SPECIAL please fix the naming of the file for the weights here and in nn.
 
     # TODO: implement this method:
     def _load_internals(self, path: str):
-        pass
-        # # load JSON and create model:
-        # keras_model_file = join(path, 'keras_model.txt')
-        # with open(keras_model_file, 'r') as json_file:
-        #     loaded_model_json = json_file.read()
-        #     self.model = model_from_json(loaded_model_json)
-        # # load weights into new model:
-        # keras_model_file = join(path, 'keras_weights.txt')
-        # self.model.load_weights(keras_model_file)
+        with lsection(f"Loading 'classic' image translator from {path}"):
+            # load JSON and create model:
+            keras_model_file = join(path, 'keras_model.txt')
+            with open(keras_model_file, 'r') as json_file:
+                loaded_model_json = json_file.read()
+                self.model = model_from_json(
+                    loaded_model_json,
+                    custom_objects={'Maskout': Maskout, 'split': split, 'rot90': rot90},
+                )
+            # load weights into new model:
+            keras_model_file = join(path, 'keras_weights.txt')
+            self.model.load_weights(keras_model_file)
 
     # TODO: get an estimate, upper bound is ok:
     def get_receptive_field_radius(self, nb_dim):
@@ -115,12 +111,13 @@ class ImageTranslatorCNN(ImageTranslatorBase):
     def limit_epochs(self, max_epochs: int) -> int:
         return max_epochs
 
-    def _load_internals(self, path: str):
-        pass
-
     # TODO: implement:
     def stop_training(self):
-        self.stop_training = True
+        self.stop_fitting = True
+
+    # TODO: check the order of dimensions e.g. (B, H, W, C)
+    def dim_order(self):
+        pass
 
     def train(
         self,
@@ -128,9 +125,9 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         target_image,  # dimension (batch, H, W, C)
         supervised=False,
         shiftconv=True,
-        train_test_ratio=0.1,  # TODO: remove this argument from base and add it to the rest of it_xxx. !!WAIT!!
+        train_data_ratio=1,  # TODO: remove this argument from base and add it to the rest of it_xxx. !!WAIT!!
         batch_dims=None,
-        batch_size=None,
+        batch_size=1,
         batch_shuffle=False,
         monitoring_images=None,
         callback_period=3,
@@ -139,6 +136,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         max_epochs=1024,
     ):
         self.max_epochs = max_epochs
+        self.batch_size = batch_size
         self.patience = patience
         self.checkpoint = None
         self.input_dim = input_image.shape[1:]
@@ -157,17 +155,18 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
         # TODO: Indeed, instanciate here model given the correct dimension obtained from the input/target image
 
-        return super().train(
+        super().train(
             input_image,
             target_image,
-            train_test_ratio,  # TODO: to be removed as this will not be used in it_cnn   !!WAIT!!
-            batch_dims,
-            batch_size,
-            batch_shuffle,
-            monitoring_images,
-            callback_period,
-            patience,
-            patience_epsilon,
+            batch_dims=batch_dims,
+            train_data_ratio=train_data_ratio,  # TODO: to be removed as this will not be used in it_cnn   !!WAIT!!
+            # batch_size,
+            # batch_shuffle,
+            # monitoring_images,
+            callback_period=callback_period,
+            max_epochs=max_epochs,
+            patience=patience,
+            patience_epsilon=patience_epsilon,
         )
 
     def _train(
@@ -175,10 +174,13 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         input_image,
         target_image,
         batch_dims,
+        train_data_ratio=1,
+        max_voxels_for_training=math.inf,
+        train_valid_ratio=0.1,
+        callback_period=3,
         mask_shape=(3, 3),  # mask shape for masking approach
         is_batch=False,
         monitoring_images=None,
-        callback_period=3,
         EStop_patience=8,  # TODO: THIS METHOD MUST STRICTKLY ADHERE TO THE CONTRACT DEFINED IN THE BASE CLASS
         ReduceLR_patience=4,  # TODO Set both patience to the 'master' patience ( self.patience )
         min_delta=1e-6,
@@ -269,16 +271,18 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         # but small batches are also better for convergence (inherent batch noise).
         # We make sure that we have at least about 1000 items per batch for small images,
         # which is a good minimum. For larger datasets we get bigger batches which is fine.
-        batch_size = 1  # max(1, x_train.shape[0] // 256)
+        # batch_size = 1  # max(1, x_train.shape[0] // 256)
         lprint("Max mem: ", provider.device_max_mem)
 
         # Heuristic threshold here obtained by inspecting batch size per GPU memory
         # Basically ensures ratio of 700000 batch size per 12GBs of GPU memory
-        batch_size = min(batch_size, (700000 * provider.device_max_mem) // 12884901888)
+        batch_size = min(
+            self.batch_size, (700000 * provider.device_max_mem) // 12884901888
+        )
         lprint(f"Keras batch size for training: {batch_size}")
         self.batch_size = batch_size
 
-        # # Effective number of epochs:
+        # Effective number of epochs:
         # effective_number_of_epochs = 2 if is_batch else self.max_epochs
         # lprint(f"Effective max number of epochs: {effective_number_of_epochs}")
 
@@ -324,6 +328,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 get_temp_folder(),
                 f"aydin_cnn_keras_model_file_{random.randint(0, 1e16)}.hdf5",
             )
+            lprint(f"Model will be saved at: {self.model_file_path}")
             self.checkpoint = ModelCheckpoint(
                 self.model_file_path, monitor='loss', verbose=1, save_best_only=True
             )
@@ -375,17 +380,17 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                         # callbacks=callbacks,
                     )
 
-                if not self.shiftconv and not self.supervised:
-                    return self.model.predict(
-                        [input_image, numpy.ones(input_image.shape)],
-                        batch_size=batch_size,
-                        verbose=1,
-                    )
-
-                else:
-                    return self.model.predict(
-                        input_image, batch_size=batch_size, verbose=1
-                    )
+                # if not self.shiftconv and not self.supervised:
+                #     return self.model.predict(
+                #         [input_image, numpy.ones(input_image.shape)],
+                #         batch_size=batch_size,
+                #         verbose=1,
+                #     )
+                #
+                # else:
+                #     return self.model.predict(
+                #         input_image, batch_size=batch_size, verbose=1
+                #     )
 
     def _translate(self, input_image, batch_dim=None):
 

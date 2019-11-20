@@ -2,7 +2,7 @@ import numpy
 from scipy.stats import entropy
 
 
-def random_sample(input_img, tile_size, num_tile, adoption_rate=0.5):
+def random_sample_patches(input_img, tile_size, num_tile, adoption_rate=0.5):
     img_dim = input_img.shape
     tiles_per_img = numpy.ceil(
         numpy.ceil(num_tile / img_dim[0]) / adoption_rate
@@ -15,7 +15,8 @@ def random_sample(input_img, tile_size, num_tile, adoption_rate=0.5):
             coordinates = numpy.asarray(img_dim[1:-1]) - numpy.asarray(tile_size)
             # Randomly choose coordinates from an image.
             ind = numpy.hstack(
-                [
+                [k]
+                + [
                     numpy.random.choice(coordinates[i], 1, replace=True).astype(int)
                     for i in range(coordinates.size)
                 ]
@@ -28,14 +29,17 @@ def random_sample(input_img, tile_size, num_tile, adoption_rate=0.5):
             ind_past.append(ind)
             if len(tile_size) == 2:
                 img0 = input_img[
-                    k, ind[0] : ind[0] + tile_size[0], ind[1] : ind[1] + tile_size[1], 0
+                    ind[0],
+                    ind[1] : ind[1] + tile_size[0],
+                    ind[2] : ind[2] + tile_size[1],
+                    0,
                 ]
             elif len(tile_size) == 3:
                 img0 = input_img[
-                    k,
-                    ind[0] : ind[0] + tile_size[0],
-                    ind[1] : ind[1] + tile_size[1],
-                    ind[2] : ind[2] + tile_size[2],
+                    ind[0],
+                    ind[1] : ind[1] + tile_size[0],
+                    ind[2] : ind[2] + tile_size[1],
+                    ind[3] : ind[3] + tile_size[2],
                     0,
                 ]
             else:
@@ -54,4 +58,5 @@ def random_sample(input_img, tile_size, num_tile, adoption_rate=0.5):
     hist_ind_all = hist_ind_all[(-hist_ind_all[:, 0]).argsort()]
     hist_ind_all = hist_ind_all[:num_tile, 1:].astype(int)
 
+    # Return a numpy array of cordinates of patches.
     return hist_ind_all

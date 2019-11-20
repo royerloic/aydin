@@ -3,7 +3,7 @@ from skimage.exposure import rescale_intensity
 
 from aydin.io import io
 from aydin.io.datasets import examples_single
-from aydin.it.cnn.cnn_util.data_util import random_sample
+from aydin.it.cnn.cnn_util.data_util import random_sample_patches
 import napari
 
 
@@ -23,17 +23,16 @@ image0 = numpy.expand_dims(image0[1:2], -1)
 tile_size = (64, 64, 64)
 num_tile = 500
 adoption_rate = 0.5
-input_data = random_sample(image0, tile_size, num_tile, adoption_rate)
+input_data = random_sample_patches(image0, tile_size, num_tile, adoption_rate)
 
 imgpatch_int = numpy.zeros(image0.shape)
 for i in input_data:
-    i = i.astype(int)
     imgpatch_int[
-        i[0] : i[0] + tile_size[0],
-        i[1] : i[1] + tile_size[1],
-        i[2] : i[2] + tile_size[2],
+        i[0],
+        i[1] : i[1] + tile_size[0],
+        i[2] : i[2] + tile_size[1],
+        i[3] : i[3] + tile_size[2],
     ] += 1
-imgpatch_int = numpy.stack(imgpatch_int)
 # %gui qt5
 image0 = rescale_intensity(image0.squeeze().astype(numpy.float64), out_range=(0, 1))
 imgpatch_int = rescale_intensity(imgpatch_int.squeeze(), out_range=(0, 1))

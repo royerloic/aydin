@@ -1,6 +1,6 @@
 import time
 
-import napari
+# import napari
 import numpy
 import numpy as np
 from skimage.data import camera
@@ -60,11 +60,11 @@ def demo():
     print("noisy", psnr(noisy, image), ssim(noisy, image))
     print("denoised", psnr(denoised, image), ssim(denoised, image))
 
-    with napari.gui_qt():
-        viewer = napari.Viewer()
-        viewer.add_image(n(image), name='image')
-        viewer.add_image(n(noisy), name='noisy')
-        viewer.add_image(n(denoised), name='denoised')
+    # with napari.gui_qt():
+    #     viewer = napari.Viewer()
+    #     viewer.add_image(n(image), name='image')
+    #     viewer.add_image(n(noisy), name='noisy')
+    #     viewer.add_image(n(denoised), name='denoised')
 
 
 demo()
