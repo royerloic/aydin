@@ -1,7 +1,8 @@
 import numpy as np
 from xml.etree.ElementTree import Element
 from vispy.color import Colormap
-from napari.layers import Image
+
+from aydin.gui.components.mininap.layers import Image
 
 
 def test_random_image():

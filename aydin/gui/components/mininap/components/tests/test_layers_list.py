@@ -1,6 +1,7 @@
-from napari.components import LayerList
-from napari.layers import Image
 import numpy as np
+
+from aydin.gui.components.mininap.components import LayerList
+from aydin.gui.components.mininap.layers import Image
 
 
 def test_empty_layers_list():

@@ -1,3 +1,4 @@
+import pytest
 import numpy
 from skimage.data import camera, binary_blobs
 from skimage.exposure import rescale_intensity
@@ -56,6 +57,7 @@ def test_collect_feature_3d():
     collect_feature_nd(3, 64)
 
 
+@pytest.mark.heavy
 def test_collect_feature_4d():
     collect_feature_nd(4, 32)
 
