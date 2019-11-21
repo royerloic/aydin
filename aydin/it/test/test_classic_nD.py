@@ -1,6 +1,5 @@
 import time
 import pytest
-import napari
 import numpy
 from skimage.data import binary_blobs
 from skimage.exposure import rescale_intensity
@@ -8,7 +7,6 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-# Turns on napari display...
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
@@ -17,41 +15,41 @@ from aydin.regression.nn import NNRegressor
 display_for_debug = False
 
 
-@pytest.mark.heav
+@pytest.mark.heavy
 def test_it_classic_nn_2D():
     it_classic_nD(2, 512, numpy.s_[0:281, 0:413], regressor='nn', min_ssim=0.60)
 
 
-@pytest.mark.heav
+@pytest.mark.heavy
 def test_it_classic_nn_3D():
     it_classic_nD(3, 128, numpy.s_[0:111, 0:113, 0:97], regressor='nn', min_ssim=0.70)
 
 
-@pytest.mark.heav
+@pytest.mark.heavy
 def test_it_classic_nn_4D():
     it_classic_nD(
         4, 64, numpy.s_[0:11, 0:41, 0:57, 0:53], regressor='nn', min_ssim=0.70
     )
 
 
-@pytest.mark.heav
+@pytest.mark.heavy
 def test_it_classic_gbm_2D():
     it_classic_nD(2, 512, numpy.s_[0:201, 0:213], regressor='gbm', min_ssim=0.60)
 
 
-@pytest.mark.heav
+@pytest.mark.heavy
 def test_it_classic_gbm_3D():
     it_classic_nD(3, 48, numpy.s_[0:41, 0:43, 0:37], regressor='gbm', min_ssim=0.70)
 
 
-@pytest.mark.heav
+@pytest.mark.heavy
 def test_it_classic_gbm_4D():
     it_classic_nD(
         4, 24, numpy.s_[0:11, 0:23, 0:22, 0:21], regressor='gbm', min_ssim=0.70
     )
 
 
-@pytest.mark.heav
+@pytest.mark.heavy
 def test_it_classic_gbm_2D_batchdims():
     it_classic_nD(
         2,
@@ -63,7 +61,7 @@ def test_it_classic_gbm_2D_batchdims():
     )
 
 
-@pytest.mark.heav
+@pytest.mark.heavy
 def test_it_classic_gbm_3D_batchdims():
     it_classic_nD(
         3,
@@ -75,7 +73,7 @@ def test_it_classic_gbm_3D_batchdims():
     )
 
 
-@pytest.mark.heav
+@pytest.mark.heavy
 def test_it_classic_gbm_4D_batchdims():
     it_classic_nD(
         4,
@@ -140,14 +138,6 @@ def it_classic_nD(
     psnr_denoised = psnr(denoised, image)
     ssim_denoised = ssim(denoised, image)
     print("denoised", psnr_denoised, ssim_denoised)
-
-    if display_for_debug or not ssim_denoised > min_ssim:
-        with napari.gui_qt():
-            viewer = napari.Viewer()
-            viewer.add_image(n(train), name='train')
-            viewer.add_image(n(image), name='image')
-            viewer.add_image(n(noisy), name='noisy')
-            viewer.add_image(n(denoised), name='denoised')
 
     # if the line below fails, then the parameters of the image the lgbm regressor have been broken.
     # do not change the number below, but instead, fix the problem -- most likely a parameter.

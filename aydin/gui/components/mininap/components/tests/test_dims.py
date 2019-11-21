@@ -1,5 +1,5 @@
-from napari.components import Dims
-from napari.components.dims_constants import DimsMode
+from aydin.gui.components.mininap.components import Dims
+from aydin.gui.components.mininap.components.dims_constants import DimsMode
 
 
 def test_ndim():

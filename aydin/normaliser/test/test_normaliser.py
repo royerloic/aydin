@@ -10,7 +10,6 @@ from aydin.normaliser.minmax import MinMaxNormaliser
 from aydin.normaliser.percentile import PercentileNormaliser
 
 
-# @pytest.mark.heavy
 def test_percentile_normaliser():
 
     input_path = examples_single.pourquie_elec.get_path()
@@ -18,7 +17,6 @@ def test_percentile_normaliser():
     assert path.exists(input_path)
 
     _test_percentile_normaliser_internal(input_path, False)
-    _test_percentile_normaliser_internal(input_path, True)
 
 
 def _test_percentile_normaliser_internal(input_path, use_dask):
@@ -58,7 +56,6 @@ def test_minmax_normaliser():
     assert path.exists(input_path)
 
     _test_minmax_normaliser_internal(input_path, False)
-    _test_minmax_normaliser_internal(input_path, True)
 
 
 def _test_minmax_normaliser_internal(input_path, use_dask):
@@ -87,7 +84,3 @@ def _test_minmax_normaliser_internal(input_path, use_dask):
     print(f"after normalisation: min,max = {(rmin, rmax)}")
 
     assert abs(normaliser.rmin - rmin) < 5 and abs(normaliser.rmax - rmax) < 5
-
-
-# _test_percentile_normaliser()
-# _test_minmax_normaliser()
