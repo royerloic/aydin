@@ -1,16 +1,36 @@
-unit tests osx:
+py3.6 tests osx:
   tags:
     - osx
   script:
-    - conda activate py37test
+    - conda create -n ay36test python=3.6
+    - conda activate ay36test
+    - pip install -r requirements.txt
     - python -m pytest .
+    - conda deactivate
+    - conda env remove -n ay36test
 
-
-black style windows:
+py3.7 tests osx:
   tags:
-    - windows
+    - osx
   script:
+    - conda create -n ay37test python=3.7
+    - conda activate ay37test
+    - pip install -r requirements.txt
+    - python -m pytest .
+    - conda deactivate
+    - conda env remove -n ay37test
+
+
+black style osx:
+  tags:
+    - osx
+  script:
+    - conda create -n blacktest python=3.7
+    - conda activate blacktest
+    - pip install black
     - black --check -S -t py36 .
+    - conda deactivate
+    - conda env remove -n blacktest
 
 
 unit tests windows:
