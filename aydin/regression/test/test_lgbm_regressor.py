@@ -1,4 +1,3 @@
-import napari
 import numpy
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
@@ -17,7 +16,6 @@ def n(image):
 
 
 def test_lgbm_regressor():
-    display = False
 
     image = camera().astype(numpy.float32)
     image = n(image)
@@ -49,12 +47,5 @@ def test_lgbm_regressor():
     psnr_value = psnr(denoised, image)
 
     print("denoised", psnr_value, ssim_value)
-
-    if display:
-        with napari.gui_qt():
-            viewer = napari.Viewer()
-            viewer.add_image(n(image), name='image')
-            viewer.add_image(n(noisy), name='noisy')
-            viewer.add_image(n(denoised), name='denoised')
 
     assert ssim_value > 0.84
