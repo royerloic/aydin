@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jul 17 10:08:28 2017
-
-@author: sajid
-
 Based on the MATLAB code by Michael Wojcik
 
 """

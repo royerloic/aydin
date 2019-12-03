@@ -29,16 +29,13 @@ class N2SService(BaseService):
         :param noisy_image: input noisy image, must be np compatible
         :return: denoised version of the input image, will be np compatible
         """
-        progress_callback.emit(0)
         self.set_image_metrics(noisy_image.shape)
-
         progress_callback.emit(5)
+
         generator = generator if generator is not None else self.get_generator()
-
-        progress_callback.emit(15)
         regressor = regressor if regressor is not None else self.get_regressor()
-
         progress_callback.emit(41)
+
         self.it = self.get_translator(
             feature_generator=generator,
             regressor=regressor,
@@ -50,7 +47,8 @@ class N2SService(BaseService):
         )
 
         self.it.train(noisy_image, noisy_image)
-        progress_callback.emit(100)
+        progress_callback.emit(80)
 
         response = self.it.translate(noisy_image)
+        progress_callback.emit(100)
         return response

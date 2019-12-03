@@ -7,8 +7,11 @@ from aydin.gui.components.tabs.load.load_n2s import LoadN2STab
 
 
 class Noise2SelfWizard(QTabWidget):
-    def __init__(self, parent, f):
+    def __init__(self, parent, threadpool):
         super(QTabWidget, self).__init__(parent)
+        self.parent = parent
+
+        self.tabBar().hide()
 
         self.currentChanged.connect(self.handle_tab_change)
         self.monitor_images = (
@@ -16,22 +19,17 @@ class Noise2SelfWizard(QTabWidget):
         )  # TODO: check the best scheme for handling this in the end
 
         # Add tabs
-        self.upload_noisy_tab = LoadN2STab(self)
-        self.addTab(self.upload_noisy_tab, "Load")
+        self.upload_tab = LoadN2STab(self)
+        self.addTab(self.upload_tab, "Load")
 
         self.roi_tab = ROITab(self)
         self.addTab(self.roi_tab, "Region-Of-Interest")
 
-        self.test_tab = TrainN2STab(self, f)
+        self.test_tab = TrainN2STab(self, threadpool)
         self.addTab(self.test_tab, "Train")
 
         # self.run_tab = PredictN2STab(self, f)
         # self.addTab(self.run_tab, "Predict")
-
-        # Disable all tabs except first one
-        self.setTabEnabled(1, False)
-        self.setTabEnabled(2, False)
-        self.setTabEnabled(3, False)
 
     def next_tab(self):
         self.setCurrentIndex(self.currentIndex() + 1)

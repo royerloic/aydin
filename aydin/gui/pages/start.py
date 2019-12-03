@@ -14,7 +14,7 @@ from aydin.gui.pages.wizards.Noise2SelfWizard import Noise2SelfWizard
 from aydin.gui.pages.wizards.Noise2TruthWizard import Noise2TruthWizard
 
 
-class WelcomePage(QWidget):
+class StartPage(QWidget):
     def __init__(self, parent, threadpool):
         super(QWidget, self).__init__(parent)
         self.parent = parent
@@ -37,16 +37,16 @@ class WelcomePage(QWidget):
 
         # Buttons for different services
         self.buttons_layout = QHBoxLayout()
-        self.n2s_button = QPushButton("Noise2Self")
+        self.n2s_button = QPushButton("Denoise \n(Noise2Self)")
         self.n2s_button.setFont(QFont("Arial", 26, QFont.Bold))
         self.n2s_button.pressed.connect(self.switch_to_n2s)
-        self.n2s_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        self.n2s_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.buttons_layout.addWidget(self.n2s_button)
 
-        self.n2t_button = QPushButton("Noise2Truth")
+        self.n2t_button = QPushButton("Translate \n(Noise2Truth)")
         self.n2t_button.setFont(QFont("Arial", 26, QFont.Bold))
         self.n2t_button.pressed.connect(self.switch_to_n2t)
-        self.n2t_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        self.n2t_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.buttons_layout.addWidget(self.n2t_button)
 
         self.layout.addLayout(self.buttons_layout)

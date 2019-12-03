@@ -15,18 +15,6 @@ class BaseTab(QWidget):
         self.hline_break.setFrameShadow(QFrame.Sunken)
         self.wizard_ops_layout.addWidget(self.hline_break)
 
-        # Wizard navigation buttons
-        self.buttons_layout = QHBoxLayout()
-        self.prev_button = QPushButton("Previous")
-        self.prev_button.setToolTip("Go to previous tab")
-        self.next_button = QPushButton("Next")
-        self.next_button.setToolTip("Go to next tab")
-        self.prev_button.clicked.connect(self.wizard.prev_tab)
-        self.next_button.clicked.connect(self.wizard.next_tab)
-        self.buttons_layout.addWidget(self.prev_button)
-        self.buttons_layout.addWidget(self.next_button)
-        self.wizard_ops_layout.addLayout(self.buttons_layout)
-
         # Finalize base layout
         self.base_layout.addLayout(self.wizard_ops_layout)
         self.setLayout(self.base_layout)
