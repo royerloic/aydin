@@ -5,6 +5,7 @@ py3.6 tests osx:
     - conda create -n ay36test python=3.6
     - conda activate ay36test
     - pip install -r requirements.txt
+    - pip install -r requirements/development.txt
     - python -m pytest .
     - conda deactivate
     - conda env remove -n ay36test
@@ -16,6 +17,7 @@ py3.7 tests osx:
     - conda create -n ay37test python=3.7
     - conda activate ay37test
     - pip install -r requirements.txt
+    - pip install -r requirements/development.txt
     - python -m pytest .
     - conda deactivate
     - conda env remove -n ay37test

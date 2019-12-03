@@ -18,8 +18,8 @@ def collect_feature_1d(
 
     """
 
-    image_x, = image_gpu.shape
-    feature_x, = feature_gpu.shape
+    (image_x,) = image_gpu.shape
+    (feature_x,) = feature_gpu.shape
 
     assert image_x == feature_x
 

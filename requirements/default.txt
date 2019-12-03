@@ -1,8 +1,10 @@
+qtpy==1.9.0
+mako==1.1.0
+pybind11==2.3.0
 numexpr
 tqdm
 pyqtgraph
 requests
-black>=19.3b0
 certifi==2019.6.16
 Click==7.0
 czifile==2019.7.2
@@ -19,9 +21,7 @@ lightgbm==2.2.1
 matplotlib==3.1.0
 numcodecs==0.6.3
 numpy==1.16.4
-napari==0.1.2
 PIMS==0.4.1
-pre-commit>=1.16.1
 psutil==5.6.3
 PyQt5==5.13.0
 PyQt5-sip==4.19.18
@@ -36,5 +36,3 @@ Keras==2.2.4
 plaidml==0.6.4
 plaidml-keras==0.6.4
 zarr==2.2.0
-pyopencl==2019.1.1 ; sys_platform == "darwin"
-pyopencl==2019.1.1 ; sys_platform == "linux"
