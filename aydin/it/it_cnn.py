@@ -292,8 +292,8 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
         # Effective LR patience:
         effective_lr_patience = (
-            ReduceLR_patience
-        )  # if is_batch else max(1, self.patience // 2)
+            ReduceLR_patience  # if is_batch else max(1, self.patience // 2)
+        )
         lprint(f"Effective LR patience: {effective_lr_patience}")
 
         # Here is the list of callbacks:

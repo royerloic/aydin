@@ -8,7 +8,7 @@ Denoising, but chill...
 ## Installation
 
 You can get the suitable aydin executable from [here]() or you 
-can basically do `pip install aydin`.
+can do `python setup.py develop`, for mac first need to do `brew install libomp`.
 
 ## How to run?
 

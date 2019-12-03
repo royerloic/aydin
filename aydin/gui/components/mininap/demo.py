@@ -14,7 +14,7 @@ def update_image():
     d = 512
     Z, Y, X = np.ogrid[-2.5 : 2.5 : h * 1j, -2.5 : 2.5 : w * 1j, -2.5 : 2.5 : d * 1j]
     array = np.empty((h, w, d), dtype=np.float32)
-    array[:] = np.exp(-X ** 2 - Y ** 2 - Z ** 2)
+    array[:] = np.exp(-(X ** 2) - Y ** 2 - Z ** 2)
 
     # create the viewer with an image
     viewer = Viewer()
