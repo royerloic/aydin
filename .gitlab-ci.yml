@@ -22,6 +22,21 @@ py3.7 tests osx:
     - conda deactivate
     - conda env remove -n ay37test
 
+codecov osx:
+  tags:
+    - osx
+  variables:
+    CODECOV_TOKEN: "29f2bb89-a5d6-4a0f-a0e8-74724f6a2b6f"
+  script:
+    - conda create -n codecovenv python=3.7
+    - conda activate codecovenv
+    - pip install -r requirements.txt
+    - pip install -r requirements/development.txt
+    - pip install pytest-cov codecov
+    - pytest --cov=./aydin
+    - codecov
+    - conda deactivate
+    - conda env remove -n codecovenv
 
 black style osx:
   tags:
