@@ -35,7 +35,7 @@ def test_identity_saveload():
 def saveload(normaliser):
 
     input_path = examples_single.hyman_hela.get_path()
-    array, metadata = imread(input_path, zarr_cache=False)
+    array, metadata = imread(input_path)
     assert array.dtype == numpy.uint16
 
     normaliser.calibrate(array)

@@ -16,12 +16,12 @@ def test_percentile_normaliser():
 
     assert path.exists(input_path)
 
-    _test_percentile_normaliser_internal(input_path, False)
+    _test_percentile_normaliser_internal(input_path)
 
 
-def _test_percentile_normaliser_internal(input_path, use_dask):
+def _test_percentile_normaliser_internal(input_path):
 
-    array, metadata = imread(input_path, zarr_cache=use_dask)
+    array, metadata = imread(input_path)
     print(array.shape)
 
     assert array.dtype == numpy.uint8
@@ -55,12 +55,12 @@ def test_minmax_normaliser():
 
     assert path.exists(input_path)
 
-    _test_minmax_normaliser_internal(input_path, False)
+    _test_minmax_normaliser_internal(input_path)
 
 
-def _test_minmax_normaliser_internal(input_path, use_dask):
+def _test_minmax_normaliser_internal(input_path):
 
-    array, metadata = imread(input_path, zarr_cache=use_dask)
+    array, metadata = imread(input_path)
     array = array[0]
     print(array.shape)
 

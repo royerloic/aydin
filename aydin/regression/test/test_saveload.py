@@ -27,7 +27,7 @@ def test_gbm_saveload():
 
 
 def test_nn_saveload():
-    saveload(NNRegressor(max_epochs=4), min_ssim=0.78)
+    saveload(NNRegressor(max_epochs=5), min_ssim=0.78)
 
 
 def saveload(regressor, min_ssim=0.80):
