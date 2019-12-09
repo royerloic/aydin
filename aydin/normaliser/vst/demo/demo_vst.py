@@ -14,9 +14,7 @@ from aydin.regression.gbm import GBMRegressor
 image = camera().astype(numpy.float32)  # import image
 image = rescale_intensity(image, in_range='image', out_range=(0, 1))
 
-intensity = (
-    5.0
-)  # strength of noise, which can also be measured from the ratio between variance of noise and mean
+intensity = 5.0  # strength of noise, which can also be measured from the ratio between variance of noise and mean
 
 noisy = numpy.random.poisson(image * intensity) / intensity  # Poisson Noise
 noisy = noisy.astype(numpy.float32)

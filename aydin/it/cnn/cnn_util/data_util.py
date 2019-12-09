@@ -58,5 +58,5 @@ def random_sample_patches(input_img, tile_size, num_tile, adoption_rate=0.5):
     hist_ind_all = hist_ind_all[(-hist_ind_all[:, 0]).argsort()]
     hist_ind_all = hist_ind_all[:num_tile, 1:].astype(int)
 
-    # Return a numpy array of cordinates of patches.
+    # Return a numpy array of coordinates of patches.
     return hist_ind_all

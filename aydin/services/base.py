@@ -56,7 +56,7 @@ class BaseService:
                 num_leaves=127,
                 max_bin=512,
                 n_estimators=2048,
-                patience=20,
+                patience=5,
             )
         else:
             self.regressor = NNRegressor()

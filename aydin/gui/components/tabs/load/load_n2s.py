@@ -1,5 +1,5 @@
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QVBoxLayout, QLabel, QHBoxLayout, QGridLayout
+from PyQt5.QtWidgets import QVBoxLayout, QLabel, QGridLayout, QLineEdit
 
 from aydin.gui.components.filepath_picker import FilePathPicker
 from aydin.gui.components.tabs.base_tab import BaseTab
@@ -21,22 +21,27 @@ class LoadN2STab(BaseTab):
 
         self.input_lbl = QLabel(self)
         self.image_info_lbl = QLabel(self)
-        self.input_picker = FilePathPicker(
-            self, self.input_lbl, self.image_info_lbl, self.input_ready
+        self.lbl_text = QLineEdit(self)
+        self.lbl_text.hide()
+
+        self.noisy_input_picker = FilePathPicker(
+            self,
+            "Noisy Image",
+            self.input_lbl,
+            self.image_info_lbl,
+            self.lbl_text,
+            file_ready=self.input_ready,
         )
-        self.input_picker.setToolTip(
+        self.noisy_input_picker.setToolTip(
             "Click here to open file dialog or drag and drop your file to here to load your image."
         )
-        paths_layout.addWidget(self.input_picker)
+        paths_layout.addWidget(self.noisy_input_picker)
 
         input_image_layout = QGridLayout()
-        input_image_layout.addWidget(self.image_info_lbl)
 
         paths_layout.addLayout(input_image_layout)
 
         self.base_layout.insertLayout(0, paths_layout)
-        self.prev_button.setEnabled(False)
-        self.next_button.setEnabled(False)
 
     def on_input_ready(self):
-        self.next_button.setEnabled(True)
+        self.wizard.next_tab()
