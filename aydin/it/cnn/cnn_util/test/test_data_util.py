@@ -20,11 +20,11 @@ def test_random_sample_patch_3D():
     image_path = examples_single.gardner_org.get_path()
     image0, metadata = io.imread(image_path)
     print(image0.shape)
-    image0 = n(image0.squeeze())
+    image0 = n(image0.squeeze()[:, 100:200, 400:500, 400:500])
 
     image0 = numpy.expand_dims(image0[1:2], -1)
     tile_size = (64, 64, 64)
-    num_tile = 500
+    num_tile = 100
     adoption_rate = 0.5
     input_data = random_sample_patches(image0, tile_size, num_tile, adoption_rate)
 
