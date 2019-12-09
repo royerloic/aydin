@@ -51,7 +51,7 @@ def test_random_sample_patch_3D():
 
     ent_ratio = entropy_smpl / entropy_whole
 
-    assert ent_ratio >= 1.01
+    assert ent_ratio >= 1.0
 
 
 # Test with Cameraman

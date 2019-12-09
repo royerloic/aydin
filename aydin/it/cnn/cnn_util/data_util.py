@@ -8,11 +8,11 @@ def random_sample_patches(input_img, tile_size, num_tile, adoption_rate=0.5):
         numpy.ceil(num_tile / img_dim[0]) / adoption_rate
     ).astype(int)
     hist_ind_all = []
+    coordinates = numpy.asarray(img_dim[1:-1]) - numpy.asarray(tile_size)
     for k in range(img_dim[0]):
         ind_past = []
         hist_batch = []
-        for j in range(tiles_per_img):
-            coordinates = numpy.asarray(img_dim[1:-1]) - numpy.asarray(tile_size)
+        for _ in range(tiles_per_img):
             # Randomly choose coordinates from an image.
             ind = numpy.hstack(
                 [k]
@@ -23,10 +23,10 @@ def random_sample_patches(input_img, tile_size, num_tile, adoption_rate=0.5):
             )
             # Check if the new patch is too close to the existing patches.
             if ind_past:
-                if abs(ind_past - ind).max() <= coordinates.min() // 10:
+                if abs(ind_past - ind).max() <= coordinates.min() // 20:
                     continue
-            # Extract image patch from the input image.
             ind_past.append(ind)
+            # Extract image patch from the input image.
             if len(tile_size) == 2:
                 img0 = input_img[
                     ind[0],
