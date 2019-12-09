@@ -25,7 +25,7 @@ def test_random_sample_patch_3D():
     image0 = numpy.expand_dims(image0[1:2], -1)
     tile_size = (64, 64, 64)
     num_tile = 100
-    adoption_rate = 0.5
+    adoption_rate = 0.2
     input_data = random_sample_patches(image0, tile_size, num_tile, adoption_rate)
 
     # Extract patched images
