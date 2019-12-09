@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QAction
 import qdarkstyle
 
 from aydin.gui.pages.about import AboutPage
-from aydin.gui.pages.welcome import WelcomePage
+from aydin.gui.pages.start import StartPage
 from aydin.util.update import download_specific_version, get_latest_version_details
 
 
@@ -22,7 +22,7 @@ class App(QMainWindow):
 
         self.threadpool = QThreadPool()
 
-        self.title = 'aydin - Cool Image Translation'
+        self.title = 'aydin - Cool Denoising/Image Translation'
         self.left = 0
         self.top = 0
         self.width = 700 * 2 if platform.system() == "Windows" else 700
@@ -30,7 +30,7 @@ class App(QMainWindow):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
-        self.main_widget = WelcomePage(self, self.threadpool)
+        self.main_widget = StartPage(self, self.threadpool)
         self.setCentralWidget(self.main_widget)
 
         self.setupMenubar()
@@ -42,12 +42,12 @@ class App(QMainWindow):
         helpMenu = mainMenu.addMenu(' &Help')
 
         # File Menu
-        welcomePageButton = QAction('Welcome Page', self)
-        welcomePageButton.setStatusTip('Go to welcome page')
-        welcomePageButton.triggered.connect(
-            lambda: self.setCentralWidget(WelcomePage(self, self.threadpool))
+        startPageButton = QAction('Start Page', self)
+        startPageButton.setStatusTip('Go to start page')
+        startPageButton.triggered.connect(
+            lambda: self.setCentralWidget(StartPage(self, self.threadpool))
         )
-        fileMenu.addAction(welcomePageButton)
+        fileMenu.addAction(startPageButton)
 
         exitButton = QAction(QIcon('exit24.png'), 'Exit', self)
         exitButton.setShortcut('Ctrl+Q')

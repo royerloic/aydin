@@ -1,19 +1,10 @@
-from time import sleep
-
 import numpy as np
 from skimage.io import imsave
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QPushButton,
-    QProgressBar,
-    QSplitter,
-    QHBoxLayout,
-)
+from PyQt5.QtWidgets import QVBoxLayout, QPushButton, QProgressBar, QHBoxLayout
 
 from aydin.gui.components.mininap import Viewer
 from aydin.gui.components.plot_canvas import PlotCanvas
+from aydin.gui.components.step_progress_bar import StepProgressBar
 from aydin.gui.components.tabs.base_tab import BaseTab
 from aydin.gui.components.workers.worker import Worker
 from aydin.services.n2s import N2SService
@@ -31,7 +22,7 @@ class TrainN2STab(BaseTab):
         self.threadpool = threadpool
         self.layout = None
 
-        self.input_picker = self.wizard.upload_noisy_tab.input_picker
+        self.input_picker = self.wizard.upload_tab.noisy_input_picker
 
         self.n2s = N2SService()
 
@@ -41,17 +32,33 @@ class TrainN2STab(BaseTab):
 
         # Buttons layout where we have run button and other functional methods
         tab_layout = QVBoxLayout()
+
+        self.progress_bar = StepProgressBar()
+        tab_layout.addWidget(self.progress_bar)
+
         self.pb = PlotCanvas(self)
         tab_layout.addWidget(self.pb)
 
-        self.stop_button = QPushButton("Stop")
-        self.stop_button.setToolTip("Stop currently running Noise2Self method")
+        self.viewer = Viewer(show=False)
+        self.viewer.add_image(self.wizard.monitor_images[0][np.newaxis, ...])
+        tab_layout.addWidget(self.viewer.window.qt_viewer)
+
+        self.final_button_layout = QHBoxLayout()
+
+        self.stop_button = QPushButton("Stop Training")
+        self.stop_button.setToolTip("Stop currently running Noise2Self training")
         self.stop_button.pressed.connect(self.n2s.stop_func)
         self.stop_button.setDisabled(True)
+        self.final_button_layout.addWidget(self.stop_button)
 
-        self.run_button = QPushButton("Run")
+        self.savemodel_button = QPushButton("Save the model")
+        self.savemodel_button.setToolTip("Save the trained model to infer on later")
+        self.savemodel_button.setEnabled(False)
+        self.final_button_layout.addWidget(self.savemodel_button)
+
+        self.run_button = QPushButton("Start Training")
         self.run_button.setToolTip(
-            "Start running Noise2Self method with selected input and options"
+            "Start running Noise2Self training with selected input and options"
         )
         self.run_button.pressed.connect(
             lambda: Worker.enqueue_funcname(
@@ -59,36 +66,21 @@ class TrainN2STab(BaseTab):
             )
         )
 
-        buttons_layout = QHBoxLayout()
-        buttons_layout.addWidget(self.stop_button)
-        buttons_layout.addWidget(self.run_button)
-        tab_layout.addLayout(buttons_layout)
-
-        self.progress_bar = QProgressBar(self)
-        tab_layout.addWidget(self.progress_bar)
-
-        self.viewer = Viewer(show=False)
-        self.viewer.add_image(self.wizard.monitor_images[0][np.newaxis, ...])
-        tab_layout.addWidget(self.viewer.window.qt_viewer)
+        tab_layout.addLayout(self.final_button_layout)
 
         # Add into main layout
         self.layout = tab_layout
         self.base_layout.insertLayout(0, self.layout)
 
-        self.next_button.setEnabled(False)
         self.is_loaded = True
+        self.run_button.click()
 
     def toggle_button_availablity(self):
-        self.wizard.setTabEnabled(0, not self.wizard.isTabEnabled(0))
-        self.wizard.setTabEnabled(1, not self.wizard.isTabEnabled(1))
-        self.prev_button.setDisabled(self.prev_button.isEnabled())
-        # self.next_button.setDisabled(self.next_button.isEnabled())
-        self.run_button.setDisabled(self.run_button.isEnabled())
         self.stop_button.setDisabled(self.stop_button.isEnabled())
 
     def progressbar_update(self, value):
         if 0 <= value <= 100:
-            self.progress_bar.setValue(value)
+            self.progress_bar.emit(value)
 
         if value == 100:
             self.toggle_button_availablity()  # Toggle buttons back by the end of the run
@@ -112,7 +104,6 @@ class TrainN2STab(BaseTab):
 
         imsave(output_path, denoised)
         self.run_button.setText("Re-Run")
-        self.next_button.setEnabled(True)
         print(output_path)
         return "Done."
 

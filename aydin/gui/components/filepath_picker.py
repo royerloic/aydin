@@ -12,28 +12,39 @@ class FilePathPicker(QWidget):
     Alternatively set up dragging and dropping of image files onto the widget
     """
 
-    def __init__(self, parent, img_lbl, info_lbl, file_ready=None):
+    def __init__(
+        self,
+        parent,
+        picker_name,
+        img_lbl,
+        info_lbl,
+        lbl_text,
+        max_height: int = 700,
+        max_width: int = 500,
+        file_ready=None,
+    ):
         super(FilePathPicker, self).__init__(parent)
         self.parent = parent
         self.file_ready = file_ready
+        self.ready_flag = False
         self.filename = None
 
         # Button that allows loading of images
-        # self.load_button.setMinimumSize(40, 40)
-        self.load_button = ClickableLabel(700, 500)
-        self.load_button.setMaximumSize(700, 500)
+        self.load_button = ClickableLabel(self, max_height, max_width)
+        self.load_button.setMaximumSize(max_height, max_width)
 
         self.load_button.clicked.connect(self.load_file_button)
 
         # Path viewing region
-        self.lbl_text = QLineEdit(self)
+        self.lbl_text = lbl_text
         self.lbl = img_lbl
         self.info_lbl = info_lbl
 
-        # A horizontal layout to include the button on the left
+        # A vertical layout to include the button
         layout_button = QVBoxLayout()
+        layout_button.addWidget(QLabel(picker_name))
         layout_button.addWidget(self.load_button)
-        layout_button.addWidget(self.lbl_text)
+        # layout_button.addWidget(self.lbl_text)
 
         # A Vertical layout to include the button layout and then the image
         layout = QVBoxLayout()
@@ -84,10 +95,13 @@ class FilePathPicker(QWidget):
             string2print = "\n".join(to_print)
             self.info_lbl.setText(string2print)
 
+            self.ready_flag = True
+
             if (
                 self.file_ready is not None
-            ):  # TODO: check if this if needed once everything connected on UI
+            ):  # TODO: check if this is needed once everything connected on UI
                 self.file_ready.emit()
+
         else:
             raise Exception("Selected item is not a file...")
 

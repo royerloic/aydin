@@ -23,7 +23,7 @@ class ROITab(BaseTab):
     def load_tab(self):
         # Read the input image
         self.image_data = read_image_from_path(
-            self.wizard.upload_noisy_tab.input_picker.lbl_text.text()
+            self.wizard.upload_tab.noisy_input_picker.lbl_text.text()
         )
 
         self.layout = QVBoxLayout()
@@ -31,7 +31,7 @@ class ROITab(BaseTab):
         # Friendly explanation
         self.layout.addWidget(
             QLabel(
-                "Please select the ROI with help of viewer below or program will continue with the default selection."
+                "Progress during the training will be shown on the region of interest below. To modify the ROI, pan and zoom."
             )
         )
 
@@ -40,15 +40,20 @@ class ROITab(BaseTab):
         self.viewer.add_image(self.image_data)
         self.layout.addWidget(self.viewer.window.qt_viewer)
 
+        # Add line edit
+        self.layout.addWidget(self.wizard.upload_tab.lbl_text)
+        self.layout.addWidget(self.wizard.upload_tab.image_info_lbl)
+
         # Add buttons to take snapshot of view
-        self.snap_button = QPushButton("Set ROI")
-        self.snap_button.setToolTip("Select Region-Of-Interest that would be monitored")
-        self.snap_button.pressed.connect(self.snap_test)
-        self.layout.addWidget(self.snap_button)
+        self.start_training_button = QPushButton("Start Training")
+        self.start_training_button.setToolTip(
+            "Start training with the given input and ROI."
+        )
+        self.start_training_button.pressed.connect(self.snap_test)
+        self.layout.addWidget(self.start_training_button)
 
         self.base_layout.insertLayout(0, self.layout)
 
-        self.next_button.setEnabled(False)
         self.is_loaded = True
 
     def snap_test(self):
@@ -104,4 +109,4 @@ class ROITab(BaseTab):
         self.roi_ready.emit()
 
     def on_roi_ready(self):
-        self.next_button.setEnabled(True)
+        self.wizard.next_tab()
