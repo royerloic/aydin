@@ -29,22 +29,22 @@ def aydin(ctx):
     sentry_sdk.init("https://d9d7db5f152546c490995a409023c60a@sentry.io/1498298")
     if ctx.invoked_subcommand is None:
         run(VERSION)
-        print("Run aydin with a command please...")
     else:
         pass
 
 
 @aydin.command()
 def update():
-    # Print out current version
-    print("this is a test version3 ", VERSION)
+    print("Current version: ", VERSION)
 
     # Check updates and download if there is
     latest_version, latest_id = get_latest_version_details()
 
     if latest_version > VERSION:
         print(
-            "There is a more recent version of Aydin, automatically updating and re-running now..."
+            "Latest version: ",
+            latest_version,
+            "\nThere is a more recent version of Aydin, automatically updating and re-running now...",
         )
         # Download new version
         path_to_new_version = download_specific_version(latest_version, latest_id)
