@@ -4,7 +4,7 @@ import os
 import platform
 
 from aydin.providers.opencl.opencl_provider import OpenCLProvider
-from aydin.util.log.logging import lprint, lsection
+from aydin.util.log.log import lprint, lsection
 
 os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
 

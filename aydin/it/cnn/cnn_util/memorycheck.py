@@ -3,7 +3,7 @@ import math
 import numpy
 import psutil
 
-from aydin.util.log.logging import lsection, lprint
+from aydin.util.log.log import lsection, lprint
 from aydin.providers.opencl.opencl_provider import OpenCLProvider
 
 

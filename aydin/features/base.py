@@ -8,7 +8,7 @@ import numpy
 import psutil
 
 from aydin.util.json import encode_indent
-from aydin.util.log.logging import lprint, lsection
+from aydin.util.log.log import lprint, lsection
 from aydin.util.offcore.offcore import offcore_array
 
 

@@ -4,7 +4,7 @@ from lightgbm.callback import EarlyStopException, _format_eval_result
 from lightgbm.compat import range_
 from operator import gt, lt
 
-from aydin.util.log.logging import lprint
+from aydin.util.log.log import lprint
 
 
 def early_stopping(gbm_regressor, stopping_rounds):

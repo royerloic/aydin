@@ -5,7 +5,7 @@ from typing import List
 
 import zarr
 
-from aydin.util.log.logging import lprint
+from aydin.util.log.log import lprint
 
 
 def is_zarr_storage(input_path):

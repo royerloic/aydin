@@ -22,7 +22,7 @@ from tifffile import tifffile, TiffFile, memmap
 import aydin
 from aydin.io.folders import get_temp_folder
 from aydin.io.utils import get_files_with_most_frequent_extension, is_zarr_storage
-from aydin.util.log.logging import lsection, lprint
+from aydin.util.log.log import lsection, lprint
 
 
 def is_batch(code, shape, axes):

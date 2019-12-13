@@ -7,7 +7,7 @@ import gdown
 
 from aydin.io import io
 from aydin.io.folders import get_cache_folder
-from aydin.util.log.logging import lprint
+from aydin.util.log.log import lprint
 
 datasets_folder = join(get_cache_folder(), 'data')
 
