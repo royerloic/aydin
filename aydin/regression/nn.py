@@ -11,7 +11,7 @@ from aydin.providers.plaidml.plaidml_provider import PlaidMLProvider
 
 # NOTE: This line should stay exactly here!
 # All keras calls mst be _AFTER_ the line below:
-from aydin.util.log.logging import lsection, lprint
+from aydin.util.log.log import lsection, lprint
 import click
 
 # Do not initialize anything if help command is passed

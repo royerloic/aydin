@@ -8,7 +8,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from aydin.util.log.logging import set_log_max_depth
+from aydin.util.log.log import set_log_max_depth
 from aydin.it.it_cnn import ImageTranslatorCNN
 import napari
 

@@ -9,7 +9,7 @@ from aydin.it.balancing.trainingdatabalancer import TrainingDataBalancer
 from aydin.it.it_base import ImageTranslatorBase
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.regressor_base import RegressorBase
-from aydin.util.log.logging import lprint, lsection
+from aydin.util.log.log import lprint, lsection
 
 
 class ImageTranslatorClassic(ImageTranslatorBase):

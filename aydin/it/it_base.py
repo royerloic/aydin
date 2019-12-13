@@ -9,7 +9,7 @@ from aydin.normaliser.identity import IdentityNormaliser
 from aydin.normaliser.minmax import MinMaxNormaliser
 from aydin.normaliser.normaliser_base import NormaliserBase
 from aydin.normaliser.percentile import PercentileNormaliser
-from aydin.util.log.logging import lprint, lsection
+from aydin.util.log.log import lprint, lsection
 from aydin.util.json import encode_indent
 from aydin.util.nd import nd_split_slices, remove_margin_slice
 from aydin.util.offcore.offcore import offcore_array

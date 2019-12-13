@@ -17,7 +17,6 @@ import plaidml.keras
 
 plaidml.keras.install_backend()
 
-
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 VERSION = '0.0.3'
 

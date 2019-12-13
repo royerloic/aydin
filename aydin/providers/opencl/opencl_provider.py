@@ -5,7 +5,7 @@ import numpy
 import pyopencl as cl
 from pyopencl._cl import get_platforms
 
-from aydin.util.log.logging import lsection, lprint
+from aydin.util.log.log import lsection, lprint
 
 
 def compiler_output(text):
