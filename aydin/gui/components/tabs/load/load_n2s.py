@@ -1,8 +1,10 @@
+from PyQt5.QtCore import Qt
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QVBoxLayout, QLabel, QGridLayout, QLineEdit
+from PyQt5.QtWidgets import QVBoxLayout, QLabel, QGridLayout, QLineEdit, QDialog
 
 from aydin.gui.components.filepath_picker import FilePathPicker
 from aydin.gui.components.tabs.base_tab import BaseTab
+from aydin.gui.components.util.format_warning import show_format_warning
 
 
 class LoadN2STab(BaseTab):
@@ -44,4 +46,9 @@ class LoadN2STab(BaseTab):
         self.base_layout.insertLayout(0, paths_layout)
 
     def on_input_ready(self):
-        self.wizard.next_tab()
+        extentions = [".jpg", ".jpeg", ".jpe", ".jfif", ".jif", ".jfi"]
+        if sum([ext in self.lbl_text.text() for ext in extentions]):
+            self.image_info_lbl.hide()
+            show_format_warning()
+        else:
+            self.wizard.next_tab()
