@@ -7,8 +7,9 @@ from aydin.regression.nn import NNRegressor
 
 
 class BaseService:
-    def __init__(self, monitor=None, scales=None, widths=None):
+    def __init__(self, backend_preference=None, monitor=None, scales=None, widths=None):
         super().__init__()
+        self.backend_preference = backend_preference
         self.monitor = monitor
         self.scales = scales if scales is not None else [1, 3, 5, 11, 21, 23, 47, 95]
         self.widths = widths if widths is not None else [3, 3, 3, 3, 3, 3, 3, 3]
@@ -50,16 +51,33 @@ class BaseService:
         return self.generator
 
     def get_regressor(self):
-        if self.has_less_than_one_million_voxels:
-            self.regressor = GBMRegressor(
-                learning_rate=0.01,
-                num_leaves=127,
-                max_bin=512,
-                n_estimators=2048,
-                patience=5,
-            )
+        print(self.backend_preference)
+        print(type(self.backend_preference))
+        print(self.backend_preference == "nn")
+        if self.backend_preference is not None:
+            if self.backend_preference == "lgbm":
+                self.regressor = GBMRegressor(
+                    learning_rate=0.01,
+                    num_leaves=127,
+                    max_bin=512,
+                    n_estimators=2048,
+                    patience=5,
+                )
+            elif self.backend_preference == "nn":
+                self.regressor = NNRegressor()
+            else:
+                raise Exception("Non-valid backend option")
         else:
-            self.regressor = NNRegressor()
+            if self.has_less_than_one_million_voxels:
+                self.regressor = GBMRegressor(
+                    learning_rate=0.01,
+                    num_leaves=127,
+                    max_bin=512,
+                    n_estimators=2048,
+                    patience=5,
+                )
+            else:
+                self.regressor = NNRegressor()
         return self.regressor
 
     def get_translator(self, feature_generator, regressor, normaliser_type, monitor):

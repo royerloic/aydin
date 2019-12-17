@@ -1,6 +1,8 @@
 def apply_slicing(data, slicing_string):
     """A util function to apply slicing without evaluating argument passed by user
     """
+    if slicing_string is "":
+        return data
 
     try:
         # Get slicing details for each dimension separately
