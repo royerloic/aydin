@@ -62,6 +62,7 @@ def update():
 @aydin.command()
 @click.argument('path_source')
 @click.option('-s', '--slicing', default='', type=str)
+@click.option('-b', '--backend', default=None)
 def noise2self(**kwargs):
     # Get abspath to image and read it
     path = os.path.abspath(kwargs['path_source'])
@@ -71,7 +72,7 @@ def noise2self(**kwargs):
 
     # Run N2S service and save the result
     pbar = ProgressBar(total=100)
-    n2s = N2SService()
+    n2s = N2SService(kwargs['backend'])
     denoised = n2s.run(noisy, pbar)
     path = path[:-4] + "_denoised" + path[-4:]
     with imwrite(path, shape=denoised.shape, dtype=denoised.dtype) as imarray:
@@ -84,6 +85,7 @@ def noise2self(**kwargs):
 @click.argument('train_truth')
 @click.argument('predict_target')
 @click.option('-s', '--slicing', default='', type=str)
+@click.option('-b', '--backend', default=None)
 def noise2truth(**kwargs):
     # Get abspath to images and read them
     path_source = os.path.abspath(kwargs['train_source'])
@@ -99,7 +101,7 @@ def noise2truth(**kwargs):
 
     # Run N2T service and save the result
     pbar = ProgressBar(total=100)
-    n2t = N2TService()
+    n2t = N2TService(kwargs['backend'])
     denoised = n2t.run(noisy, truth, target, pbar)
     path = path_target[:-4] + "_denoised" + path_target[-4:]
     with imwrite(path, shape=denoised.shape, dtype=denoised.dtype) as imarray:
