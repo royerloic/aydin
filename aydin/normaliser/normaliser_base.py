@@ -7,7 +7,7 @@ import numexpr
 import numpy
 
 from aydin.util.json import encode_indent
-from aydin.util.log.logging import lprint
+from aydin.util.log.log import lprint
 
 
 class NormaliserBase(ABC):

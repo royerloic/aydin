@@ -40,7 +40,6 @@ class StepProgressBar(QWidget):
 
     def emit(self, val):
         if val is not self.value:
-            print("emit called")
             if self.current_step_index < len(self.steps):
                 self.steps[self.current_step_index].setStyleSheet(
                     "background-color: green"

@@ -17,7 +17,7 @@ from aydin.features.tiled.tiled_features import TiledFeatureGenerator
 from aydin.io.datasets import newyork
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
-from aydin.util.log.logging import set_log_max_depth
+from aydin.util.log.log import set_log_max_depth
 
 
 def n(image):

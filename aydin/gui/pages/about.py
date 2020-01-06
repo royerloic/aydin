@@ -49,7 +49,7 @@ class AboutPage(QWidget):
         # TODO:  add description, add url to repo
 
     @staticmethod
-    def showAbout(self):
+    def showAbout():
         d = QDialog()
         d.setGeometry(150, 150, 350, 400)
         d.setFixedSize(350, 400)

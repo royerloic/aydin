@@ -17,7 +17,6 @@ import plaidml.keras
 
 plaidml.keras.install_backend()
 
-
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 VERSION = '0.0.3'
 
@@ -29,22 +28,22 @@ def aydin(ctx):
     sentry_sdk.init("https://d9d7db5f152546c490995a409023c60a@sentry.io/1498298")
     if ctx.invoked_subcommand is None:
         run(VERSION)
-        print("Run aydin with a command please...")
     else:
         pass
 
 
 @aydin.command()
 def update():
-    # Print out current version
-    print("this is a test version3 ", VERSION)
+    print("Current version: ", VERSION)
 
     # Check updates and download if there is
     latest_version, latest_id = get_latest_version_details()
 
     if latest_version > VERSION:
         print(
-            "There is a more recent version of Aydin, automatically updating and re-running now..."
+            "Latest version: ",
+            latest_version,
+            "\nThere is a more recent version of Aydin, automatically updating and re-running now...",
         )
         # Download new version
         path_to_new_version = download_specific_version(latest_version, latest_id)
@@ -63,6 +62,7 @@ def update():
 @aydin.command()
 @click.argument('path_source')
 @click.option('-s', '--slicing', default='', type=str)
+@click.option('-b', '--backend', default=None)
 def noise2self(**kwargs):
     # Get abspath to image and read it
     path = os.path.abspath(kwargs['path_source'])
@@ -72,7 +72,7 @@ def noise2self(**kwargs):
 
     # Run N2S service and save the result
     pbar = ProgressBar(total=100)
-    n2s = N2SService()
+    n2s = N2SService(kwargs['backend'])
     denoised = n2s.run(noisy, pbar)
     path = path[:-4] + "_denoised" + path[-4:]
     with imwrite(path, shape=denoised.shape, dtype=denoised.dtype) as imarray:
@@ -85,6 +85,7 @@ def noise2self(**kwargs):
 @click.argument('train_truth')
 @click.argument('predict_target')
 @click.option('-s', '--slicing', default='', type=str)
+@click.option('-b', '--backend', default=None)
 def noise2truth(**kwargs):
     # Get abspath to images and read them
     path_source = os.path.abspath(kwargs['train_source'])
@@ -100,7 +101,7 @@ def noise2truth(**kwargs):
 
     # Run N2T service and save the result
     pbar = ProgressBar(total=100)
-    n2t = N2TService()
+    n2t = N2TService(kwargs['backend'])
     denoised = n2t.run(noisy, truth, target, pbar)
     path = path_target[:-4] + "_denoised" + path_target[-4:]
     with imwrite(path, shape=denoised.shape, dtype=denoised.dtype) as imarray:

@@ -13,7 +13,7 @@ from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeature
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn import NNRegressor
-from aydin.util.log.logging import set_log_max_depth
+from aydin.util.log.log import set_log_max_depth
 
 
 def n(image):

@@ -12,7 +12,7 @@ from lightgbm import Booster
 
 from aydin.regression.gbm_utils.callbacks import early_stopping
 from aydin.regression.regressor_base import RegressorBase
-from aydin.util.log.logging import lsection, lprint
+from aydin.util.log.log import lsection, lprint
 
 
 class GBMRegressor(RegressorBase):

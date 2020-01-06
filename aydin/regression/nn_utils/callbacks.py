@@ -4,7 +4,7 @@ import numpy as np
 from keras import backend as K
 from keras.callbacks import Callback
 
-from aydin.util.log.logging import lprint
+from aydin.util.log.log import lprint
 
 
 class NNCallback(Callback):

@@ -19,7 +19,7 @@ from aydin.features.fast.integral import (
 )
 from aydin.features.base import FeatureGeneratorBase
 from aydin.providers.opencl.opencl_provider import OpenCLProvider
-from aydin.util.log.logging import lsection, lprint
+from aydin.util.log.log import lsection, lprint
 from aydin.util.nd import nd_range_radii, nd_split_slices, remove_margin_slice
 from aydin.util.offcore.offcore import offcore_array
 

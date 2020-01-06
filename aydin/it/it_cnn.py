@@ -13,7 +13,7 @@ provider = (
 )  # NOTE: This line should stay exactly here! All keras calls must be _AFTER_ the line below:
 from aydin.it.cnn.unet import unet_model
 from aydin.it.it_base import ImageTranslatorBase
-from aydin.util.log.logging import lsection, lprint
+from aydin.util.log.log import lsection, lprint
 from aydin.it.cnn.layers import Maskout, split, rot90
 from aydin.regression.nn_utils.callbacks import ModelCheckpoint  # , EarlyStopping
 from aydin.it.cnn.cnn_util.callbacks import EarlyStopping, ReduceLROnPlateau

@@ -6,8 +6,10 @@ class N2SService(BaseService):
     """Noise2Self Service.
     """
 
-    def __init__(self, scales=None, widths=None):
-        super(N2SService, self).__init__(scales=scales, widths=widths)
+    def __init__(self, backend_preference=None, scales=None, widths=None):
+        super(N2SService, self).__init__(
+            backend_preference=backend_preference, scales=scales, widths=widths
+        )
 
     def run(
         self,
