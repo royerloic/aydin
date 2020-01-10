@@ -6,15 +6,27 @@ class N2SService(BaseService):
     """Noise2Self Service.
     """
 
-    def __init__(self, backend_preference=None, scales=None, widths=None):
+    def __init__(
+        self,
+        scales=None,
+        widths=None,
+        backend_preference=None,
+        use_model_flag=None,
+        input_model_path=None,
+    ):
         super(N2SService, self).__init__(
-            backend_preference=backend_preference, scales=scales, widths=widths
+            scales=scales,
+            widths=widths,
+            backend_preference=backend_preference,
+            use_model_flag=use_model_flag,
+            input_model_path=input_model_path,
         )
 
     def run(
         self,
         noisy_image,
         progress_callback,
+        image_path=None,
         monitoring_callbacks=None,
         monitoring_images=None,
         generator=None,
@@ -38,6 +50,10 @@ class N2SService(BaseService):
         regressor = regressor if regressor is not None else self.get_regressor()
         progress_callback.emit(41)
 
+        # Handle image_path if it is not None
+        if image_path is not None:
+            self.update_paths(image_path)
+
         self.it = self.get_translator(
             feature_generator=generator,
             regressor=regressor,
@@ -48,9 +64,16 @@ class N2SService(BaseService):
             ),
         )
 
+        # Train a new model
         self.it.train(noisy_image, noisy_image)
+
+        # Save the trained model
+        self.save_model(image_path)
+
         progress_callback.emit(80)
 
+        # Predict the resulting image
         response = self.it.translate(noisy_image)
+
         progress_callback.emit(100)
         return response
