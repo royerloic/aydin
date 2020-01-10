@@ -1,4 +1,5 @@
 import time
+import pytest
 from os.path import join
 
 import numpy
@@ -27,7 +28,7 @@ def test_saveload_1():
     saveload('percentile', FastMultiscaleConvolutionalFeatures(), GBMRegressor())
 
 
-# @pytest.mark.heavy
+@pytest.mark.heavy
 def test_saveload_2():
     saveload(
         'minmax', FastMultiscaleConvolutionalFeatures(), NNRegressor(max_epochs=10)

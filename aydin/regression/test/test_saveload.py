@@ -1,4 +1,5 @@
 import time
+import pytest
 from os.path import join, exists
 
 import numpy
@@ -26,6 +27,7 @@ def test_gbm_saveload():
     saveload(GBMRegressor(n_estimators=128), min_ssim=0.78)
 
 
+@pytest.mark.heavy
 def test_nn_saveload():
     saveload(NNRegressor(max_epochs=5), min_ssim=0.78)
 

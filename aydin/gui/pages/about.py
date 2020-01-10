@@ -36,9 +36,7 @@ class AboutPage(QWidget):
         self.layout.addWidget(self.hline_break1)
 
         # Description
-        self.layout.addWidget(
-            QLabel("aydin - denoising but chill,<br> INSERT DESCRIPTION HERE")
-        )
+        self.layout.addWidget(QLabel("aydin - denoising but chill<br>"))
 
         self.repo_lbl = QLabel('<a href="http://czbiohub.org/">Source Code Repo</a>')
         self.repo_lbl.setOpenExternalLinks(True)
