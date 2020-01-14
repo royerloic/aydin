@@ -23,7 +23,7 @@ block_cipher = None
 
 
 a = Analysis(['../../aydin/cli/cli.py'],
-             # pathex=['/Users/ahmetcan.solak/Dev/AhmetCanSolak/aydin'],
+             pathex=['/Users/ahmetcan.solak/Dev/AhmetCanSolak/aydin/aydin/cli'],
              binaries=[],
              datas=[(os.path.join(os.path.dirname(dask.__file__)), 'dask'),
                     (os.path.join(os.path.dirname(distributed.__file__)), 'distributed'),
@@ -69,6 +69,8 @@ reg = re.compile(".*(PyQt4|mpl-data|tcl|zmq|QtWebKit|QtQuick|wxPython|matplotlib
 
 a.binaries = [s for s in a.binaries if reg.match(s[1]) is None]
 
+a.datas += [("biohub_logo.png", "/Users/ahmetcan.solak/Dev/AhmetCanSolak/aydin/aydin/gui/resources/biohub_logo.png", 'DATA')]
+a.datas += [("draganddroplogo.png", "/Users/ahmetcan.solak/Dev/AhmetCanSolak/aydin/aydin/gui/resources/draganddroplogo.png", 'DATA')]
 
 pyz = PYZ(a.pure)
 exe = EXE(pyz,

@@ -1,8 +1,8 @@
-import os
-
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QDialog, QFrame
+
+from aydin.util.resource import resource_path
 
 
 class AboutPage(QWidget):
@@ -12,7 +12,7 @@ class AboutPage(QWidget):
         self.layout = QVBoxLayout()
 
         self.lbl = QLabel()
-        pixmap = QPixmap(os.path.abspath("aydin/gui/resources/biohub_logo.png"))
+        pixmap = QPixmap(resource_path("aydin/gui/resources/biohub_logo.png"))
         pixmap = pixmap.scaled(313, 1000, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.lbl.setPixmap(pixmap)
         self.layout.addWidget(self.lbl)
@@ -44,7 +44,7 @@ class AboutPage(QWidget):
 
         self.setLayout(self.layout)
 
-        # TODO:  add description, add url to repo
+        # TODO: add description, add url to repo
 
     @staticmethod
     def showAbout():
