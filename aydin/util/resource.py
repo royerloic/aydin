@@ -1,3 +1,4 @@
+import sys
 from urllib.request import urlretrieve
 from pathlib import Path
 import os
@@ -8,6 +9,17 @@ from skimage.exposure import rescale_intensity
 import numpy as np
 
 from aydin.io import imread
+
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+
+        return os.path.join(base_path, os.path.basename(relative_path))
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 
 def download_and_extract_zipresource(url, targetdir='.'):
