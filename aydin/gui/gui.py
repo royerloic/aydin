@@ -4,9 +4,9 @@ import platform
 import sys
 
 import click
-from PyQt5.QtCore import Qt, QThreadPool
+from PyQt5.QtCore import QThreadPool
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QMainWindow, QAction
+from PyQt5.QtWidgets import QMainWindow, QAction, QApplication
 import qdarkstyle
 
 from aydin.gui.pages.about import AboutPage
@@ -56,6 +56,8 @@ class App(QMainWindow):
         fileMenu.addAction(exitButton)
 
         # Help Menu
+        versionButton = QAction("ver" + self.version, self)
+        helpMenu.addAction(versionButton)
         aboutButton = QAction('About', self)
         aboutButton.setStatusTip('About aydin and its authors')
         aboutButton.triggered.connect(AboutPage.showAbout)
