@@ -89,7 +89,8 @@ class OpenCLProvider:
                 a_np = numpy.random.rand(50000).astype(numpy.float32)
                 b_np = numpy.random.rand(50000).astype(numpy.float32)
 
-                ctx = cl.create_some_context()
+                # ctx = cl.create_some_context()
+                ctx = cl.Context([device])
                 queue = cl.CommandQueue(ctx)
 
                 mf = cl.mem_flags
