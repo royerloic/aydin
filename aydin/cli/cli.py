@@ -89,34 +89,34 @@ def noise2self(**kwargs):
     pbar.close()
 
 
-@aydin.command()
-@click.argument('train_source')
-@click.argument('train_truth')
-@click.argument('predict_target')
-@click.option('-s', '--slicing', default='', type=str)
-@click.option('-b', '--backend', default=None)
-@click.option('--save-model/--use-model', default=True)
-def noise2truth(**kwargs):
-    # Get abspath to images and read them
-    path_source = os.path.abspath(kwargs['train_source'])
-    path_truth = os.path.abspath(kwargs['train_truth'])
-    path_target = os.path.abspath(kwargs['predict_target'])
-
-    noisy = read_image_from_path(path_source)
-    noisy = apply_slicing(noisy, kwargs['slicing'])
-    truth = read_image_from_path(path_truth)
-    truth = apply_slicing(truth, kwargs['slicing'])
-    target = read_image_from_path(path_target)
-    target = apply_slicing(target, kwargs['slicing'])
-
-    # Run N2T service and save the result
-    pbar = ProgressBar(total=100)
-    n2t = N2TService(kwargs['backend'])
-    denoised = n2t.run(noisy, truth, target, pbar)
-    path = path_target[:-4] + "_denoised" + path_target[-4:]
-    with imwrite(path, shape=denoised.shape, dtype=denoised.dtype) as imarray:
-        imarray[...] = denoised
-    pbar.close()
+# @aydin.command()
+# @click.argument('train_source')
+# @click.argument('train_truth')
+# @click.argument('predict_target')
+# @click.option('-s', '--slicing', default='', type=str)
+# @click.option('-b', '--backend', default=None)
+# @click.option('--save-model/--use-model', default=True)
+# def noise2truth(**kwargs):
+#     # Get abspath to images and read them
+#     path_source = os.path.abspath(kwargs['train_source'])
+#     path_truth = os.path.abspath(kwargs['train_truth'])
+#     path_target = os.path.abspath(kwargs['predict_target'])
+#
+#     noisy = read_image_from_path(path_source)
+#     noisy = apply_slicing(noisy, kwargs['slicing'])
+#     truth = read_image_from_path(path_truth)
+#     truth = apply_slicing(truth, kwargs['slicing'])
+#     target = read_image_from_path(path_target)
+#     target = apply_slicing(target, kwargs['slicing'])
+#
+#     # Run N2T service and save the result
+#     pbar = ProgressBar(total=100)
+#     n2t = N2TService(kwargs['backend'])
+#     denoised = n2t.run(noisy, truth, target, pbar)
+#     path = path_target[:-4] + "_denoised" + path_target[-4:]
+#     with imwrite(path, shape=denoised.shape, dtype=denoised.dtype) as imarray:
+#         imarray[...] = denoised
+#     pbar.close()
 
 
 if __name__ == '__main__':

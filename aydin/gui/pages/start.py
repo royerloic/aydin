@@ -43,11 +43,11 @@ class StartPage(QWidget):
         self.n2s_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.buttons_layout.addWidget(self.n2s_button)
 
-        self.n2t_button = QPushButton("Translate \n(Noise2Truth)")
-        self.n2t_button.setFont(QFont("Arial", 26, QFont.Bold))
-        self.n2t_button.pressed.connect(self.switch_to_n2t)
-        self.n2t_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        self.buttons_layout.addWidget(self.n2t_button)
+        # self.n2t_button = QPushButton("Translate \n(Noise2Truth)")
+        # self.n2t_button.setFont(QFont("Arial", 26, QFont.Bold))
+        # self.n2t_button.pressed.connect(self.switch_to_n2t)
+        # self.n2t_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        # self.buttons_layout.addWidget(self.n2t_button)
 
         self.layout.addLayout(self.buttons_layout)
 
