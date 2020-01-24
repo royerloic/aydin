@@ -7,15 +7,15 @@ from keras.callbacks import Callback
 from aydin.util.log.log import lprint
 
 
-class NNCallback(Callback):
+class CNNCallback(Callback):
     """
         Keras Callback to linkup to the it callback machinery
     """
 
-    def __init__(self, regressor_callback):
+    def __init__(self, monitor_callback):
         super().__init__()
 
-        self.regressor_callback = regressor_callback
+        self.monitor_callback = monitor_callback
         self.iteration = 0
 
     def on_train_begin(self, logs=None):
@@ -31,16 +31,21 @@ class NNCallback(Callback):
         self.notify(logs)
 
     def notify(self, logs):
-        if self.regressor_callback:
+        if self.monitor_callback:
             iteration = self.iteration
             val_loss = self.get_monitor_value(logs)
-            model = self.model
-            self.regressor_callback(iteration, val_loss, model)
+            self.monitor_callback(iteration, val_loss)
             self.iteration += 1
         pass
 
     def get_monitor_value(self, logs):
-        monitor_value = logs.get('val_loss')
+        if logs:
+            if logs.get('val_loss'):
+                monitor_value = logs.get('val_loss')
+            else:
+                monitor_value = logs.get('loss')
+        else:
+            monitor_value = self.params['metrics']
         return monitor_value
 
 
