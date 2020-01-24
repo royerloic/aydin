@@ -8,7 +8,6 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from aydin.util.log.log import set_log_max_depth
 from aydin.it.it_cnn import ImageTranslatorCNN
 import napari
 
@@ -23,8 +22,6 @@ def demo():
     """
         Demo for how to stop training from an other thread.
     """
-
-    set_log_max_depth(5)
 
     image = camera().astype(np.float32)
     image = n(image)
@@ -50,7 +47,6 @@ def demo():
     it.train(
         noisy,
         noisy,
-        supervised=False,
         shiftconv=True,
         # batch_dims=batch_dims,
     )

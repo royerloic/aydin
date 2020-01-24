@@ -49,16 +49,37 @@ def demo():
     print(f"time elapsed: {elapsedtime} s")
 
     start = time.time()
-    denoised = it.translate(noisy)
+    denoised_inf = it.translate(noisy)
     stop = time.time()
     print(f"inference: elapsed time:  {stop-start} ")
 
     image = numpy.clip(image, 0, 1)
     noisy = numpy.clip(noisy, 0, 1)
-    denoised = numpy.clip(denoised, 0, 1)
+    denoised = numpy.clip(denoised_inf, 0, 1)
+    psnr_noisy = psnr(image, noisy)
+    ssim_noisy = ssim(noisy, image)
+    psnr_denoised = psnr(image, denoised_inf)
+    ssim_denoised = ssim(denoised_inf, image)
+    print("noisy       :", psnr_noisy, ssim_noisy)
+    print("denoised_inf:", psnr_denoised, ssim_denoised)
 
-    print("noisy", psnr(noisy, image), ssim(noisy, image))
-    print("denoised", psnr(denoised, image), ssim(denoised, image))
+    import matplotlib.pyplot as plt
+
+    plt.figure(figsize=(2.7 * 5, 5))
+    plt.subplot(1, 3, 1)
+    plt.imshow(n(noisy), cmap='gray')
+    plt.axis('off')
+    plt.title(f'Noisy \nPSNR: {psnr_noisy:.3f}, SSIM: {ssim_noisy:.3f}')
+    plt.subplot(1, 3, 2)
+    plt.imshow(n(denoised_inf), cmap='gray')
+    plt.axis('off')
+    plt.title(f'Denoised \nPSNR: {psnr_denoised:.3f}, SSIM: {ssim_denoised:.3f}')
+    plt.subplot(1, 3, 3)
+    plt.imshow(n(image), cmap='gray')
+    plt.axis('off')
+    plt.title('Original')
+    plt.subplots_adjust(left=0.01, right=0.99, top=0.95, bottom=0.01, hspace=0.1)
+    plt.savefig(f'n2s_nn_2D.png')
 
     # with napari.gui_qt():
     #     viewer = napari.Viewer()
