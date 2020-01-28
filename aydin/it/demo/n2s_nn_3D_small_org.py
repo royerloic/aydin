@@ -1,6 +1,6 @@
 import time
 
-import napari
+
 import numpy
 from skimage.exposure import rescale_intensity
 
@@ -9,6 +9,7 @@ from aydin.features.tiled.tiled_features import TiledFeatureGenerator
 from aydin.io import io
 from aydin.io.datasets import examples_single
 from aydin.it.it_classic import ImageTranslatorClassic
+from aydin.regression.clnn import CLNNRegressor
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn import NNRegressor
 
@@ -27,9 +28,9 @@ def demo():
     image = rescale_intensity(image, in_range='image', out_range=(0, 1))
 
     generator = TiledFeatureGenerator(
-        FastMultiscaleConvolutionalFeatures(max_level=4, dtype=numpy.uint8)
+        FastMultiscaleConvolutionalFeatures(max_level=6, dtype=numpy.uint8)
     )
-    regressor = NNRegressor()
+    regressor = NNRegressor(depth=6, max_epochs=40, patience=10)
     it = ImageTranslatorClassic(
         generator, regressor, normaliser_type='identity', balance_training_data=True
     )
@@ -46,6 +47,8 @@ def demo():
 
     print(image.shape)
     print(denoised.shape)
+
+    import napari
 
     with napari.gui_qt():
         viewer = napari.Viewer()

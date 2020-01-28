@@ -29,7 +29,7 @@ class RegressorBase(ABC):
 
         frozen = encode_indent(self)
 
-        lprint("Saving regressor to: {path}")
+        lprint(f"Saving regressor to: {path}")
         with open(join(path, "regressor.json"), "w") as json_file:
             json_file.write(frozen)
 
@@ -42,7 +42,7 @@ class RegressorBase(ABC):
         :param model_path: path to load from.
         """
 
-        lprint("Loading regressor from: {path}")
+        lprint(f"Loading regressor from: {path}")
         with open(join(path, "regressor.json"), "r") as json_file:
             frozen = json_file.read()
 

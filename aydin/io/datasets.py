@@ -4,6 +4,10 @@ from enum import Enum
 from os.path import join, exists
 
 import gdown
+import numpy
+from skimage.exposure import rescale_intensity
+from skimage.util import random_noise
+
 
 from aydin.io import io
 from aydin.io.folders import get_cache_folder
@@ -16,9 +20,38 @@ try:
 except:
     pass
 
+
+def normalise(image):
+    return rescale_intensity(
+        image.astype(numpy.float32), in_range='image', out_range=(0, 1)
+    )
+
+
+def add_noise(image, intensity=5, type='gaussian', variance=0.01, dtype=numpy.float32):
+    numpy.random.seed(0)
+    noisy = numpy.random.poisson(image * intensity) / intensity
+    noisy = random_noise(noisy, mode=type, var=variance, seed=0)
+    noisy = noisy.astype(dtype)
+    return noisy
+
+
 # Convenience shortcuts:
+
+
+def lizard():
+    return examples_single.generic_lizard.get_array()
+
+
+def camera():
+    return examples_single.generic_newyork.get_array()
+
+
 def newyork():
     return examples_single.generic_newyork.get_array()
+
+
+def pollen():
+    return examples_single.generic_pollen.get_array()
 
 
 class examples_single(Enum):
@@ -35,6 +68,7 @@ class examples_single(Enum):
     generic_mandrill = ('1B33ELiFuCV0OJ6IHh7Ix9lvImwI_QkR-', 'mandrill.tif')
     generic_newyork = ('15Nuu_NU3iNuoPRmpFbrGIY0VT0iCmuKu', 'newyork.png')
     generic_lizard = ('1GUc6jy5QH5DaiUskCrPrf64YBOLzT6j1', 'lizard.png')
+    generic_pollen = ('1S0o2NWtD1shB5DfGRIqOFxTLOi8cHQD-', 'pollen.png')
 
     # XYC (RGB)
     celldiv = ('120w8j2XgJgwD0w0nqX-Gd0C4Qi_gJ8oO', 'Example-noisy1.png')

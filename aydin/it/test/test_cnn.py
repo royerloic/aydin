@@ -7,7 +7,7 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from aydin.it.it_cnn import ImageTranslatorCNN
+# from aydin.it.it_cnn import ImageTranslatorCNN
 
 
 @pytest.mark.heavy

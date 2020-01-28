@@ -1,6 +1,7 @@
 import time
 
 # import napari
+import napari
 import numpy
 import numpy as np
 from skimage.data import camera
@@ -10,6 +11,7 @@ from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
+from aydin.io.datasets import newyork, pollen, normalise, add_noise, lizard
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.nn import NNRegressor
 
@@ -18,32 +20,21 @@ from aydin.regression.nn import NNRegressor
 """
 
 
-def n(image):
-    return rescale_intensity(
-        image.astype(numpy.float32), in_range='image', out_range=(0, 1)
-    )
+def demo(image):
 
-
-def demo():
-
-    image = camera().astype(np.float32)
-    image = n(image)
-    intensity = 5
-    np.random.seed(0)
-    noisy = np.random.poisson(image * intensity) / intensity
-    noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
-    noisy = noisy.astype(np.float32)
+    image = normalise(image.astype(np.float32))
+    noisy = add_noise(image)
 
     start_time = time.time()
 
     generator = FastMultiscaleConvolutionalFeatures()
-    regressor = NNRegressor()
+    regressor = NNRegressor(max_epochs=50)
 
     it = ImageTranslatorClassic(
         feature_generator=generator, regressor=regressor, normaliser_type='identity'
     )
 
-    it.train(noisy, noisy, max_epochs=30, patience=10)
+    it.train(noisy, noisy)
 
     elapsedtime = time.time() - start_time
     print(f"time elapsed: {elapsedtime} s")
@@ -67,25 +58,32 @@ def demo():
 
     plt.figure(figsize=(2.7 * 5, 5))
     plt.subplot(1, 3, 1)
-    plt.imshow(n(noisy), cmap='gray')
+    plt.imshow(normalise(noisy), cmap='gray')
     plt.axis('off')
     plt.title(f'Noisy \nPSNR: {psnr_noisy:.3f}, SSIM: {ssim_noisy:.3f}')
     plt.subplot(1, 3, 2)
-    plt.imshow(n(denoised_inf), cmap='gray')
+    plt.imshow(normalise(denoised_inf), cmap='gray')
     plt.axis('off')
     plt.title(f'Denoised \nPSNR: {psnr_denoised:.3f}, SSIM: {ssim_denoised:.3f}')
     plt.subplot(1, 3, 3)
-    plt.imshow(n(image), cmap='gray')
+    plt.imshow(normalise(image), cmap='gray')
     plt.axis('off')
     plt.title('Original')
     plt.subplots_adjust(left=0.01, right=0.99, top=0.95, bottom=0.01, hspace=0.1)
     plt.savefig(f'n2s_nn_2D.png')
 
-    # with napari.gui_qt():
-    #     viewer = napari.Viewer()
-    #     viewer.add_image(n(image), name='image')
-    #     viewer.add_image(n(noisy), name='noisy')
-    #     viewer.add_image(n(denoised), name='denoised')
+    with napari.gui_qt():
+        viewer = napari.Viewer()
+        viewer.add_image(normalise(image), name='image')
+        viewer.add_image(normalise(noisy), name='noisy')
+        viewer.add_image(normalise(denoised), name='denoised')
 
 
-demo()
+camera_image = camera()
+demo(camera_image)
+lizard_image = lizard()
+demo(lizard_image)
+pollen_image = pollen()
+demo(pollen_image)
+newyork_image = newyork()
+demo(newyork_image)

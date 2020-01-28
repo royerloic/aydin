@@ -1,12 +1,12 @@
 import os
 
 #### THIS MUST BE CALLED BEFORE PLAIDML OR KERAS ARE IMPORTED!!!
+os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
 import platform
 
 from aydin.providers.opencl.opencl_provider import OpenCLProvider
 from aydin.util.log.log import lprint, lsection
 
-os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
 
 import plaidml
 from fuzzywuzzy import process

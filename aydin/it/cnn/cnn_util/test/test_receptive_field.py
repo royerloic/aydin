@@ -1,10 +1,11 @@
 import numpy
 from aydin.it.cnn.cnn_util.receptive_field import receptive_field_model, bbox_idx
-from aydin.providers.plaidml.plaidml_provider import PlaidMLProvider
 
-provider = (
-    PlaidMLProvider()
-)  # NOTE: This line should stay exactly here! All keras calls must be _AFTER_ the line below:
+# from aydin.providers.plaidml.plaidml_provider import PlaidMLProvider
+#
+# provider = (
+#     PlaidMLProvider()
+# )  # NOTE: This line should stay exactly here! All keras calls must be _AFTER_ the line below:
 from aydin.it.cnn.unet import unet_model
 
 

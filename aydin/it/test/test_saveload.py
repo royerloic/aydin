@@ -15,7 +15,8 @@ from aydin.it.it_base import ImageTranslatorBase
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn import NNRegressor
-from aydin.it.it_cnn import ImageTranslatorCNN
+
+# from aydin.it.it_cnn import ImageTranslatorCNN
 
 
 def n(image):
