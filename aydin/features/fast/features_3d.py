@@ -10,9 +10,12 @@ def collect_feature_3d(
     dx,
     dy,
     dz,
-    lx,
-    ly,
-    lz,
+    nx,
+    ny,
+    nz,
+    px,
+    py,
+    pz,
     exclude_center=True,
     mean: float = 0,
     optimisation=True,
@@ -29,11 +32,7 @@ def collect_feature_3d(
     assert image_y == feature_y
     assert image_z == feature_z
 
-    rx = lx // 2
-    ry = ly // 2
-    rz = lz // 2
-
-    if optimisation and lx == 1 and ly == 1 and lz == 1:
+    if optimisation and nx + px == 1 and ny + py == 1 and nz + pz == 1:
         program_code = f"""
         
         __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature, float mean)
@@ -75,14 +74,14 @@ def collect_feature_3d(
             const int y = get_global_id(1);
             const int z = get_global_id(0);
             
-            const int xl  = x+{dx}-{rx}-1;
-            const int xh  = x+{dx}+{rx}  ; 
+            const int xl  = x+{dx}-{nx}-1;
+            const int xh  = x+{dx}+{px}  ; 
             
-            const int yl  = y+{dy}-{ry}-1; 
-            const int yh  = y+{dy}+{ry}  ;
+            const int yl  = y+{dy}-{ny}-1; 
+            const int yh  = y+{dy}+{py}  ;
             
-            const int zl  = z+{dz}-{rz}-1; 
-            const int zh  = z+{dz}+{rz}  ;
+            const int zl  = z+{dz}-{nz}-1; 
+            const int zh  = z+{dz}+{pz}  ;
             
             const float value0 = integral_lookup(integral,xl, yl, zl);
             const float value1 = integral_lookup(integral,xh, yl, zl);

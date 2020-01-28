@@ -10,36 +10,25 @@ from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
+from aydin.io.datasets import pollen, newyork, normalise, add_noise
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.linear import LinearRegressor
 
 
-def n(image):
-    return rescale_intensity(
-        image.astype(numpy.float32), in_range='image', out_range=(0, 1)
-    )
-
-
-def demo():
+def demo(image):
     """
         Demo for self-supervised denoising using camera image with synthetic noise
     """
 
-    image = camera().astype(np.float32)
-    image = n(image)
-
-    intensity = 5
-    np.random.seed(0)
-    noisy = np.random.poisson(image * intensity) / intensity
-    noisy = random_noise(noisy, mode='gaussian', var=0.01, seed=0)
-    noisy = noisy.astype(np.float32)
+    image = normalise(image.astype(np.float32))
+    noisy = add_noise(image)
 
     with napari.gui_qt():
         viewer = napari.Viewer()
-        viewer.add_image(n(image), name='image')
-        viewer.add_image(n(noisy), name='noisy')
+        viewer.add_image(normalise(image), name='image')
+        viewer.add_image(normalise(noisy), name='noisy')
 
-        generator = FastMultiscaleConvolutionalFeatures(max_level=10)
+        generator = FastMultiscaleConvolutionalFeatures()
 
         regressor = LinearRegressor(mode='huber')
 
@@ -68,7 +57,14 @@ def demo():
         print("noisy", psnr(image, noisy), ssim(noisy, image))
         print("denoised", psnr(image, denoised), ssim(denoised, image))
 
-        viewer.add_image(n(denoised), name='denoised')
+        viewer.add_image(normalise(denoised), name='denoised')
 
 
-demo()
+camera_image = camera()
+demo(camera_image)
+lizard_image = camera()
+demo(lizard_image)
+pollen_image = pollen()
+demo(pollen_image)
+newyork_image = newyork()
+demo(newyork_image)

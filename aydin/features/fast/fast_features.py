@@ -37,10 +37,14 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
     def __init__(
         self,
-        kernel_widths=[3] * 10,
-        kernel_scales=[2 ** i - 1 for i in range(1, 11)],
-        kernel_shapes=None,
-        max_level=10,
+        #  0,  1,  2,  3,  4,  5,  6,   7,   8,    9,   10,   11
+        #  3,  1,  3,  3,  3,  3,  3,   3,   3,    3,    3,    3
+        #  1,  2,  3,  7, 15, 31, 63, 127, 255,  511,  1023, 2047
+        # li, li, l2, l2, l3, l1, l1,  l1,  l1,   l1,   l1,   l1
+        kernel_widths=[3] + [1] + [3] * 10,
+        kernel_scales=[1] + [2] + [2 ** i - 1 for i in range(2, 12)],
+        kernel_shapes=['li'] * 2 + ['l2'] * 3 + ['l1+nc'] * 5 + ['l1+oc'] * 2,
+        max_level=12,
         exclude_scale_one=True,
         include_median_features=False,
         dtype=numpy.float32,
@@ -66,11 +70,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
         self.kernel_widths = kernel_widths
         self.kernel_scales = kernel_scales
-        self.kernel_shapes = (
-            ['li'] + ['l2'] * (len(kernel_widths) - 1)
-            if kernel_shapes is None
-            else kernel_shapes
-        )
+        self.kernel_shapes = kernel_shapes
         self.max_level = max_level
         self.exclude_scale_one = exclude_scale_one
         self.include_median_features = include_median_features
@@ -436,10 +436,15 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
                     # We iterate through all features:
                     feature_index = 0
-                    for effective_shift, effective_scale in feature_description_list:
+                    for (
+                        effective_shift,
+                        negative_extent,
+                        positive_extent,
+                        shape,
+                    ) in feature_description_list:
 
                         lprint(
-                            f"standard (shift={effective_shift}, scale={effective_scale} "
+                            f"standard (shape={shape}, shift={effective_shift}, negext={negative_extent}, posext={positive_extent} "
                         )
 
                         # We assemble the call:
@@ -449,7 +454,8 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                             image_integral_gpu,
                             feature_gpu,
                             *effective_shift,
-                            *effective_scale,
+                            *negative_extent,
+                            *positive_extent,
                             exclude_center_value,
                             mean,
                         )
@@ -505,97 +511,8 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
                 # Median features:
                 if self.include_median_features:
-                    with lsection(f"Computing median features:"):
-                        index = -1
-
-                        mask = numpy.ones(shape=(3,) * ndim, dtype=numpy.int8)
-
-                        if exclude_center_value:
-                            mask[(1,) * ndim] = 0
-                        features[index] = scipy.ndimage.median_filter(
-                            input=image, footprint=mask
-                        )
-                        # features[index] /= 255
-                        index -= 1
-
-                        if ndim == 1:
-
-                            for x in (0, 2):
-                                lprint(f"median (x={x})")
-                                mask = numpy.ones(shape=(3,) * ndim, dtype=numpy.int8)
-                                mask[x] = 0
-                                if exclude_center_value:
-                                    mask[1] = 0
-                                features[index] = scipy.ndimage.median_filter(
-                                    input=image, footprint=mask
-                                )
-                                # features[index] /= 255
-                                index -= 1
-
-                        elif ndim == 2:
-
-                            for x in (0, 2):
-                                for y in (0, 2):
-                                    lprint(f"median (x={x}, y={y})")
-                                    mask = numpy.ones(
-                                        shape=(3,) * ndim, dtype=numpy.int8
-                                    )
-                                    mask[x, :] = 0
-                                    mask[:, y] = 0
-                                    if exclude_center_value:
-                                        mask[1, 1] = 0
-                                    features[index] = scipy.ndimage.median_filter(
-                                        input=image, footprint=mask
-                                    )
-                                    # features[index] /= 255
-                                    index -= 1
-
-                        elif ndim == 3:
-
-                            for x in (0, 2):
-                                for y in (0, 2):
-                                    for z in (0, 2):
-                                        lprint(f"median (x={x}, y={y}, z={z})")
-                                        mask = numpy.ones(
-                                            shape=(3,) * ndim, dtype=numpy.int8
-                                        )
-                                        mask[x, :, :] = 0
-                                        mask[:, y, :] = 0
-                                        mask[:, :, z] = 0
-                                        if exclude_center_value:
-                                            mask[1, 1] = 0
-                                        features[index] = scipy.ndimage.median_filter(
-                                            input=image, footprint=mask
-                                        )
-                                        # features[index] /= 255
-                                        index -= 1
-
-                        elif ndim == 4:
-
-                            for x in (0, 2):
-                                for y in (0, 2):
-                                    for z in (0, 2):
-                                        for w in (0, 2):
-                                            lprint(
-                                                f"median (x={x}, y={y}, z={z}, w={w})"
-                                            )
-                                            mask = numpy.ones(
-                                                shape=(3,) * ndim, dtype=numpy.int8
-                                            )
-                                            mask[x, :, :, :] = 0
-                                            mask[:, y, :, :] = 0
-                                            mask[:, :, z, :] = 0
-                                            mask[:, :, :, w] = 0
-                                            if exclude_center_value:
-                                                mask[1, 1] = 0
-                                            features[
-                                                index
-                                            ] = scipy.ndimage.median_filter(
-                                                input=image, footprint=mask
-                                            )
-                                            # features[index] /= 255
-                                            index -= 1
-
+                    with lsection(f"Computing scale 2 features:"):
+                        pass
                         # with napari.gui_qt():
                         #     viewer = Viewer()
                         #     viewer.add_image(features, name='features')
@@ -623,11 +540,17 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             # Computing the radius:
             radius = width // 2
 
-            # We computw the radii along the different dimensions taking into account the aspect ratio:
+            # We compute the radii along the different dimensions taking into account the aspect ratio:
             radii = list((max(1, radius),) * ndim)
 
             # We generate all feature shift vectors:
             features_shifts = list(nd_range_radii(radii))
+
+            if scale == 2 and width == 1:
+                # This is the special case of scale-two-features:
+                features_shifts = list(
+                    [shift for shift in features_shifts if not 1 in shift]
+                )
 
             # print(f'Feature shifts: {features_shifts}')
 
@@ -647,20 +570,36 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                 if self.exclude_scale_one and scale == 1:
                     continue
 
-                # Different 'shapes' of feature  distributions:
-                if shape == 'l1' and sum([abs(i) for i in shift]) > radius:
-                    continue
-                elif shape == 'l2' and sum([i * i for i in shift]) > radius * radius:
-                    continue
-                elif shape == 'li':
-                    pass
+                if scale == 2 and width == 1:
+                    effective_shift = shift
+                    negative_extent = (0,) * ndim
+                    positive_extent = (2,) * ndim
+                else:
+                    # Different 'shapes' of feature  distributions:
+                    if 'l1' in shape and sum([abs(i) for i in shift]) > radius:
+                        continue
+                    elif (
+                        'l2' in shape and sum([i * i for i in shift]) > radius * radius
+                    ):
+                        continue
+                    elif 'li' in shape:
+                        pass
 
-                # effective shift and scale after taking into account the aspect ratio:
-                effective_shift = tuple(i * scale for i in shift)
-                effective_scale = (max(1, scale),) * ndim
+                    # keep only center (oc) or remove all that are not center (nc)
+                    if 'oc' in shape and sum([abs(i) for i in shift]) > 0:
+                        continue
+                    elif 'nc' in shape and sum([abs(i) for i in shift]) == 0:
+                        continue
+
+                    # effective shift and scale after taking into account the aspect ratio:
+                    effective_shift = tuple(i * scale for i in shift)
+                    negative_extent = (max(1, scale // 2),) * ndim
+                    positive_extent = (max(1, scale // 2),) * ndim
 
                 #  We append the feature description:
-                feature_description_list.append((effective_shift, effective_scale))
+                feature_description_list.append(
+                    (effective_shift, negative_extent, positive_extent, shape)
+                )
         # Some features might be identical due to the aspect ratio, we eliminate duplicates:
         no_duplicate_feature_description_list = remove_duplicates(
             feature_description_list
