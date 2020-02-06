@@ -5,13 +5,11 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
-from aydin.providers.plaidml.plaidml_provider import PlaidMLProvider
 from aydin.services.n2s import N2SService
 from aydin.util.progress_bar import ProgressBar
 
 
 def test_run():
-    provider = PlaidMLProvider()  # Needed to run in pytest
 
     # Prepare the noisy classical camera image
     image = camera().astype(np.float32)

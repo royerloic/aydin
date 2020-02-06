@@ -522,7 +522,11 @@ class CLTensor(Tensor):
         if isinstance(other, CLTensor):
             self._clarray **= other._clarray
         else:
-            self._clarray **= other
+            # Do power operation in numpy types due to observed issues with pyopencl
+            result = self._clarray.get() ** other
+            self._clarray: Array = pyopencl.array.to_device(
+                CLTensor.opencl_provider.queue, result
+            )
         return self
 
     def __eq__(self, other) -> bool:

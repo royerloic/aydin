@@ -40,7 +40,7 @@ def basic_training_with(
     # Addresses bug:
     CLTensor.opencl_provider = None
 
-    Log.override_test_exclusion = True
+    Log.override_test_exclusion = False
     Log.set_log_max_depth(4)
 
     width = 16
