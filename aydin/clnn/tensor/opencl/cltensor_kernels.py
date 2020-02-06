@@ -52,7 +52,7 @@ fast_mod = """
     // Alternative to integer mod from here: https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
     inline uint reduce(uint x, uint N) 
     {
-        return uint(((ulong) x * (ulong) N) >> 32) ;
+        return (uint)(((ulong) x * (ulong) N) >> 32) ;
     }
 """
 

@@ -27,12 +27,11 @@ PyQt5==5.13.2
 PyQt5-sip==4.19.19
 scikit-image==0.15.0
 scikit-learn==0.21.2
-scipy==1.2.1
+scipy==1.4.1
 sentry-sdk==0.10.1
+tensorflow==2.0
 tifffile==2019.7.2
 QDarkStyle==2.7
 vispy==0.6.0
-Keras==2.2.4
-plaidml==0.6.4
-plaidml-keras==0.6.4
+Keras==2.3.0
 zarr==2.2.0

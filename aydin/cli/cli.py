@@ -13,9 +13,6 @@ from aydin.util.slicing_helper import apply_slicing
 from aydin.util.resource import read_image_from_path
 from aydin.util.update import get_latest_version_details, download_specific_version
 
-import plaidml.keras
-
-plaidml.keras.install_backend()
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 VERSION = '0.0.3'

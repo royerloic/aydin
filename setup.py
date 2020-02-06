@@ -24,8 +24,9 @@ REQUIRES = []
 for l in default_requirements:
     os.system("pip install " + str(l))
 
-# Handle pyopencl
+# Handle pyopencl and tensorflow
 os.system("pip install -r " + os.path.join('requirements', 'pyopencl.txt'))
+os.system("pip install -r " + os.path.join('requirements', 'tensorflow.txt'))
 
 setup(
     name='aydin',

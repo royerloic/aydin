@@ -1,9 +1,9 @@
 import collections
 import copy
-from logging import warning
 from typing import Tuple, List, Union
 
 from aydin.clnn.tensor.tensor import Tensor
+from aydin.util.log.log import lprint
 
 SavedState = collections.namedtuple('SavedState', 'state children')
 TensorTree = Union[Tensor, Tuple[Union[Tensor, 'TensorTree'], ...]]
@@ -256,7 +256,7 @@ class Module:
 
         for name, parameter in zip(self.parameter_names, self.parameters):
             if (not parameter is None) and parameter.has_nan_or_inf():
-                warning(
+                lprint(
                     f"Found nan or inf in parameter '{name}' at {source}: \\n {parameter}",
                     Warning,
                 )
@@ -264,7 +264,7 @@ class Module:
                     assert False
 
         if self._output and self._output.has_nan_or_inf():
-            warning(
+            lprint(
                 f"Found nan or inf in output at {source}: \\n {self._output}", Warning
             )
             if assert_no_nans_or_infs:
@@ -272,7 +272,7 @@ class Module:
 
         for name, gradient in zip(self.parameter_names, self.gradients):
             if (not gradient is None) and gradient.has_nan_or_inf():
-                warning(
+                lprint(
                     f"Found nan or inf in parameter gradient '{name}'at {source}: \\n {gradient}",
                     Warning,
                 )
@@ -282,7 +282,7 @@ class Module:
         if self._gradient_outputs:
             for gradient_out in self._gradient_outputs:
                 if gradient_out and gradient_out.has_nan_or_inf():
-                    warning(
+                    lprint(
                         f"Found nan or inf in gradient output at {source}: \\n{gradient_out}",
                         Warning,
                     )
@@ -307,7 +307,7 @@ class Module:
 
         for name, parameter in zip(self.parameter_names, self.parameters):
             if (not parameter is None) and parameter.is_zero():
-                warning(
+                lprint(
                     f"Found all-zero parameter '{name}' at {source}: \\n {parameter}",
                     Warning,
                 )
@@ -316,7 +316,7 @@ class Module:
 
         for name, gradient in zip(self.parameter_names, self.gradients):
             if (not gradient is None) and gradient.is_zero():
-                warning(
+                lprint(
                     f"Found all-zero in parameter gradient '{name}'at {source}: \\n {gradient}",
                     Warning,
                 )
