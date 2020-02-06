@@ -1,6 +1,6 @@
 import time
-
-# import napari
+import keras
+import napari
 import numpy
 import skimage
 from skimage.data import camera
@@ -24,9 +24,12 @@ def demo():
     """
         Demo for self-supervised denoising using camera image with synthetic noise
     """
-
+    image_width = 200
     image = camera().astype(numpy.float32)
     image = n(image)
+    H0, W0 = (numpy.array(image.shape) - image_width) // 2
+
+    image = image[H0 : H0 + image_width, W0 : W0 + image_width]
 
     intensity = 5
     numpy.random.seed(0)
@@ -46,9 +49,11 @@ def demo():
     it = ImageTranslatorCNN()
 
     start = time.time()
-    it.train(noisy, noisy, shiftconv=False, max_epochs=10000)
+    # tile_batch_scale decides how many tiling batches to train.
+    # The unit batch size of tiling is determined by min_num_tile.
+    it.train(noisy, noisy, shiftconv=False, max_epochs=3, tile_batch_scale=2)
     stop = time.time()
-    print(f"Training: elapsed time:  {stop-start} ")
+    print(f"Training: elapsed time: {stop-start} ")
 
     # in case of batching we have to do this:
     start = time.time()
@@ -63,15 +68,15 @@ def demo():
     print("noisy       :", psnr(image, noisy), ssim(noisy, image))
     print("denoised_inf:", psnr(image, denoised_inf), ssim(denoised_inf, image))
 
-    # with napari.gui_qt():
-    #     viewer = napari.Viewer()
-    #     viewer.add_image(n(image), name='image')
-    #     viewer.add_image(n(noisy), name='noisy')
-    #     # viewer.add_image(n(nlm), name='nlm')
-    #     # viewer.add_image(n(median1), name='median1')
-    #     # viewer.add_image(n(median2), name='median2')
-    #     # viewer.add_image(n(median5), name='median5')
-    #     viewer.add_image(n(denoised_inf), name='denoised_inf')
+    with napari.gui_qt():
+        viewer = napari.Viewer()
+        viewer.add_image(n(image), name='image')
+        viewer.add_image(n(noisy), name='noisy')
+        # viewer.add_image(n(nlm), name='nlm')
+        # viewer.add_image(n(median1), name='median1')
+        # viewer.add_image(n(median2), name='median2')
+        # viewer.add_image(n(median5), name='median5')
+        viewer.add_image(n(denoised_inf), name='denoised_inf')
 
 
 demo()

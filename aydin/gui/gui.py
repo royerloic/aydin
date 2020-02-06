@@ -22,7 +22,7 @@ class App(QMainWindow):
 
         self.threadpool = QThreadPool()
 
-        self.title = 'aydin - Cool Denoising/Image Translation'
+        self.title = 'aydin - Denoising, but chill...'
         self.left = 0
         self.top = 0
         self.width = 700 * 2 if platform.system() == "Windows" else 700

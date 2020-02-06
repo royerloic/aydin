@@ -111,11 +111,6 @@ class GBMRegressor(RegressorBase):
         elif objective == 'l2':
             objective = 'regression_l2'
 
-        if dtype == numpy.uint8:
-            max_bin = 256
-        else:
-            max_bin = self.max_bin
-
         params = {
             "device": "cpu",
             "boosting_type": "gbdt",
@@ -123,7 +118,7 @@ class GBMRegressor(RegressorBase):
             "learning_rate": self.learning_rate,
             "num_leaves": self.num_leaves,
             "max_depth": max(3, int(math.log2(self.num_leaves)) - 1),
-            "max_bin": max_bin,
+            "max_bin": 256 if dtype == numpy.uint8 else self.max_bin,
             # "min_data_in_leaf": min_data_in_leaf,
             "subsample_for_bin": 200000,
             "num_threads": max(1, int(self.compute_load * multiprocessing.cpu_count())),

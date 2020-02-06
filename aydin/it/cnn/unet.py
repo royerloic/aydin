@@ -17,6 +17,7 @@ from keras.layers import (
 
 from aydin.it.cnn.layers import (
     split,
+    Split,
     rot90,
     conv2d_bn_noshift,
     Maskout,
@@ -129,10 +130,8 @@ def unet_model(
     if not shiftconv and not supervised:
         x = Maskout(name='maskout')([x, input_msk])
         model = Model([input_lyr, input_msk], x)
-        model.needs_mask = True
     else:
         model = Model(input_lyr, x)
-        model.needs_mask = False
 
     opt = optimizers.Adam(lr=learning_rate)
     model.compile(optimizer=opt, loss='mse')
@@ -251,10 +250,8 @@ def unet3D_model(
     if not shiftconv and not supervised:
         x = Maskout(name='maskout')([x, input_msk])
         model = Model([input_lyr, input_msk], x)
-        model.needs_mask = True
     else:
         model = Model(input_lyr, x)
-        model.needs_mask = False
 
     opt = optimizers.Adam(lr=learning_rate)
     model.compile(optimizer=opt, loss='mse')

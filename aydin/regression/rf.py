@@ -1,10 +1,11 @@
+import numpy
+
 from aydin.regression.gbm import GBMRegressor
 
 
 class RandomForrestRegressor(GBMRegressor):
     """
-    Random Forrest Regressor.
-
+    Random Forrest Regressor (uses the LGBM library).
 
     """
 
@@ -23,8 +24,7 @@ class RandomForrestRegressor(GBMRegressor):
             num_leaves, n_estimators, max_bin, learning_rate, loss, patience, verbosity
         )
 
-    def _get_params(self, num_samples, batch=False):
-        params = super()._get_params(num_samples, batch)
-
+    def _get_params(self, num_samples, dtype=numpy.float32):
+        params = super()._get_params(num_samples, dtype)
         params["boosting_type"] = "rf"
         return params

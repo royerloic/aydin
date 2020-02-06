@@ -1,3 +1,5 @@
+import pytest
+
 from aydin.gui.components.mininap.components import Dims
 from aydin.gui.components.mininap.components.dims_constants import DimsMode
 
@@ -35,6 +37,11 @@ def test_display():
 
     dims._set_2d_viewing()
     assert dims.display == [False, False, True, True]
+
+
+def test_keyword_only_dims():
+    with pytest.raises(TypeError):
+        Dims(3, [1, 2, 3])
 
 
 def test_point():

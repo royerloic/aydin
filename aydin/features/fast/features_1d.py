@@ -8,7 +8,8 @@ def collect_feature_1d(
     integral_image_gpu,
     feature_gpu,
     dx,
-    lx,
+    nx,
+    px,
     exclude_center=True,
     mean: float = 0,
     optimisation=True,
@@ -23,9 +24,7 @@ def collect_feature_1d(
 
     assert image_x == feature_x
 
-    rx = lx // 2
-
-    if optimisation and lx == 1:
+    if optimisation and px + nx == 1:
         program_code = f"""
 
         __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature, float mean)
@@ -54,8 +53,8 @@ def collect_feature_1d(
       {{
         int x = get_global_id(0);
 
-        const int xl  = x+{dx-rx}-1;
-        const int xh  = x+{dx+rx}; 
+        const int xl  = x+{dx-nx}-1;
+        const int xh  = x+{dx+px}; 
 
         const float value0 = integral_lookup(integral, xl);
         const float value1 = integral_lookup(integral, xh);

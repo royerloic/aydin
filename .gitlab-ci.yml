@@ -4,7 +4,7 @@ py3.6 tests osx:
   script:
     - conda create -n ay36test python=3.6
     - conda activate ay36test
-    - pip install -r requirements.txt
+    - python setup.py develop
     - pip install -r requirements/development.txt
     - python -m pytest .
     - conda deactivate
@@ -16,7 +16,7 @@ py3.7 tests osx:
   script:
     - conda create -n ay37test python=3.7
     - conda activate ay37test
-    - pip install -r requirements.txt
+    - python setup.py develop
     - pip install -r requirements/development.txt
     - python -m pytest .
     - conda deactivate
@@ -30,7 +30,7 @@ codecov osx:
   script:
     - conda create -n codecovenv python=3.7
     - conda activate codecovenv
-    - pip install -r requirements.txt
+    - python setup.py develop
     - pip install -r requirements/development.txt
     - pip install pytest-cov codecov
     - pytest --cov=./aydin
@@ -50,26 +50,26 @@ black style osx:
     - conda env remove -n blacktest
 
 
-unit tests windows:
-  tags:
-    - windows
-  script:
-    - conda info --envs
-    - pip install -r requirements.txt
-    - pip install -r requirements/development.txt
-    - python -m pytest .
-
-
-unit tests linux:
-  tags:
-    - linux
-  before_script:
-    - export PATH=~/anaconda3/bin:$PATH
-  script:
-    - conda create -n ay37test python=3.7
-    - source activate ay37test
-    - pip install -r requirements.txt
-    - pip install -r requirements/development.txt
-    - python -m pytest .
-    - conda deactivate
-    - conda env remove -n ay37test
+#unit tests windows:
+#  tags:
+#    - windows
+#  script:
+#    - conda info --envs
+#    - python setup.py develop
+#    - pip install -r requirements/development.txt
+#    - python -m pytest .
+#
+#
+#unit tests linux:
+#  tags:
+#    - linux
+#  before_script:
+#    - export PATH=~/anaconda3/bin:$PATH
+#  script:
+#    - conda create -n ay37test python=3.7
+#    - source activate ay37test
+#    - python setup.py develop
+#    - pip install -r requirements/development.txt
+#    - python -m pytest .
+#    - conda deactivate
+#    - conda env remove -n ay37test

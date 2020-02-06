@@ -11,6 +11,7 @@ from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeature
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn import NNRegressor
+from aydin.util.log.log import Log
 
 display_for_debug = False
 
@@ -39,18 +40,19 @@ def test_it_classic_gbm_2D():
 
 @pytest.mark.heavy
 def test_it_classic_gbm_3D():
-    it_classic_nD(3, 48, numpy.s_[0:41, 0:43, 0:37], regressor='gbm', min_ssim=0.70)
+    it_classic_nD(3, 48, numpy.s_[0:41, 0:43, 0:37], regressor='nn', min_ssim=0.70)
 
 
 @pytest.mark.heavy
 def test_it_classic_gbm_4D():
     it_classic_nD(
-        4, 24, numpy.s_[0:11, 0:23, 0:22, 0:21], regressor='gbm', min_ssim=0.70
+        4, 48, numpy.s_[0:11, 0:23, 0:22, 0:21], regressor='nn', min_ssim=0.70
     )
 
 
 @pytest.mark.heavy
 def test_it_classic_gbm_2D_batchdims():
+    Log.set_log_max_depth(2)
     it_classic_nD(
         2,
         256,
@@ -63,6 +65,7 @@ def test_it_classic_gbm_2D_batchdims():
 
 @pytest.mark.heavy
 def test_it_classic_gbm_3D_batchdims():
+    Log.set_log_max_depth(2)
     it_classic_nD(
         3,
         48,
@@ -75,9 +78,10 @@ def test_it_classic_gbm_3D_batchdims():
 
 @pytest.mark.heavy
 def test_it_classic_gbm_4D_batchdims():
+    Log.set_log_max_depth(2)
     it_classic_nD(
         4,
-        24,
+        48,
         numpy.s_[0:11, 0:13, 0:17, 0:15],
         regressor='gbm',
         batch_dims=(False, True, False, True),
