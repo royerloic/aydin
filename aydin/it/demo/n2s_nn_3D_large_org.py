@@ -1,7 +1,7 @@
 import time
 from os.path import join
 
-import napari
+
 import numpy
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
@@ -33,60 +33,54 @@ def demo():
 
     print(f"train: {train.shape}, inference:{infer.shape} ")
 
-    with napari.gui_qt():
+    batch_dims = (False,) * len(array.shape)
 
-        viewer = napari.Viewer()
-        viewer.add_image(train, name='train')
-        viewer.add_image(infer, name='infer')
+    generator = TiledFeatureGenerator(
+        FastMultiscaleConvolutionalFeatures(max_level=7, dtype=numpy.uint16)
+    )
+    regressor = NNRegressor()
 
-        batch_dims = (False,) * len(array.shape)
+    it = ImageTranslatorClassic(
+        generator, regressor, normaliser_type='percentile', balance_training_data=True
+    )
 
-        generator = TiledFeatureGenerator(
-            FastMultiscaleConvolutionalFeatures(max_level=4, dtype=numpy.uint16)
-        )
-        regressor = NNRegressor()
+    start = time.time()
+    it.train(
+        train,
+        train,
+        batch_dims=batch_dims,
+        max_epochs=30,
+        patience=8,
+        train_data_ratio=0.2,
+        max_voxels_for_training=1e6,
+    )
+    stop = time.time()
+    print(f"Training: elapsed time:  {stop-start} ")
 
-        it = ImageTranslatorClassic(
-            generator,
-            regressor,
-            normaliser_type='percentile',
-            balance_training_data=True,
-        )
+    output_file = join(get_temp_folder(), "result.tiff")
+
+    print(f"Output file: {output_file}")
+
+    # We write the stack to a temp file:
+    with imwrite(output_file, infer.shape, infer.dtype) as denoised_tiff:
+
+        # denoised = offcore_array(whole.shape, whole.dtype)
 
         start = time.time()
-        it.train(
-            train,
-            train,
-            batch_dims=batch_dims,
-            max_epochs=30,
-            patience=8,
-            train_data_ratio=0.2,
-            max_voxels_for_training=1e6,
+        denoised = it.translate(
+            infer, translated_image=denoised_tiff, batch_dims=batch_dims, tile_size=300
         )
         stop = time.time()
-        print(f"Training: elapsed time:  {stop-start} ")
 
-        output_file = join(get_temp_folder(), "result.tiff")
+        print(f"Writing to file: {output_file} ")
+        denoised_tiff[...] = denoised[...]
 
-        print(f"Output file: {output_file}")
+        import napari
 
-        # We write the stack to a temp file:
-        with imwrite(output_file, infer.shape, infer.dtype) as denoised_tiff:
-
-            # denoised = offcore_array(whole.shape, whole.dtype)
-
-            start = time.time()
-            denoised = it.translate(
-                infer,
-                translated_image=denoised_tiff,
-                batch_dims=batch_dims,
-                tile_size=generator.tile_size,
-            )
-            stop = time.time()
-
-            print(f"Writing to file: {output_file} ")
-            denoised_tiff[...] = denoised[...]
-
+        with napari.gui_qt():
+            viewer = napari.Viewer()
+            viewer.add_image(train, name='train')
+            viewer.add_image(infer, name='infer')
             print(f"Inference: elapsed time:  {stop-start} ")
             viewer.add_image(denoised, name='denoised')
 

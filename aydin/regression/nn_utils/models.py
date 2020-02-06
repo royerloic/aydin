@@ -1,9 +1,25 @@
-from keras import layers
-from keras.layers import Input, Dense, LeakyReLU, GaussianNoise
-from keras.models import Model
+# from keras import layers
+# from keras.layers import Input, Dense, LeakyReLU, GaussianNoise
+# from keras.models import Model
+# from keras.regularizers import l2, l1_l2, l1
+from tensorflow_core.python.keras import layers
+from tensorflow_core.python.keras.engine.input_layer import Input
+from tensorflow_core.python.keras.layers.advanced_activations import LeakyReLU
+from tensorflow_core.python.keras.layers.core import Dense
+from tensorflow_core.python.keras.layers.noise import GaussianNoise
+from tensorflow_core.python.keras.models import Model
+from tensorflow_core.python.keras.regularizers import l1
 
 
-def block(x, outputs=1, layers=1, layer_name=None, trainable=True, initialiser=None):
+def block(
+    x,
+    outputs=1,
+    layers=1,
+    layer_name=None,
+    trainable=True,
+    initialiser=None,
+    weight_decay=0.0,
+):
 
     for i in range(0, layers):
 
@@ -14,6 +30,8 @@ def block(x, outputs=1, layers=1, layer_name=None, trainable=True, initialiser=N
             use_bias=False,
             kernel_initializer='glorot_uniform' if initialiser is None else initialiser,
             bias_initializer='zeros',
+            kernel_regularizer=l1(weight_decay),
+            bias_regularizer=l1(weight_decay),
         )(x)
         # x = BatchNormalization(name=layer_name + 'bn1', center=True, scale=False)(x)
         x = LeakyReLU(name=layer_name + 'act1l' + str(i))(x)
@@ -83,13 +101,13 @@ def feed_forward_width(feature_dim, width=None, depth=16):
     return model
 
 
-def feed_forward(feature_dim, depth=16, noise=0.0001):
+def feed_forward(feature_dim, weight_decay=0.0001, depth=16, noise=None):
 
     width = feature_dim
 
     input = Input(shape=(feature_dim,), name='input')
 
-    if noise == 0:
+    if noise is None:
         x = input
     else:
         x = GaussianNoise(noise)(input)
@@ -98,7 +116,7 @@ def feed_forward(feature_dim, depth=16, noise=0.0001):
     outputs.append(x)
 
     for d in range(0, depth):
-        x = block(x, outputs=width, layer_name=f'fc{d}')
+        x = block(x, outputs=width, layer_name=f'fc{d}', weight_decay=weight_decay)
         outputs.append(x)
 
     x = layers.add([y for y in outputs])

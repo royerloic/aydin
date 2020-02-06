@@ -17,7 +17,7 @@ from aydin.features.tiled.tiled_features import TiledFeatureGenerator
 from aydin.io.datasets import newyork
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
-from aydin.util.log.log import set_log_max_depth
+from aydin.util.log.log import Log
 
 
 def n(image):
@@ -31,7 +31,7 @@ def demo():
         Demo for self-supervised denoising using camera image with synthetic noise
     """
 
-    set_log_max_depth(5)
+    Log.set_log_max_depth(5)
 
     image = camera().astype(np.float32)  # newyork()[256:-256, 256:-256]
     image = n(image)

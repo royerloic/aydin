@@ -1,9 +1,12 @@
 import itertools
 import os
+import warnings
 
 import numpy
+
 import pyopencl as cl
-from pyopencl._cl import get_platforms
+from pyopencl.elementwise import ElementwiseKernel
+from pyopencl.reduction import ReductionKernel
 
 from aydin.util.log.log import lsection, lprint
 
@@ -29,12 +32,13 @@ class OpenCLProvider:
             self.context = cl.Context([self.device])
             self.queue = cl.CommandQueue(self.context)
 
-            self.program_cache = {}
+            self._program_cache = {}
+            self._kernel_cache = {}
 
     def get_all_devices(self):
         return list(
             itertools.chain.from_iterable(
-                [platform.get_devices() for platform in get_platforms()]
+                [platform.get_devices() for platform in cl.get_platforms()]
             )
         )
 
@@ -48,7 +52,7 @@ class OpenCLProvider:
                     lprint(device.name)
 
             for exclude in excludes:
-                devices = [device for device in devices if not exclude in device.name]
+                devices = [device for device in devices if not (exclude in device.name)]
 
             for include in includes:
                 devices = [device for device in devices if include in device.name]
@@ -89,7 +93,8 @@ class OpenCLProvider:
                 a_np = numpy.random.rand(50000).astype(numpy.float32)
                 b_np = numpy.random.rand(50000).astype(numpy.float32)
 
-                ctx = cl.create_some_context()
+                # ctx = cl.create_some_context()
+                ctx = cl.Context([device])
                 queue = cl.CommandQueue(ctx)
 
                 mf = cl.mem_flags
@@ -132,18 +137,109 @@ class OpenCLProvider:
 
                 return False
 
+    def _cache_sanity_check(self):
+        if len(self._program_cache) > 100:
+            warnings.warn(
+                "Too many kernels instantiated (>100), perhaps something is wrong!",
+                Warning,
+            )
+        if len(self._kernel_cache) > 100:
+            warnings.warn(
+                "Too many kernels instantiated (>100), perhaps something is wrong!",
+                Warning,
+            )
+
+    @property
+    def build_options(self):
+        return [
+            '-cl-mad-enable',
+            '-cl-no-signed-zeros',
+            '-cl-unsafe-math-optimizations',
+            '-cl-finite-math-only',
+        ]
+
     def build(self, program_code, disable_opts=False):
 
-        # lprint(f"Building program. disable_opts={disable_opts}")
+        self._cache_sanity_check()
 
-        if program_code in self.program_cache:
-            return self.program_cache[program_code]
+        if program_code in self._program_cache:
+            return self._program_cache[program_code]
         else:
-            options = []
+            options = self.build_options
 
             if disable_opts:
                 options.append("-cl-opt-disable")
 
             program = cl.Program(self.context, program_code).build(options=options)
-            self.program_cache[program_code] = program
+            self._program_cache[program_code] = program
             return program
+
+    def get_kernel(self, kernel_name: str, program_code: str):
+        self._cache_sanity_check()
+        key = program_code
+        if key in self._kernel_cache:
+            kernel = self._kernel_cache[key]
+        else:
+            # print(f"!! COMPILING KERNEL '{kernel_name}' !! ")
+            program = self.build(program_code)
+            kernel = program.custom_kernel
+            self._kernel_cache[key] = kernel
+        return kernel
+
+    def get_elwise_kernel(self, arguments: str, operation: str, *args, **kwargs):
+        self._cache_sanity_check()
+        key = arguments + operation + str(args) + str(kwargs)
+        if key in self._kernel_cache:
+            kernel = self._kernel_cache[key]
+        else:
+            kernel = ElementwiseKernel(
+                self.context,
+                arguments,
+                operation,
+                "elwise_kernel",
+                options=self.build_options,
+                *args,
+                **kwargs,
+            )
+
+            self._kernel_cache[key] = kernel
+        return kernel
+
+    def get_reduction_kernel(
+        self,
+        arguments: str,
+        reduce_expression: str,
+        map_expression: str,
+        neutral: float = 0,
+        dtype_out=numpy.float32,
+        *args,
+        **kwargs,
+    ):
+        self._cache_sanity_check()
+        key = (
+            str(dtype_out)
+            + arguments
+            + reduce_expression
+            + map_expression
+            + str(neutral)
+            + str(dtype_out)
+            + str(args)
+            + str(kwargs)
+            + str(self.context)
+        )
+        if key in self._kernel_cache:
+            kernel = self._kernel_cache[key]
+        else:
+            kernel = ReductionKernel(
+                self.context,
+                dtype_out,  # numpy.float32,
+                neutral=neutral,  # "0",
+                reduce_expr=reduce_expression,  # "a+b",
+                map_expr=map_expression,  # "x[i]*y[i]",
+                arguments=arguments,  # "__global float *x, __global float *y",
+                options=self.build_options,
+                *args,
+                **kwargs,
+            )
+            self._kernel_cache[key] = kernel
+        return kernel

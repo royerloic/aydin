@@ -11,10 +11,14 @@ def collect_feature_4d(
     dy,
     dz,
     dw,
-    lx,
-    ly,
-    lz,
-    lw,
+    nx,
+    ny,
+    nz,
+    nw,
+    px,
+    py,
+    pz,
+    pw,
     exclude_center=True,
     mean: float = 0,
     optimisation=True,
@@ -32,12 +36,7 @@ def collect_feature_4d(
     assert image_z == feature_z
     assert image_w == feature_w
 
-    rx = lx // 2
-    ry = ly // 2
-    rz = lz // 2
-    rw = lw // 2
-
-    if optimisation and lx == 1 and ly == 1 and lz == 1 and lw == 1:
+    if optimisation and nx + px == 1 and ny + py == 1 and nz + pz == 1 and nw + pw == 1:
         program_code = f"""
 
         __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature, float mean)
@@ -88,17 +87,17 @@ def collect_feature_4d(
            
            for(int w=0; w<{image_w}; w++)
            {{
-                const int xl   = x+{dx}-{rx}-1;
-                const int xh   = x+{dx}+{rx}  ; 
+                const int xl   = x+{dx}-{nx}-1;
+                const int xh   = x+{dx}+{px}  ; 
                 
-                const int yl   = y+{dy}-{ry}-1; 
-                const int yh   = y+{dy}+{ry}  ;
+                const int yl   = y+{dy}-{ny}-1; 
+                const int yh   = y+{dy}+{py}  ;
                 
-                const int zl   = z+{dz}-{rz}-1; 
-                const int zh   = z+{dz}+{rz}  ;
+                const int zl   = z+{dz}-{nz}-1; 
+                const int zh   = z+{dz}+{pz}  ;
                 
-                const int wl   = w+{dw}-{rw}-1; 
-                const int wh   = w+{dw}+{rw}  ;
+                const int wl   = w+{dw}-{nw}-1; 
+                const int wh   = w+{dw}+{pw}  ;
                 
                 const float value0  = integral_lookup(integral, xl, yl, zl, wl);
                 const float value1  = integral_lookup(integral, xh, yl, zl, wl);

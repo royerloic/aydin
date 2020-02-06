@@ -1,4 +1,5 @@
 import time
+import pytest
 from os.path import join, exists
 
 import numpy
@@ -10,7 +11,6 @@ from skimage.util import random_noise
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.io.folders import get_temp_folder
-from aydin.providers.plaidml.plaidml_provider import PlaidMLProvider
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn import NNRegressor
 from aydin.regression.regressor_base import RegressorBase
@@ -26,12 +26,12 @@ def test_gbm_saveload():
     saveload(GBMRegressor(n_estimators=128), min_ssim=0.78)
 
 
+@pytest.mark.heavy
 def test_nn_saveload():
-    saveload(NNRegressor(max_epochs=5), min_ssim=0.78)
+    saveload(NNRegressor(max_epochs=10), min_ssim=0.78)
 
 
 def saveload(regressor, min_ssim=0.80):
-    provider = PlaidMLProvider()  # Needed to run in pytest
 
     image = camera().astype(numpy.float32)
     image = rescale_intensity(image, in_range='image', out_range=(0, 1))

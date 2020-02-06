@@ -1,9 +1,9 @@
-import os
-
 from PyQt5.Qt import Qt
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QLabel
+
+from aydin.util.resource import resource_path
 
 
 class ClickableLabel(QLabel):
@@ -16,9 +16,7 @@ class ClickableLabel(QLabel):
         self.height = height
         self.width = width
 
-        self.pixmap = QPixmap(
-            os.path.abspath("aydin/gui/resources/draganddroplogo.png")
-        )
+        self.pixmap = QPixmap(resource_path("aydin/gui/resources/draganddroplogo.png"))
         self.pixmap = self.pixmap.scaled(height, width, Qt.KeepAspectRatio)
         self.setPixmap(self.pixmap)
 

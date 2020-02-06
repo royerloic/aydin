@@ -9,8 +9,10 @@ def collect_feature_2d(
     feature_gpu,
     dx,
     dy,
-    lx,
-    ly,
+    nx,
+    ny,
+    px,
+    py,
     exclude_center=True,
     mean: float = 0,
     optimisation=True,
@@ -26,12 +28,9 @@ def collect_feature_2d(
     assert image_x == feature_x
     assert image_y == feature_y
 
-    rx = lx // 2
-    ry = ly // 2
-
     # exclude_center = exclude_center  and abs(dx) <= rx and abs(dy) <= ry
 
-    if optimisation and lx == 1 and ly == 1:
+    if optimisation and nx + px == 1 and ny + py == 1:
         program_code = f"""
 
         __kernel void feature_kernel(__global float *image, __global float *integral, __global float *feature, float mean)
@@ -68,11 +67,11 @@ def collect_feature_2d(
         const int x = get_global_id(1);
         const int y = get_global_id(0);
 
-        const int xl  = x+{dx - rx}-1;
-        const int xh  = x+{dx + rx}  ; 
+        const int xl  = x+{dx - nx}-1;
+        const int xh  = x+{dx + px}  ; 
 
-        const int yl  = y+{dy - ry}-1;
-        const int yh  = y+{dy + ry}  ;
+        const int yl  = y+{dy - ny}-1;
+        const int yh  = y+{dy + py}  ;
 
         const float value0 = integral_lookup(integral, xl, yl);
         const float value1 = integral_lookup(integral, xh, yl);

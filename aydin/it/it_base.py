@@ -224,7 +224,7 @@ class ImageTranslatorBase(ABC):
         """
 
         with lsection(
-            "Predicting output image from input image of dimension {input_image.shape}"
+            f"Predicting output image from input image of dimension {input_image.shape}"
         ):
 
             # set default batch_dim value:

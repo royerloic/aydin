@@ -1,25 +1,22 @@
-from os.path import join, exists
-
 import gc
+import os
+
+import psutil
 import numpy
 import random
+from os.path import join, exists
+
+# env variable setting is very important for XLA, must happen before all tensorflow imports!:
+os.environ["TF_XLA_FLAGS"] = "--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit"
+from tensorflow_core import optimizers
+from tensorflow_core.python.keras.models import Model
+from tensorflow_core.python.keras.saving.model_config import model_from_json
 
 
 from aydin.io.folders import get_temp_folder
-from aydin.providers.plaidml.plaidml_provider import PlaidMLProvider
-
-
-# NOTE: This line should stay exactly here!
-# All keras calls mst be _AFTER_ the line below:
 from aydin.util.log.log import lsection, lprint
-import click
 
-# Do not initialize anything if help command is passed
-os_args = click.get_os_args()
-if len(os_args) == 0 or ('--help' not in os_args and '-h' not in os_args):
-    provider = PlaidMLProvider()
 
-from keras.engine.saving import model_from_json
 from aydin.regression.nn_utils.callbacks import (
     NNCallback,
     EarlyStopping,
@@ -29,7 +26,8 @@ from aydin.regression.nn_utils.callbacks import (
 from aydin.regression.nn_utils.models import feed_forward
 from aydin.regression.regressor_base import RegressorBase
 
-from keras import optimizers, Model
+# from keras import optimizers, Model
+# from keras.engine.saving import model_from_json
 
 
 class NNRegressor(RegressorBase):
@@ -38,10 +36,13 @@ class NNRegressor(RegressorBase):
 
     """
 
+    # Device max mem:
+    device_max_mem = psutil.virtual_memory().total
+
     model: Model
 
     def __init__(
-        self, max_epochs=1024, learning_rate=0.001, patience=5, depth=16, loss='l1'
+        self, max_epochs=1024, learning_rate=0.001, patience=10, depth=6, loss='l1'
     ):
         """
         Constructs a LightGBM regressor.
@@ -102,9 +103,6 @@ class NNRegressor(RegressorBase):
         del state['model']
         del state['keras_callback']
         return state
-
-    def progressive(self):
-        return False
 
     def reset(self):
 
@@ -188,10 +186,27 @@ class NNRegressor(RegressorBase):
             x_shape = (-1, num_features)
             y_shape = (-1, 1)
 
+            # Learning rate and decay:
+            learning_rate = self.learning_rate
+            learning_rate_decay = 0.1 * self.learning_rate
+            lprint(f"Learning rate: {learning_rate}")
+            lprint(f"Learning rate decay: {learning_rate_decay}")
+
+            # Weight decay and noise:
+            weight_decay = 0.01 * self.learning_rate
+            noise = 0.1 * self.learning_rate
+            lprint(f"Weight decay: {weight_decay}")
+            lprint(f"Added noise: {noise}")
+
             # Initialise model if not done yet:
             if self.model is None:
-                self.model = feed_forward(num_features, depth=self.depth)
-                opt = optimizers.Adam(lr=self.learning_rate, decay=0.00001)
+                self.model = feed_forward(
+                    num_features,
+                    depth=self.depth,
+                    weight_decay=weight_decay,
+                    noise=noise,
+                )
+                opt = optimizers.Adam(lr=learning_rate, decay=learning_rate_decay)
                 self.model.compile(optimizer=opt, loss=self.loss)
 
             lprint(f"Number of parameters in model: {self.model.count_params()}")
@@ -204,32 +219,19 @@ class NNRegressor(RegressorBase):
                 x_valid = x_valid.reshape(x_shape)
                 y_valid = y_valid.reshape(y_shape)
 
-            # The bigger the batch size the faster training in terms of time per epoch,
-            # but small batches are also better for convergence (inherent batch noise).
-            # We make sure that we have at least about 1000 items per batch for small images,
-            # which is a good minimum. For larger datasets we get bigger batches which is fine.
-            batch_size = max(1, x_train.shape[0] // 256)
-            lprint("Max mem: ", provider.device_max_mem)
-
-            # Heuristic threshold here obtained by inspecting batch size per GPU memory
-            # Basically ensures ratio of 700000 batch size per 12GBs of GPU memory
-            batch_size = min(
-                batch_size, (700000 * provider.device_max_mem) // 12884901888
-            )
+            batch_size = 1024
             lprint(f"Keras batch size for training: {batch_size}")
 
             # Effective number of epochs:
-            effective_number_of_epochs = self.max_epochs  # 2 if is_batch else
+            effective_number_of_epochs = self.max_epochs
             lprint(f"Effective max number of epochs: {effective_number_of_epochs}")
 
             # Early stopping patience:
-            early_stopping_patience = self.patience  # 2 if is_batch else
+            early_stopping_patience = self.patience
             lprint(f"Early stopping patience: {early_stopping_patience}")
 
             # Effective LR patience:
-            effective_lr_patience = (
-                self.patience
-            )  # 1 if is_batch else max(1, self.patience // 2)
+            effective_lr_patience = max(1, self.patience // 2)
             lprint(f"Effective LR patience: {effective_lr_patience}")
 
             # Here is the list of callbacks:
@@ -242,7 +244,7 @@ class NNRegressor(RegressorBase):
             self.early_stopping = EarlyStopping(
                 self,
                 monitor='val_loss',
-                min_delta=0.0001,
+                min_delta=min(0.000001, 0.1 * self.learning_rate),
                 patience=early_stopping_patience,
                 mode='auto',
                 restore_best_weights=True,
@@ -255,7 +257,7 @@ class NNRegressor(RegressorBase):
                 verbose=1,
                 patience=effective_lr_patience,
                 mode='auto',
-                min_lr=1e-9,
+                min_lr=0.0001 * self.learning_rate,
             )
 
             if self.checkpoint is None:
@@ -306,9 +308,8 @@ class NNRegressor(RegressorBase):
                 lprint(f"Loading best model to date.")
                 self.model.load_weights(self.model_file_path)
 
-            loss_history = train_history.history['loss']
-
-            lprint(f"Loss history after training: {loss_history}")
+            # loss_history = train_history.history['loss']
+            # lprint(f"Loss history after training: {loss_history}")
 
             if 'val_loss' in train_history.history:
                 val_loss = train_history.history['val_loss'][0]
@@ -339,7 +340,7 @@ class NNRegressor(RegressorBase):
             assert num_of_features == x.shape[-1]
 
             # How much memory is available in GPU:
-            max_gpu_mem_in_bytes = provider.device_max_mem
+            max_gpu_mem_in_bytes = NNRegressor.device_max_mem
 
             # We limit ourselves to using only a quarter of GPU memory:
             max_number_of_floats = (max_gpu_mem_in_bytes // 4) // 4

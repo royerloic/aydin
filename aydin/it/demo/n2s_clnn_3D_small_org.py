@@ -28,9 +28,10 @@ def demo():
     image = rescale_intensity(image, in_range='image', out_range=(0, 1))
 
     generator = TiledFeatureGenerator(
-        FastMultiscaleConvolutionalFeatures(max_level=6, dtype=numpy.uint8)
+        FastMultiscaleConvolutionalFeatures(max_level=6)  # , dtype=numpy.uint8
     )
-    regressor = NNRegressor(depth=6, max_epochs=40, patience=10)
+    # regressor = NNRegressor(depth=6, max_epochs=560, patience=10)
+    regressor = CLNNRegressor(depth=6, max_epochs=40, patience=10)
     it = ImageTranslatorClassic(
         generator, regressor, normaliser_type='identity', balance_training_data=True
     )

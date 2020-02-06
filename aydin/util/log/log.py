@@ -12,6 +12,7 @@ class Log:
     depth = 0
     max_depth = math.inf
     log_elapsed_time = True
+    override_test_exclusion = False
 
     # Define special characters:
     __vl__ = '│'  # 'Vertical Line'
@@ -33,33 +34,34 @@ class Log:
 
     @staticmethod
     def native_print(*args, sep=' ', end='\n', file=sys.__stdout__):
-
         print(*args, sep=sep, end=end, file=file)
 
     def set_log_elapsed_time(log_elapsed_time: bool):
-        ___log_elapsed_time = log_elapsed_time
+        Log.log_elapsed_time = log_elapsed_time
 
     def set_log_max_depth(max_depth: int):
-        ___max_depth = max(0, max_depth - 1)
+        Log.max_depth = max(0, max_depth - 1)
 
 
-def lprint(*args, sep=' ', end=''):
-    for arg in sys.argv:
-        if "test" in arg:
-            return
+def lprint(*args, sep=' ', end='\n'):
+    if not Log.override_test_exclusion:
+        for arg in sys.argv:
+            if "test" in arg:
+                return
 
     if Log.depth <= Log.max_depth:
         level = min(Log.max_depth, Log.depth)
-        Log.native_print(Log.__vl__ * int(level) + Log.__br__ + ' ', end=end)
-        Log.native_print(*args, sep=sep)
+        Log.native_print(Log.__vl__ * int(level) + Log.__br__ + ' ', end='')
+        Log.native_print(*args, sep=sep, end=end)
 
 
 @contextmanager
 def lsection(section_header: str):
-    for arg in sys.argv:
-        if "test" in arg:
-            yield
-            return
+    if not Log.override_test_exclusion:
+        for arg in sys.argv:
+            if "test" in arg:
+                yield
+                return
 
     if Log.depth + 1 <= Log.max_depth:
         Log.native_print(

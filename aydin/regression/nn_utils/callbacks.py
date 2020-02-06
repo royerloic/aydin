@@ -1,8 +1,11 @@
 import warnings
 
 import numpy as np
-from keras import backend as K
-from keras.callbacks import Callback
+
+# from keras import backend as K
+# from keras.callbacks import Callback
+from tensorflow_core.python.keras.backend import get_value, set_value
+from tensorflow_core.python.keras.callbacks import Callback
 
 from aydin.util.log.log import lprint
 
@@ -40,8 +43,10 @@ class NNCallback(Callback):
         pass
 
     def get_monitor_value(self, logs):
-        monitor_value = logs.get('val_loss')
-        return monitor_value
+        if not logs is None:
+            monitor_value = logs.get('val_loss')
+            return monitor_value
+        return None
 
 
 class EarlyStopping(Callback):
@@ -263,7 +268,7 @@ class ReduceLROnPlateau(Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        logs['lr'] = K.get_value(self.model.optimizer.lr)
+        logs['lr'] = get_value(self.model.optimizer.lr)
         current = logs.get(self.monitor)
         if current is None:
             warnings.warn(
@@ -284,11 +289,11 @@ class ReduceLROnPlateau(Callback):
             elif not self.in_cooldown():
                 self.wait += 1
                 if self.wait >= self.patience:
-                    old_lr = float(K.get_value(self.model.optimizer.lr))
+                    old_lr = float(get_value(self.model.optimizer.lr))
                     if old_lr > self.min_lr:
                         new_lr = old_lr * self.factor
                         new_lr = max(new_lr, self.min_lr)
-                        K.set_value(self.model.optimizer.lr, new_lr)
+                        set_value(self.model.optimizer.lr, new_lr)
                         if self.verbose > 0:
                             lprint(
                                 'Epoch %05d: ReduceLROnPlateau reducing '

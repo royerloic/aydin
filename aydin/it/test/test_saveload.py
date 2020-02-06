@@ -1,4 +1,5 @@
 import time
+import pytest
 from os.path import join
 
 import numpy
@@ -14,7 +15,8 @@ from aydin.it.it_base import ImageTranslatorBase
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn import NNRegressor
-from aydin.it.it_cnn import ImageTranslatorCNN
+
+# from aydin.it.it_cnn import ImageTranslatorCNN
 
 
 def n(image):
@@ -27,7 +29,7 @@ def test_saveload_1():
     saveload('percentile', FastMultiscaleConvolutionalFeatures(), GBMRegressor())
 
 
-# @pytest.mark.heavy
+@pytest.mark.heavy
 def test_saveload_2():
     saveload(
         'minmax', FastMultiscaleConvolutionalFeatures(), NNRegressor(max_epochs=10)
