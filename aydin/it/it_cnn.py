@@ -1,3 +1,4 @@
+import psutil
 import time, math
 from os.path import join
 
@@ -7,11 +8,6 @@ import random
 from aydin.it.cnn.cnn_util.memorycheck import MemoryCheckCNN
 from aydin.io.folders import get_temp_folder
 
-from aydin.providers.plaidml.plaidml_provider import PlaidMLProvider
-
-provider = (
-    PlaidMLProvider()
-)  # NOTE: This line should stay exactly here! All keras calls must be _AFTER_ the line below:
 from aydin.it.cnn.unet import unet_model
 from aydin.it.it_base import ImageTranslatorBase
 from aydin.util.log.log import lsection, lprint
@@ -34,6 +30,9 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         Using CNN (Unet and Co)
 
     """
+
+    # Device max mem:
+    device_max_mem = psutil.virtual_memory().total
 
     def __init__(
         self,
@@ -174,9 +173,9 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             if not (d / d1 == d // d1).all():
                 tile_size = [64 for _ in self.input_dim[:-1]]
             # Check if model can fit the memory size
-            if provider.device_max_mem * 0.8 <= sim_model_size(self.input_dim[:-1]):
+            if self.device_max_mem * 0.8 <= sim_model_size(self.input_dim[:-1]):
                 tile_size = [64 for _ in self.input_dim[:-1]]
-                assert provider.device_max_mem * 0.8 <= sim_model_size(
+                assert self.device_max_mem * 0.8 <= sim_model_size(
                     tile_size
                 ), 'Memory is too low to fit a CNN model.'
 
@@ -214,12 +213,11 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             self.batch_size = math.gcd(
                 input_image.shape[0],
                 math.floor(
-                    (provider.device_max_mem * 0.8)
-                    / sim_model_size(self.train_img_size)
+                    (self.device_max_mem * 0.8) / sim_model_size(self.train_img_size)
                 ),
             )
         self.rot_batch_size = self.batch_size
-        lprint("Max mem: ", provider.device_max_mem)
+        lprint("Max mem: ", self.device_max_mem)
         lprint(f"Keras batch size for training: {self.batch_size}")
 
         # Tile input and target image

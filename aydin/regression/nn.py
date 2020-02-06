@@ -1,6 +1,7 @@
 import gc
 import os
 
+import psutil
 import numpy
 import random
 from os.path import join, exists
@@ -36,8 +37,6 @@ class NNRegressor(RegressorBase):
     """
 
     # Device max mem:
-    import psutil
-
     device_max_mem = psutil.virtual_memory().total
 
     model: Model
