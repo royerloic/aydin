@@ -26,6 +26,8 @@ class N2SService(BaseService):
         self,
         noisy_image,
         progress_callback,
+        *,
+        noisy_metadata=None,
         image_path=None,
         monitoring_callbacks=None,
         monitoring_images=None,
@@ -74,6 +76,11 @@ class N2SService(BaseService):
 
         # Predict the resulting image
         response = self.it.translate(noisy_image)
+
+        if noisy_metadata is not None and noisy_metadata.dtype is not None:
+            response = response.astype(noisy_metadata.dtype)
+        else:
+            response = response.astype(noisy_image.dtype)
 
         progress_callback.emit(100)
         return response

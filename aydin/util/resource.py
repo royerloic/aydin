@@ -47,5 +47,10 @@ def download_and_extract_zipresource(url, targetdir='.'):
 
 
 def read_image_from_path(path):
-    image = imread(path)[0].astype(np.float32)
-    return rescale_intensity(image, in_range='image', out_range=(0, 1))
+    image, metadata = imread(path)
+    bit_depth = int("".join(x for x in image.dtype.name if x.isdigit()))
+    if bit_depth <= 16:
+        image = image.astype(np.float16)
+    else:
+        image = image.astype(np.float32)
+    return rescale_intensity(image, in_range='image', out_range=(0, 1)), metadata
