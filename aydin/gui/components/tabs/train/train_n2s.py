@@ -89,7 +89,7 @@ class TrainN2STab(BaseTab):
         self.toggle_button_availablity()  # Toggle buttons to prevent multiple run actions and so
 
         input_path = self.input_picker.lbl_text.text()
-        noisy = read_image_from_path(input_path)
+        noisy, noisy_metadata = read_image_from_path(input_path)
 
         output_path = input_path[:-4] + "_denoised" + input_path[-4:]
 
@@ -98,6 +98,7 @@ class TrainN2STab(BaseTab):
         denoised = self.n2s.run(
             noisy,
             kwargs['progress_callback'],
+            noisy_metadata=noisy_metadata,
             monitoring_callbacks=[self.update_test_tab],
             monitoring_images=self.wizard.monitor_images,
         )

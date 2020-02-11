@@ -8,7 +8,6 @@ from aydin.gui.gui import run
 from aydin.util.progress_bar import ProgressBar
 from aydin.io.io import imwrite
 from aydin.services.n2s import N2SService
-from aydin.services.n2t import N2TService
 from aydin.util.slicing_helper import apply_slicing
 from aydin.util.resource import read_image_from_path
 from aydin.util.update import get_latest_version_details, download_specific_version
@@ -69,7 +68,7 @@ def noise2self(**kwargs):
 
     # Get abspath to image and read it
     path = os.path.abspath(kwargs['path_source'])
-    noisy = read_image_from_path(path)
+    noisy, noisy_metadata = read_image_from_path(path)
     noisy = apply_slicing(noisy, kwargs['slicing'])
 
     # Run N2S service and save the result
@@ -79,7 +78,7 @@ def noise2self(**kwargs):
         use_model_flag=kwargs['use_model'],
         input_model_path=input_model_path,
     )
-    denoised = n2s.run(noisy, pbar, image_path=path)
+    denoised = n2s.run(noisy, pbar, noisy_metadata=noisy_metadata, image_path=path)
     path = path[:-4] + "_denoised" + path[-4:]
     with imwrite(path, shape=denoised.shape, dtype=denoised.dtype) as imarray:
         imarray[...] = denoised
