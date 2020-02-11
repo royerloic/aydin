@@ -130,6 +130,7 @@ class NNRegressor(RegressorBase):
                 assert (
                     (array.dtype == numpy.float64)
                     or (array.dtype == numpy.float32)
+                    or (array.dtype == numpy.float16)
                     or (array.dtype == numpy.uint16)
                     or (array.dtype == numpy.uint8)
                 )
