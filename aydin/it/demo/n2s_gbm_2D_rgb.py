@@ -18,12 +18,10 @@ def n(image):
     )
 
 
-def demo():
+def demo(image):
     """
         Demo for self-supervised denoising using camera image with synthetic noise
     """
-
-    image = astronaut()
 
     amplitude = 128
     noisy = image.astype(np.int16) + np.random.randint(
@@ -34,43 +32,41 @@ def demo():
     # image = image.astype(np.float32)
     # noisy = noisy.astype(np.float32)
 
+    generator = FastMultiscaleConvolutionalFeatures()
+    regressor = GBMRegressor()
+
+    it = ImageTranslatorClassic(
+        feature_generator=generator, regressor=regressor, normaliser_type='percentile'
+    )
+
+    start = time.time()
+    it.train(noisy, noisy)
+    stop = time.time()
+    print(f"Training: elapsed time:  {stop-start} ")
+
+    start = time.time()
+    denoised = it.translate(noisy)
+    stop = time.time()
+    print(f"Inference: elapsed time:  {stop-start} ")
+
+    print(
+        "noisy",
+        psnr(n(image), n(noisy), data_range=255),
+        ssim(n(noisy), n(image), multichannel=True),
+    )
+    print(
+        "denoised",
+        psnr(n(image), n(denoised), data_range=255),
+        ssim(n(denoised), n(image), multichannel=True),
+    )
+    # print("denoised_predict", psnr(denoised_predict, image), ssim(denoised_predict, image))
+
     with napari.gui_qt():
         viewer = napari.Viewer()
-        viewer.add_image(image, name='image', multichannel=True)
-        viewer.add_image(noisy, name='noisy', multichannel=True)
-
-        generator = FastMultiscaleConvolutionalFeatures()
-        regressor = GBMRegressor()
-
-        it = ImageTranslatorClassic(
-            feature_generator=generator,
-            regressor=regressor,
-            normaliser_type='percentile',
-        )
-
-        start = time.time()
-        it.train(noisy, noisy)
-        stop = time.time()
-        print(f"Training: elapsed time:  {stop-start} ")
-
-        start = time.time()
-        denoised = it.translate(noisy)
-        stop = time.time()
-        print(f"Inference: elapsed time:  {stop-start} ")
-
-        print(
-            "noisy",
-            psnr(n(image), n(noisy), data_range=255),
-            ssim(n(noisy), n(image), multichannel=True),
-        )
-        print(
-            "denoised",
-            psnr(n(image), n(denoised), data_range=255),
-            ssim(n(denoised), n(image), multichannel=True),
-        )
-        # print("denoised_predict", psnr(denoised_predict, image), ssim(denoised_predict, image))
-
-        viewer.add_image(denoised, name='denoised', multichannel=True)
+        viewer.add_image(image, name='image', rgb=True)
+        viewer.add_image(noisy, name='noisy', rgb=True)
+        viewer.add_image(denoised, name='denoised', rgb=True)
 
 
-demo()
+image = astronaut()
+demo(image)

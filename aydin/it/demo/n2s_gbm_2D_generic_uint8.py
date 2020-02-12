@@ -1,3 +1,4 @@
+import os
 import time
 
 import napari
@@ -15,7 +16,7 @@ from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 
 
-def demo(image):
+def demo(image, name):
     """
         Demo for self-supervised denoising using camera image with synthetic noise
     """
@@ -45,9 +46,31 @@ def demo(image):
     image = numpy.clip(image, 0, 1)
     noisy = numpy.clip(noisy, 0, 1)
     denoised = numpy.clip(denoised, 0, 1)
+    psnr_noisy = psnr(image, noisy)
+    ssim_noisy = ssim(image, noisy)
+    psnr_denoised = psnr(image, denoised)
+    ssim_denoised = ssim(image, denoised)
+    print("noisy   :", psnr_noisy, ssim_noisy)
+    print("denoised:", psnr_denoised, ssim_denoised)
 
-    print("noisy", psnr(image, noisy), ssim(noisy, image))
-    print("denoised", psnr(image, denoised), ssim(denoised, image))
+    import matplotlib.pyplot as plt
+
+    plt.figure(figsize=(2.7 * 5, 5))
+    plt.subplot(1, 3, 1)
+    plt.imshow(normalise(noisy), cmap='gray')
+    plt.axis('off')
+    plt.title(f'Noisy \nPSNR: {psnr_noisy:.3f}, SSIM: {ssim_noisy:.3f}')
+    plt.subplot(1, 3, 2)
+    plt.imshow(normalise(denoised), cmap='gray')
+    plt.axis('off')
+    plt.title(f'Denoised \nPSNR: {psnr_denoised:.3f}, SSIM: {ssim_denoised:.3f}')
+    plt.subplot(1, 3, 3)
+    plt.imshow(normalise(image), cmap='gray')
+    plt.axis('off')
+    plt.title('Original')
+    plt.subplots_adjust(left=0.01, right=0.99, top=0.95, bottom=0.01, hspace=0.1)
+    os.makedirs("demo_results", exist_ok=True)
+    plt.savefig(f'demo_results/n2s_gbm_2D_{name}_uint8.png')
 
     with napari.gui_qt():
         viewer = napari.Viewer()
@@ -57,10 +80,10 @@ def demo(image):
 
 
 camera_image = camera()
-demo(camera_image)
+demo(camera_image, "camera")
 lizard_image = lizard()
-demo(lizard_image)
+demo(lizard_image, "lizard")
 pollen_image = pollen()
-demo(pollen_image)
+demo(pollen_image, "pollen")
 newyork_image = newyork()
-demo(newyork_image)
+demo(newyork_image, "newyork")

@@ -24,7 +24,7 @@ def demo():
     array = array[1]
 
     train = array  # full
-    train = array[50:250, 300:500, 400:600]
+    train = array[50:250, 300:600, 300:600]
 
     infer = array  # Full: 320, 865, 1014
     # infer = array[0:160, 0:430, 0:512] # 1/8th
@@ -35,25 +35,15 @@ def demo():
 
     batch_dims = (False,) * len(array.shape)
 
-    generator = TiledFeatureGenerator(
-        FastMultiscaleConvolutionalFeatures(max_level=7, dtype=numpy.uint16)
-    )
-    regressor = NNRegressor()
+    generator = FastMultiscaleConvolutionalFeatures(max_level=7, dtype=numpy.float16)
+    generator = TiledFeatureGenerator(generator, max_tile_size=512)
 
-    it = ImageTranslatorClassic(
-        generator, regressor, normaliser_type='percentile', balance_training_data=True
-    )
+    regressor = NNRegressor(max_epochs=30, patience=8)
+
+    it = ImageTranslatorClassic(generator, regressor, normaliser_type='percentile')
 
     start = time.time()
-    it.train(
-        train,
-        train,
-        batch_dims=batch_dims,
-        max_epochs=30,
-        patience=8,
-        train_data_ratio=0.2,
-        max_voxels_for_training=1e6,
-    )
+    it.train(train, train, batch_dims=batch_dims)
     stop = time.time()
     print(f"Training: elapsed time:  {stop-start} ")
 
@@ -68,7 +58,7 @@ def demo():
 
         start = time.time()
         denoised = it.translate(
-            infer, translated_image=denoised_tiff, batch_dims=batch_dims, tile_size=300
+            infer, translated_image=denoised_tiff, batch_dims=batch_dims, tile_size=512
         )
         stop = time.time()
 
