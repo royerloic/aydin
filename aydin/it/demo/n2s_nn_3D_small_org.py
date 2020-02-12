@@ -26,15 +26,13 @@ def demo():
     image = rescale_intensity(image, in_range='image', out_range=(0, 1))
 
     generator = TiledFeatureGenerator(
-        FastMultiscaleConvolutionalFeatures(max_level=6, dtype=numpy.uint16)
+        FastMultiscaleConvolutionalFeatures(max_level=6, dtype=numpy.float16)
     )
     regressor = NNRegressor(depth=6, max_epochs=40, patience=10)
-    it = ImageTranslatorClassic(
-        generator, regressor, normaliser_type='identity', balance_training_data=True
-    )
+    it = ImageTranslatorClassic(generator, regressor, normaliser_type='identity')
 
     start = time.time()
-    it.train(image, image, max_epochs=30, patience=10, train_data_ratio=0.1)
+    it.train(image, image, max_epochs=30, patience=10)
     stop = time.time()
     print(f"Training: elapsed time:  {stop-start} ")
 

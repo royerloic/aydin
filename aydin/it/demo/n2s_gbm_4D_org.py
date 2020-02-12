@@ -17,7 +17,7 @@ def demo():
 
         # (3, 320, 865, 1014)
         image_path = examples_single.gardner_org.get_path()
-        image, metadata = io.imread(image_path, zarr_cache=False)
+        image, metadata = io.imread(image_path)
         print(image.shape)
         image = image.squeeze()
         image = image[:, 0:60, 270:500, 400:600]
@@ -26,7 +26,6 @@ def demo():
         print(image.shape)
 
         generator = FastMultiscaleConvolutionalFeatures(max_level=2)
-
         regressor = GBMRegressor()
 
         it = ImageTranslatorClassic(generator, regressor, normaliser_type='identity')

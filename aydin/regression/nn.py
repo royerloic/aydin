@@ -130,6 +130,7 @@ class NNRegressor(RegressorBase):
                 assert (
                     (array.dtype == numpy.float64)
                     or (array.dtype == numpy.float32)
+                    or (array.dtype == numpy.float16)
                     or (array.dtype == numpy.uint16)
                     or (array.dtype == numpy.uint8)
                 )
@@ -339,8 +340,21 @@ class NNRegressor(RegressorBase):
             # If not, most likely the batch_dims are set wrong...
             assert num_of_features == x.shape[-1]
 
-            # Batch size such that we have n=128 batches:
-            batch_size = max(1, x.shape[0] // 128)
+            # How much memory is available in GPU:
+            max_gpu_mem_in_bytes = NNRegressor.device_max_mem
+
+            # We limit ourselves to using only a quarter of GPU memory:
+            max_number_of_floats = (max_gpu_mem_in_bytes // 4) // 4
+
+            # Max size of batch:
+            max_gpu_batch_size = max_number_of_floats / num_of_features
+
+            # Batch size taking all this into account:
+            batch_size = max(1, min(max_gpu_batch_size, x.shape[0] // 256))
+
+            # Heuristic threshold here obtained by inspecting batch size per GPU memory
+            # Basically ensures ratio of 700000 batch size per 12GBs of GPU memory
+            batch_size = min(batch_size, (700000 * max_gpu_mem_in_bytes) // 12884901888)
 
             lprint(f"Batch size: {batch_size}")
             lprint(f"Predicting. features shape = {x.shape}")

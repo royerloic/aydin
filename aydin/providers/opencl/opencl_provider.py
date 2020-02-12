@@ -138,12 +138,12 @@ class OpenCLProvider:
                 return False
 
     def _cache_sanity_check(self):
-        if len(self._program_cache) > 100:
+        if len(self._program_cache) > 1000:
             warnings.warn(
                 "Too many kernels instantiated (>100), perhaps something is wrong!",
                 Warning,
             )
-        if len(self._kernel_cache) > 100:
+        if len(self._kernel_cache) > 1000:
             warnings.warn(
                 "Too many kernels instantiated (>100), perhaps something is wrong!",
                 Warning,

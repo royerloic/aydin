@@ -20,16 +20,13 @@ class ImageTranslatorBase(ABC):
 
     """
 
-    def __init__(
-        self, normaliser_type='percentile', analyse_correlation=False, monitor=None
-    ):
+    def __init__(self, normaliser_type='percentile', monitor=None):
         """
         """
 
         self.normaliser_type = normaliser_type
         self.models = []
         self.self_supervised = None
-        self.analyse_correlation = analyse_correlation
         self.monitor = monitor
 
         self.callback_period = 3
@@ -90,8 +87,6 @@ class ImageTranslatorBase(ABC):
         input_image,
         target_image,
         batch_dims,
-        train_data_ratio=1,
-        max_voxels_for_training=math.inf,
         train_valid_ratio=0.1,
         callback_period=3,
     ):
@@ -123,13 +118,8 @@ class ImageTranslatorBase(ABC):
         input_image,
         target_image,
         batch_dims=None,
-        train_data_ratio=1,
-        max_voxels_for_training=math.inf,
         train_valid_ratio=0.1,
         callback_period=3,
-        max_epochs=1024,
-        patience=3,
-        patience_epsilon=0.000001,
     ):
         """
             Train to translate a given input image to a given output image
@@ -146,12 +136,8 @@ class ImageTranslatorBase(ABC):
             lprint(f'Training is self-supervised.')
 
             # Analyse the input image correlation structure:
-            if self.analyse_correlation:
-                self.correlation = correlation_distance(input_image, target_image)
-
-                lprint(f'Correlation structure of the image: {self.correlation}.')
-            else:
-                self.correlation = None
+            self.correlation = correlation_distance(input_image, target_image)
+            lprint(f'Correlation structure of the image: {self.correlation}.')
 
             # Instanciates normaliser(s):
             if self.normaliser_type == 'identity':
@@ -204,8 +190,6 @@ class ImageTranslatorBase(ABC):
                 normalised_input_image,
                 normalised_target_image,
                 batch_dims=batch_dims,
-                train_data_ratio=train_data_ratio,
-                max_voxels_for_training=max_voxels_for_training,
                 train_valid_ratio=train_valid_ratio,
                 callback_period=callback_period,
             )
@@ -249,7 +233,7 @@ class ImageTranslatorBase(ABC):
                 )
 
             if tile_size is None:
-                # We did not batch during training so we can directly translate:
+                # no tilling requested...
 
                 # First we normalise the input:
                 normalised_input_image = self.input_normaliser.normalise(input_image)
