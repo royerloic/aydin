@@ -82,7 +82,6 @@ def noise2self(**kwargs):
     path = path[:-4] + "_denoised" + path[-4:]
     with imwrite(path, shape=denoised.shape, dtype=denoised.dtype) as imarray:
         imarray[...] = denoised
-    pbar.close()
 
 
 # @aydin.command()
@@ -112,7 +111,6 @@ def noise2self(**kwargs):
 #     path = path_target[:-4] + "_denoised" + path_target[-4:]
 #     with imwrite(path, shape=denoised.shape, dtype=denoised.dtype) as imarray:
 #         imarray[...] = denoised
-#     pbar.close()
 
 
 if __name__ == '__main__':
