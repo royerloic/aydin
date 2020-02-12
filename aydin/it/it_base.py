@@ -211,7 +211,12 @@ class ImageTranslatorBase(ABC):
             )
 
     def translate(
-        self, input_image, translated_image=None, batch_dims=None, tile_size=None
+        self,
+        input_image,
+        translated_image=None,
+        batch_dims=None,
+        tile_size=None,
+        max_margin=32,
     ):
         """
         Translates an input image into an output image according to the learned function.
@@ -265,14 +270,14 @@ class ImageTranslatorBase(ABC):
                 # Receptive field:
                 receptive_field_radius = self.get_receptive_field_radius(len(shape))
 
-                # We get the tilling strategy but adjust for the margins:
+                # We get the tilling strategy but adjust for the max margins:
                 tilling_strategy = self._get_tilling_strategy(
-                    batch_dims, max(1, tile_size - 2 * receptive_field_radius), shape
+                    batch_dims, max(1, tile_size - 2 * max_margin), shape
                 )
                 lprint(f"Tilling strategy: {tilling_strategy}")
 
                 # First we compute the margins:
-                margins = self._get_margins(shape, tilling_strategy)
+                margins = self._get_margins(shape, tilling_strategy, max_margin)
                 lprint(f"Margins for tiles: {margins} .")
 
                 # tile slice objects (with and without margins):
@@ -349,13 +354,13 @@ class ImageTranslatorBase(ABC):
 
             return tilling_strategy
 
-    def _get_margins(self, shape, tilling_strategy):
+    def _get_margins(self, shape, tilling_strategy, max_margin):
 
-        # Receptive field:
-        receptive_field_radius = self.get_receptive_field_radius(len(shape))
+        # We compute the margin from the receptive field:
+        margin = min(max_margin, self.get_receptive_field_radius(len(shape)))
 
-        # We compute the margin from the receptive field but limit it to 33% of the tile size:
-        margins = (receptive_field_radius,) * len(shape)
+        # n-d margin:
+        margins = (margin,) * len(shape)
 
         # We only need margins if we split a dimension:
         margins = tuple(

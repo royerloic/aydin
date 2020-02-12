@@ -24,7 +24,7 @@ def demo():
     array = array[1]
 
     train = array  # full
-    train = array[50:250, 300:500, 400:600]
+    train = array[50:250, 300:400, 400:500]
 
     infer = array  # Full: 320, 865, 1014
     # infer = array[0:160, 0:430, 0:512] # 1/8th
@@ -35,9 +35,9 @@ def demo():
 
     batch_dims = (False,) * len(array.shape)
 
-    generator = TiledFeatureGenerator(
-        FastMultiscaleConvolutionalFeatures(max_level=7, dtype=numpy.uint16)
-    )
+    generator = FastMultiscaleConvolutionalFeatures(max_level=7, dtype=numpy.uint16)
+    generator = TiledFeatureGenerator(generator)
+
     regressor = NNRegressor()
 
     it = ImageTranslatorClassic(
