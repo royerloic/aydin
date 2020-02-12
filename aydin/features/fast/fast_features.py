@@ -137,7 +137,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         return 4
 
     def max_voxels(self):
-        return 256 ** 3
+        return 512 ** 3
 
     def compute(
         self,

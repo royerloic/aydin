@@ -5,7 +5,7 @@ import numpy
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.features.base import FeatureGeneratorBase
-from aydin.it.balancing.trainingdatabalancer import TrainingDataBalancer
+from aydin.it.balancing.datahistogrambalancer import DataHistogramBalancer
 from aydin.it.it_base import ImageTranslatorBase
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.regressor_base import RegressorBase
@@ -27,8 +27,9 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         feature_generator=FastMultiscaleConvolutionalFeatures(),
         regressor=GBMRegressor(),
         normaliser_type='percentile',
-        balance_training_data=False,
-        analyse_correlation=False,
+        balance_training_data=None,
+        keep_ratio=1,
+        max_voxels_for_training=4e6,
         monitor=None,
     ):
         """
@@ -39,13 +40,12 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         :param regressor: regressor
         :param normaliser_type: normaliser type
         :param balance_training_data: balance data ? (limits number training entries per target value histogram bin)
-        :param analyse_correlation: analyse correlation?
         :param monitor: monitor to track progress of training externally (used by UI)
         """
-        super().__init__(
-            normaliser_type, analyse_correlation=analyse_correlation, monitor=monitor
-        )
+        super().__init__(normaliser_type, monitor=monitor)
 
+        self.max_voxels_for_training = max_voxels_for_training
+        self.keep_ratio = keep_ratio
         self.balance_training_data = balance_training_data
         self.feature_generator = feature_generator
         self.regressor = regressor
@@ -82,8 +82,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         input_image,
         target_image,
         batch_dims=None,
-        train_data_ratio=1,
-        max_voxels_for_training=math.inf,
         train_valid_ratio=0.1,
         callback_period=3,
         max_epochs=1024,
@@ -98,13 +96,8 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             input_image,
             target_image,
             batch_dims=batch_dims,
-            train_data_ratio=train_data_ratio,
-            max_voxels_for_training=max_voxels_for_training,
             train_valid_ratio=train_valid_ratio,
             callback_period=callback_period,
-            max_epochs=max_epochs,
-            patience=patience,
-            patience_epsilon=patience_epsilon,
         )
 
     def stop_training(self):
@@ -128,17 +121,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             lprint(f"exclude_center_value={exclude_center_value}")
             lprint(f"batch_dims={batch_dims}")
 
-            if self.correlation:
-                max_length = max(self.correlation)
-                features_aspect_ratio = tuple(
-                    length / max_length for length in self.correlation
-                )
-
-                lprint(f"Features aspect ratio: {features_aspect_ratio} ")
-            else:
-                features_aspect_ratio = None
-
-            # image, batch_dims=None, features_aspect_ratio=None, features=None
             features = self.feature_generator.compute(
                 image,
                 batch_dims=batch_dims,
@@ -177,8 +159,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         input_image,
         target_image,
         batch_dims,
-        train_data_ratio=1,
-        max_voxels_for_training=math.inf,
         train_valid_ratio=0.1,
         callback_period=3,
     ):
@@ -272,15 +252,29 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             with lsection(
                 f"Splitting train and test sets (train_test_ratio={train_valid_ratio}) "
             ):
-                # Size of split batch, we assume we use 1024 chunks:
-                lprint(f"Creating random indices for train/val split")
-                nb_split_batches = 1024
+
+                if nb_entries <= 1e3:
+                    nb_split_batches = min(nb_entries, 128)
+                elif nb_entries <= 1e6:
+                    nb_split_batches = 1024
+                elif nb_entries <= 1e7:
+                    nb_split_batches = 8 * 1024
+                else:
+                    nb_split_batches = 8 * 8 * 1024
+                lprint(
+                    f"Creating random indices for train/val split (nb_split_batches={nb_split_batches})"
+                )
 
                 nb_split_batches_valid = int(train_valid_ratio * nb_split_batches)
                 nb_split_batches_train = nb_split_batches - nb_split_batches_valid
-                train_indices = numpy.full(nb_split_batches, False)
-                train_indices[nb_split_batches_valid:] = True
-                numpy.random.shuffle(train_indices)
+                is_train_array = numpy.full(nb_split_batches, False)
+                is_train_array[nb_split_batches_valid:] = True
+                lprint(
+                    f"train/valid bool array created (length={is_train_array.shape[0]})"
+                )
+
+                lprint(f"Shuffling train/valid bool array...")
+                numpy.random.shuffle(is_train_array)
 
                 lprint(f"Calculating number of entries for train and validation...")
                 nb_entries_per_split_batch = max(1, nb_entries // nb_split_batches)
@@ -288,7 +282,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                 nb_entries_valid = nb_split_batches_valid * nb_entries_per_split_batch
 
                 lprint(
-                    f"Number of entries for training: {nb_entries_train}, validation:{nb_entries_valid}"
+                    f"Number of entries for training: {nb_entries_train} = {nb_split_batches_train}*{nb_entries_per_split_batch}, validation: {nb_entries_valid} = {nb_split_batches_valid} * {nb_entries_per_split_batch}"
                 )
 
                 lprint(f"Allocating arrays...")
@@ -300,15 +294,32 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                 with lsection(f"Copying data for training and validation sets..."):
 
                     num_of_voxels = input_image.size
-                    train_data_ratio = min(
-                        train_data_ratio, float(max_voxels_for_training) / num_of_voxels
+                    lprint(
+                        f"Image has: {num_of_voxels} voxels, at most: {self.max_voxels_for_training} voxels will be used for training or validation."
+                    )
+                    max_voxels_keep_ratio = (
+                        float(self.max_voxels_for_training) / num_of_voxels
+                    )
+                    lprint(
+                        f"Given train ratio is: {self.keep_ratio}, max_voxels induced keep-ratio is: {max_voxels_keep_ratio}"
+                    )
+                    keep_ratio = min(self.keep_ratio, max_voxels_keep_ratio)
+                    lprint(f"Effective keep-ratio is: {keep_ratio}")
+
+                    if self.balance_training_data is None:
+                        is_balancer_active = False if num_of_voxels < 5 * 1e6 else True
+                    else:
+                        is_balancer_active = self.balance_training_data
+
+                    lprint(
+                        f"Data histogram balancer is: {'active' if is_balancer_active else 'inactive'}"
                     )
 
-                    balancer = TrainingDataBalancer(
+                    balancer = DataHistogramBalancer(
                         total_entries=nb_split_batches,
-                        number_of_bins=nb_split_batches // 8,
-                        is_active=self.balance_training_data,
-                        keep_ratio=train_data_ratio,
+                        number_of_bins=128,
+                        is_active=is_balancer_active,
+                        keep_ratio=keep_ratio,
                     )
 
                     # We use a random permutation to avoid having the balancer drop only from the 'end' of the image
@@ -318,7 +329,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                     dst_stop_train = 0
                     dst_stop_valid = 0
 
-                    for is_train in numpy.nditer(train_indices):
+                    for is_train in numpy.nditer(is_train_array):
                         if i % 64 == 0:
                             lprint(f"Copying section [{i},{i+64}]")
 
@@ -330,8 +341,8 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                         xsrc = x[src_start:src_stop]
                         ysrc = y[src_start:src_stop]
 
-                        if is_train:
-                            if balancer.add_entry(ysrc):
+                        if balancer.add_entry(ysrc):
+                            if is_train:
                                 dst_start_train = jt * nb_entries_per_split_batch
                                 dst_stop_train = (jt + 1) * nb_entries_per_split_batch
 
@@ -343,17 +354,17 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                                 numpy.copyto(xdst, xsrc)
                                 numpy.copyto(ydst, ysrc)
 
-                        else:
-                            dst_start_valid = jv * nb_entries_per_split_batch
-                            dst_stop_valid = (jv + 1) * nb_entries_per_split_batch
+                            else:
+                                dst_start_valid = jv * nb_entries_per_split_batch
+                                dst_stop_valid = (jv + 1) * nb_entries_per_split_batch
 
-                            jv += 1
+                                jv += 1
 
-                            xdst = x_valid[dst_start_valid:dst_stop_valid]
-                            ydst = y_valid[dst_start_valid:dst_stop_valid]
+                                xdst = x_valid[dst_start_valid:dst_stop_valid]
+                                ydst = y_valid[dst_start_valid:dst_stop_valid]
 
-                            numpy.copyto(xdst, xsrc)
-                            numpy.copyto(ydst, ysrc)
+                                numpy.copyto(xdst, xsrc)
+                                numpy.copyto(ydst, ysrc)
 
                     # Now we actually truncate out all the zeros at the end of the arrays:
                     x_train = x_train[0:dst_stop_train]
@@ -361,10 +372,25 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                     x_valid = x_valid[0:dst_stop_valid]
                     y_valid = y_valid[0:dst_stop_valid]
 
-                    lprint(f"Histogram: {balancer.get_histogram_as_string()}")
                     lprint(
-                        f"Percentage of data kept: {100*balancer.percentage_kept():.2f}% (train_data_ratio={train_data_ratio}) "
+                        f"Histogram all    : {balancer.get_histogram_all_as_string()}"
                     )
+                    lprint(
+                        f"Histogram kept   : {balancer.get_histogram_kept_as_string()}"
+                    )
+                    lprint(
+                        f"Histogram dropped: {balancer.get_histogram_dropped_as_string()}"
+                    )
+                    lprint(
+                        f"Number of entries kept: {balancer.total_kept()} out of {balancer.total_entries} total"
+                    )
+                    lprint(
+                        f"Percentage of data kept: {100*balancer.percentage_kept():.2f}% (train_data_ratio={keep_ratio}) "
+                    )
+                    if keep_ratio >= 1 and balancer.percentage_kept() < 1:
+                        lprint(
+                            f"Note: balancer has dropped entries that fell on over-represented histogram bins"
+                        )
 
             lprint("Training now...")
             self.regressor.fit(

@@ -134,7 +134,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         input_image,  # dimension (batch, H, W, C)
         target_image,  # dimension (batch, H, W, C)
         shiftconv=True,
-        train_data_ratio=1,  # TODO: remove this argument from base and add it to the rest of it_xxx. !!WAIT!!
+        keep_ratio=1,  # TODO: remove this argument from base and add it to the rest of it_xxx. !!WAIT!!
         batch_dims=None,
         batch_size=1,
         batch_shuffle=False,
@@ -268,7 +268,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             input_image,
             target_image,
             batch_dims=self.batch_dims,
-            train_data_ratio=train_data_ratio,  # TODO: to be removed as this will not be used in it_cnn   !!WAIT!!
+            keep_ratio=keep_ratio,  # TODO: to be removed as this will not be used in it_cnn   !!WAIT!!
             callback_period=callback_period,
             max_epochs=max_epochs,
             patience=patience,
@@ -280,7 +280,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         input_image,
         target_image,
         batch_dims,
-        train_data_ratio=1,
+        keep_ratio=1,
         max_voxels_for_training=math.inf,
         train_valid_ratio=0.1,
         callback_period=3,
