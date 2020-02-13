@@ -221,7 +221,7 @@ def imread(input_path):
         # Remove single-dimensional entries from the array shape.
         # array = numpy.squeeze(array)
 
-        return (array, metadata)
+        return array, metadata
 
 
 @contextmanager

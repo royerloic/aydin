@@ -79,9 +79,9 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
         assert (
             dtype == numpy.float32
+            or dtype == numpy.float16
             or dtype == numpy.uint8
             or dtype == numpy.uint16
-            or dtype == numpy.float16
         )
 
     def _ensure_opencl_prodider_initialised(self):

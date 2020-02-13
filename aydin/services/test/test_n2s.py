@@ -24,7 +24,6 @@ def test_run():
     n2s = N2SService()
     pbar = ProgressBar(total=100)
     denoised_image = n2s.run(noisy_image, pbar)
-    pbar.close()
 
     # Check if denoised image satisfies some checks
     assert psnr(denoised_image, image) >= 20.0

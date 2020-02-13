@@ -2,7 +2,6 @@ qtpy==1.9.0
 mako==1.1.0
 pybind11==2.3.0
 numexpr
-tqdm
 pyqtgraph
 requests
 certifi==2019.6.16
