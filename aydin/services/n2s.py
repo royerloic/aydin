@@ -26,6 +26,8 @@ class N2SService(BaseService):
         self,
         noisy_image,
         progress_callback,
+        *,
+        noisy_metadata=None,
         image_path=None,
         monitoring_callbacks=None,
         monitoring_images=None,
@@ -65,7 +67,11 @@ class N2SService(BaseService):
         )
 
         # Train a new model
-        self.it.train(noisy_image, noisy_image)
+        self.it.train(
+            noisy_image,
+            noisy_image,
+            batch_dims=noisy_metadata.batch_dim if noisy_metadata is not None else None,
+        )
 
         # Save the trained model
         self.save_model(image_path)
@@ -73,7 +79,15 @@ class N2SService(BaseService):
         progress_callback.emit(80)
 
         # Predict the resulting image
-        response = self.it.translate(noisy_image)
+        response = self.it.translate(
+            noisy_image,
+            batch_dims=noisy_metadata.batch_dim if noisy_metadata is not None else None,
+        )
+
+        if noisy_metadata is not None and noisy_metadata.dtype is not None:
+            response = response.astype(noisy_metadata.dtype)
+        else:
+            response = response.astype(noisy_image.dtype)
 
         progress_callback.emit(100)
         return response

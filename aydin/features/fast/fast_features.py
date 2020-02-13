@@ -77,7 +77,12 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
 
         self.dtype = dtype
 
-        assert dtype == numpy.float32 or dtype == numpy.uint8 or dtype == numpy.uint16
+        assert (
+            dtype == numpy.float32
+            or dtype == numpy.float16
+            or dtype == numpy.uint8
+            or dtype == numpy.uint16
+        )
 
     def _ensure_opencl_prodider_initialised(self):
         if not hasattr(self, 'opencl_provider') or self.opencl_provider is None:
@@ -132,7 +137,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         return 4
 
     def max_voxels(self):
-        return 256 ** 3
+        return 512 ** 3
 
     def compute(
         self,

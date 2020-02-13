@@ -71,14 +71,16 @@ class PredictN2STab(BaseTab):
     def run_func(self, **kwargs):
 
         input_path = self.inputfile_picker.lbl_text.text()
-        noisy = read_image_from_path(input_path)
+        noisy, noisy_metadata = read_image_from_path(input_path)
 
         output_path = self.outputfile_picker.lbl_text.text()
         if len(output_path) <= 0:
             output_path = input_path[:-4] + "_denoised" + input_path[-4:]
             self.outputfile_picker.lbl_text.setText(output_path)
 
-        denoised = N2SService.run(noisy, kwargs['progress_callback'])
+        denoised = N2SService.run(
+            noisy, kwargs['progress_callback'], noisy_metadata=noisy_metadata
+        )
 
         imsave(output_path, denoised)
         self.run_button.setText("Re-Run")

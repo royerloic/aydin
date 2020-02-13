@@ -13,7 +13,7 @@ class PercentileNormaliser(NormaliserBase):
     percent: float
 
     def __init__(
-        self, percent: float = 0.001, clip=True, leave_as_float=False, epsilon=1e-21
+        self, percent: float = 0.0001, clip=True, leave_as_float=False, epsilon=1e-21
     ):
         """
         Constructs a normaliser
