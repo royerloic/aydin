@@ -21,10 +21,10 @@ with open(os.path.join('requirements', 'default.txt')) as f:
 INSTALL_REQUIRES = []
 REQUIRES = []
 
-for l in default_requirements:
-    os.system("pip install " + str(l))
+for default_requirement in default_requirements:
+    os.system("pip install " + str(default_requirement))
 
-# Handle pyopencl and tensorflow
+# Handle pyopencl
 os.system("pip install -r " + os.path.join('requirements', 'pyopencl.txt'))
 
 setup(
