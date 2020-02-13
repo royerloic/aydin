@@ -66,15 +66,19 @@ Once you're ready to share your contribution with us you should submit it as a P
 #### How to setup development environment:
 
 ```bash
-conda create --name aydin python=3.6
-conda activate aydin
-pip install -r requirements.txt
+# Create a new environment
+conda create -n aydin_env python=3.7
+
+# Activate the environment
+conda activate aydin_env
+
+# Install Aydin
+python setup.py develop
+
+# Install development specific dependencies
 pip install -r requirements/development.txt
 
-# If you are developing on Windows
-pip install -r requirements/windows.txt
-
-# For development
+# Install pre-commit hooks
 pre-commit install
 ```
 
