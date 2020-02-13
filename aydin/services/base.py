@@ -152,6 +152,5 @@ class BaseService:
                 normaliser_type=normaliser_type,
                 monitor=monitor,
                 balance_training_data=type(regressor) is NNRegressor,
-                analyse_correlation=False,
             )
         return self.it
