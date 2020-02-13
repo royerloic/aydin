@@ -21,6 +21,7 @@ VERSION = '0.0.3'
 @click.pass_context
 @click.version_option(version=VERSION)
 def aydin(ctx):
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # To disable TensorFlow logs
     sentry_sdk.init("https://d9d7db5f152546c490995a409023c60a@sentry.io/1498298")
     if ctx.invoked_subcommand is None:
         run(VERSION)
