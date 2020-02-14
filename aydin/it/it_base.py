@@ -83,12 +83,7 @@ class ImageTranslatorBase(ABC):
 
     @abstractmethod
     def _train(
-        self,
-        input_image,
-        target_image,
-        batch_dims,
-        train_valid_ratio=0.1,
-        callback_period=3,
+        self, input_image, target_image, batch_dims, train_valid_ratio, callback_period
     ):
         raise NotImplemented()
 
@@ -97,7 +92,7 @@ class ImageTranslatorBase(ABC):
         raise NotImplemented()
 
     @abstractmethod
-    def _translate(self, input_image, batch_dims=None):
+    def _translate(self, input_image, batch_dims):
         """
         Translates an input image into an output image according to the learned function
         :param input_image: input image

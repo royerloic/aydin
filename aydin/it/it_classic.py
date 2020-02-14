@@ -84,9 +84,6 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         batch_dims=None,
         train_valid_ratio=0.1,
         callback_period=3,
-        max_epochs=1024,
-        patience=3,
-        patience_epsilon=0.000001,
     ):
 
         # Resetting regressor:
@@ -155,12 +152,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             return inferred_image
 
     def _train(
-        self,
-        input_image,
-        target_image,
-        batch_dims,
-        train_valid_ratio=0.1,
-        callback_period=3,
+        self, input_image, target_image, batch_dims, train_valid_ratio, callback_period
     ):
 
         with lsection(
@@ -401,9 +393,9 @@ class ImageTranslatorClassic(ImageTranslatorBase):
                 regressor_callback=regressor_callback if self.monitor else None,
             )
 
-    def _translate(self, input_image, batch_dims=None):
+    def _translate(self, input_image, batch_dims):
         """
-            Internal method that translates an input image on the basis of the trainined model.
+            Internal method that translates an input image on the basis of the trained model.
         :param input_image: input image
         :param batch_dims: batch dimensions
         :return:
