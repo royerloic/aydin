@@ -27,7 +27,7 @@ def get_temp_folder():
 
     try:
         makedirs(temp_folder)
-    except:
+    except Exception:
         pass
 
     if exists(temp_folder):
@@ -51,7 +51,7 @@ def get_cache_folder():
 
     try:
         makedirs(cache_folder)
-    except:
+    except Exception:
         pass
 
     if exists(cache_folder):

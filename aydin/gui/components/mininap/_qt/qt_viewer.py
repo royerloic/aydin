@@ -9,14 +9,11 @@ from qtpy.QtWidgets import QWidget, QVBoxLayout, QSplitter, QFileDialog
 from qtpy.QtGui import QCursor, QPixmap
 from qtpy import API_NAME
 from vispy.scene import SceneCanvas, PanZoomCamera, ArcballCamera
-from vispy.app import use_app
 
 from .qt_dims import QtDims
 from ..util.misc import is_multichannel
 from ..util.keybindings import components_to_key_combo
 from ..util.io import read
-
-from .qt_controls import QtControls
 
 
 # set vispy application to the appropriate qt backend

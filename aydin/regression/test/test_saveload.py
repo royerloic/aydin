@@ -1,6 +1,6 @@
 import time
 import pytest
-from os.path import join, exists
+from os.path import join
 
 import numpy
 from skimage.data import camera

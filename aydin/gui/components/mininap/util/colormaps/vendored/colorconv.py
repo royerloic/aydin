@@ -48,9 +48,6 @@ References
 .. [3] https://en.wikipedia.org/wiki/HSL_and_HSV
 .. [4] https://en.wikipedia.org/wiki/CIE_1931_color_space
 """
-
-
-from warnings import warn
 import numpy as np
 from scipy import linalg
 

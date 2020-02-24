@@ -45,7 +45,7 @@ def test_opening_examples():
 
         array, metadata = io.imread(example_file_path)
 
-        if not array is None:
+        if array is not None:
             print(
                 f"dataset: {example.value[1]}, shape:{array.shape}, dtype:{array.dtype} "
             )

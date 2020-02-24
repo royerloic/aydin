@@ -77,7 +77,7 @@ def demo_lgbm_regressor(batch, num_batches=10, num_used_batches=math.inf, displa
     denoised = rescale_intensity(denoised, in_range='image', out_range=(0, 1))
 
     ssim_value = ssim(denoised, image)
-    psnr_value = psnr(denoised, image)
+    # psnr_value = psnr(denoised, image)  # commented out as it is currently not returned by this method
 
     print("denoised", psnr, ssim)
 

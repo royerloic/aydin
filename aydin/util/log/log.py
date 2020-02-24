@@ -25,7 +25,7 @@ class Log:
     if platform.system() == "Windows":
         __vl__ = '|'
         __br__ = '|->'
-        __bd__ = '|\ '
+        __bd__ = '|\ '  # noqa: W605
         __tb__ = '-'
         __la__ = '<<'
 

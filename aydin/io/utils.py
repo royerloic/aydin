@@ -15,7 +15,7 @@ def is_zarr_storage(input_path):
         lprint(f"This path is a ZARR storage: {input_path}")
         # IF we reach this point, then we could open the file and therefore it is a Zarr file...
         return True
-    except:
+    except Exception:
         lprint(f"This path is NOT a ZARR storage: {input_path}")
         return False
 

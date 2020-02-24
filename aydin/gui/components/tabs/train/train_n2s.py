@@ -1,6 +1,6 @@
 import numpy as np
 from skimage.io import imsave
-from PyQt5.QtWidgets import QVBoxLayout, QPushButton, QProgressBar, QHBoxLayout
+from PyQt5.QtWidgets import QVBoxLayout, QPushButton, QHBoxLayout
 
 from aydin.gui.components.mininap import Viewer
 from aydin.gui.components.plot_canvas import PlotCanvas
@@ -116,10 +116,11 @@ class TrainN2STab(BaseTab):
         :param arg:
         :return:
         """
-        iter, eval_metric, image = arg[0]  # Parse callback arguments
-        image = image[0][
-            np.newaxis, ...
-        ]  # Reshape 2D inferred image to 3D for stacking
+        # Parse callback arguments
+        iteration_count, eval_metric, image = arg[0]
+
+        # Reshape 2D inferred image to 3D for stacking
+        image = image[0][np.newaxis, ...]
 
         self.pb.add_val(eval_metric)
 

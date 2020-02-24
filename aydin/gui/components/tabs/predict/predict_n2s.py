@@ -10,7 +10,6 @@ from PyQt5.QtWidgets import (
 
 from aydin.gui.components.plot_canvas import PlotCanvas
 from aydin.gui.components.tabs.base_tab import BaseTab
-from aydin.gui.components.workers.worker import Worker
 from aydin.services.n2s import N2SService
 from aydin.util.resource import read_image_from_path
 from skimage.io import imsave

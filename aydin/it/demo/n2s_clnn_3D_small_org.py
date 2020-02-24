@@ -1,6 +1,5 @@
+# flake8: noqa
 import time
-
-
 import numpy
 from skimage.exposure import rescale_intensity
 
@@ -10,7 +9,6 @@ from aydin.io import io
 from aydin.io.datasets import examples_single
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.clnn import CLNNRegressor
-from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn import NNRegressor
 
 
