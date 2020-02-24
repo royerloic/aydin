@@ -1,7 +1,6 @@
 import numpy
 import matplotlib.pyplot as plt
-import copy
-from aydin.it.cnn.unet import unet_model
+from aydin.it.cnn.models.unet_2d import unet_2d_model
 
 
 def bbox_idx(x, thresh=None):
@@ -22,7 +21,7 @@ def demo_masking():
     input_shape = input_image.shape
     input_image1 = numpy.copy(input_image)
     input_image1[0, int(input_shape[1] / 2), int(input_shape[2] / 2), 0] = 1
-    model = unet_model(
+    model = unet_2d_model(
         input_shape[1:],
         rot_batch_size=1,
         num_lyr=num_lyr,
@@ -75,7 +74,7 @@ def demo_shiftconv():
     input_shape = input_image.shape
     input_image1 = numpy.copy(input_image)
     input_image1[0, int(input_shape[1] / 2), int(input_shape[2] / 2), 0] = 1
-    model = unet_model(
+    model = unet_2d_model(
         input_shape[1:],
         rot_batch_size=1,
         num_lyr=num_lyr,

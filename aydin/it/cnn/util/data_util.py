@@ -2,23 +2,31 @@ import numpy
 from scipy.stats import entropy
 
 
-def random_sample_patches(input_img, tile_size, num_tile, adoption_rate=0.5):
-    if type(tile_size) == int:
+def random_sample_patches(input_img, patch_size, num_patch, adoption_rate=0.5):
+    """
+    This function outputs a list of slices that crops a part of the input_img (i.e. patch).
+    Only patches with higher entropy in their intensity histogram are selected.
+    :param input_size: input_img: input image that will be sampled with patches
+    :param patch_size: patch size
+    :param num_patch: number of patches to be output
+    :param adaption_rate: The % of patches selected from the original population of patches.
+    """
+    if type(patch_size) == int:
         if len(input_img.shape) == 4:
-            tile_size = (tile_size, tile_size)
+            patch_size = (patch_size, patch_size)
         if len(input_img.shape) == 5:
-            tile_size = (tile_size, tile_size, tile_size)
+            patch_size = (patch_size, patch_size, patch_size)
 
     img_dim = input_img.shape
     tiles_per_img = numpy.ceil(
-        numpy.ceil(num_tile / img_dim[0]) / adoption_rate
+        numpy.ceil(num_patch / img_dim[0]) / adoption_rate
     ).astype(int)
     hist_ind_all = []
-    coordinates = numpy.asarray(img_dim[1:-1]) - numpy.asarray(tile_size)
+    coordinates = numpy.asarray(img_dim[1:-1]) - numpy.asarray(patch_size)
     for k in range(img_dim[0]):
         ind_past = []
         hist_batch = []
-        for _ in range(tiles_per_img):
+        while len(hist_batch) < tiles_per_img:
             # Randomly choose coordinates from an image.
             ind = numpy.hstack(
                 [k]
@@ -33,19 +41,19 @@ def random_sample_patches(input_img, tile_size, num_tile, adoption_rate=0.5):
                     continue
             ind_past.append(ind)
             # Extract image patch from the input image.
-            if len(tile_size) == 2:
+            if len(patch_size) == 2:
                 img0 = input_img[
                     ind[0],
-                    ind[1] : ind[1] + tile_size[0],
-                    ind[2] : ind[2] + tile_size[1],
+                    ind[1] : ind[1] + patch_size[0],
+                    ind[2] : ind[2] + patch_size[1],
                     0,
                 ]
-            elif len(tile_size) == 3:
+            elif len(patch_size) == 3:
                 img0 = input_img[
                     ind[0],
-                    ind[1] : ind[1] + tile_size[0],
-                    ind[2] : ind[2] + tile_size[1],
-                    ind[3] : ind[3] + tile_size[2],
+                    ind[1] : ind[1] + patch_size[0],
+                    ind[2] : ind[2] + patch_size[1],
+                    ind[3] : ind[3] + patch_size[2],
                     0,
                 ]
             else:
@@ -62,22 +70,33 @@ def random_sample_patches(input_img, tile_size, num_tile, adoption_rate=0.5):
         hist_ind_all.append(hist_ind)
     hist_ind_all = numpy.vstack(hist_ind_all)
     hist_ind_all = hist_ind_all[(-hist_ind_all[:, 0]).argsort()]
-    hist_ind_all = hist_ind_all[:num_tile, 1:].astype(int)
+    hist_ind_all = hist_ind_all[:num_patch, 1:].astype(int)
 
-    # Return a numpy array of coordinates of patches.
-    return hist_ind_all
+    # Create a slice list
+    patch_slice = []
+    for ind in hist_ind_all:
+        slice_list = (
+            [slice(ind[0], ind[0] + 1, 1)]
+            + [
+                slice(ind[i + 1], ind[i + 1] + patch_size[i], 1)
+                for i in range(len(patch_size))
+            ]
+            + [slice(0, 1, 1)]
+        )
+        patch_slice.append(tuple(slice_list))
 
-
-def model_memsize(model):
-    total_par = model.count_params()
-    tensor_size = 0
-    for lyr in model.layers:
-        tensor_size += numpy.array(numpy.prod(lyr.output_shape[1:]))
-    byte = int(str(lyr.output.shape.dtype).split(".")[1][-2:]) / 8
-    return (total_par + tensor_size) * byte
+    # Return a list of slice
+    return patch_slice
 
 
 def sim_model_size(input_size, shiftconv=True, floattype=32):
+    """
+    Estimate model size for checking if memory is enough to run the training.
+    :param input_size: input image size; exclude batch and channel dim
+    :param shiftconv: whether shift convolution model is going to be used.
+    :param floattype: type of floating number
+    :return: estimated memory to be ocupied by the CNN model in byte
+    """
     # input_size should not contain channel dim.
     byte = floattype / 8
     input_size = numpy.array(input_size)
@@ -112,7 +131,7 @@ def sim_model_size(input_size, shiftconv=True, floattype=32):
         tensor_size += numpy.prod(numpy.append(input_size, 48)) * 2
         tensor_size += numpy.prod(input_size) * 1
         model_params = 2790673
-        return (tensor_size + model_params) * byte * 1.021
+        return (tensor_size * 4 + model_params) * byte * 1.021
     else:
         tensor_size = numpy.prod(input_size)
         tensor_size += numpy.prod(numpy.append(input_size, 48)) * 2
