@@ -1,15 +1,15 @@
 import warnings
-
+import tensorflow as tf
 import numpy as np
-from keras import backend as K
-from keras.callbacks import Callback
-
 from aydin.util.log.log import lprint
+
+K = tf.keras.backend
+Callback = tf.keras.callbacks.Callback
 
 
 class CNNCallback(Callback):
     """
-        Keras Callback to linkup to the it callback machinery
+        tensorflow.keras Callback to linkup to the it callback machinery
     """
 
     def __init__(self, monitor_callback):

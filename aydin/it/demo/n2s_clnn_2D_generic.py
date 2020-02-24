@@ -1,12 +1,12 @@
 import time
-
+import os
 import numpy
 import numpy as np
 from skimage.data import camera
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 
-from aydin.clnn.tensor.cltensor import CLTensor
+# from aydin.clnn.tensor.cltensor import CLTensor
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.io.datasets import newyork, normalise, add_noise, pollen, lizard
 from aydin.it.it_classic import ImageTranslatorClassic

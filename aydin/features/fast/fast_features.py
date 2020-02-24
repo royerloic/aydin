@@ -332,7 +332,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             if feature_last_dim:
                 features = np.moveaxis(features, 0, -1)
 
-            # computes the inverse permutation from the permutation use to consolidate batch dimensions:
+            # computes the inverse permutation from the permutation used to consolidate batch dimensions:
             axes_inverse_permutation = [
                 axes_permutation.index(l) for l in range(len(axes_permutation))
             ] + [image_dimension]

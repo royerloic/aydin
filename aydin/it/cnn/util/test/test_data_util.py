@@ -5,7 +5,7 @@ from scipy.stats import entropy
 
 from aydin.io import io
 from aydin.io.datasets import examples_single
-from aydin.it.cnn.cnn_util.data_util import random_sample_patches
+from aydin.it.cnn.util.data_util import random_sample_patches
 
 
 def n(image):
@@ -31,15 +31,7 @@ def test_random_sample_patch_3D():
     # Extract patched images
     img_patch = []
     for i in input_data:
-        img_patch.append(
-            image0[
-                i[0],
-                i[1] : i[1] + tile_size[0],
-                i[2] : i[2] + tile_size[1],
-                i[3] : i[3] + tile_size[2],
-                0,
-            ]
-        )
+        img_patch.append(image0[i])
     img_path = numpy.stack(img_patch)
     # Entropy of the whole image
     hist, _ = numpy.histogram(image0, range=(0, 1), bins=255, density=True)
@@ -66,9 +58,7 @@ def test_random_sample_patch_2D():
     # Extract patched images
     img_patch = []
     for i in input_data:
-        img_patch.append(
-            image0[i[0], i[1] : i[1] + tile_size[0], i[2] : i[2] + tile_size[1], 0]
-        )
+        img_patch.append(image0[i])
     img_path = numpy.stack(img_patch)
     # Entropy of the whole image
     hist, _ = numpy.histogram(image0, range=(0, 1), bins=255, density=True)
