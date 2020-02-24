@@ -1,6 +1,6 @@
 import numpy
 
-from aydin.normaliser.normaliser_base import NormaliserBase
+from aydin.normaliser.base import NormaliserBase
 
 
 class IdentityNormaliser(NormaliserBase):

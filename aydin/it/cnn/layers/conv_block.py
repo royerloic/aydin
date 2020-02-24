@@ -1,3 +1,4 @@
+from aydin.it.cnn.layers.instance_norm import InstanceNormalization
 import tensorflow as tf
 
 Conv2D = tf.keras.layers.Conv2D
@@ -11,9 +12,6 @@ BatchNormalization = tf.keras.layers.BatchNormalization
 MaxPooling2D = tf.keras.layers.MaxPool2D
 MaxPooling3D = tf.keras.layers.MaxPool3D
 Activation = tf.keras.layers.Activation
-
-
-from aydin.it.cnn.layers.instance_norm import InstanceNormalization
 
 
 def conv2d_bn(xx, unit, shiftconv, norm, act, lyrname=None):

@@ -96,7 +96,7 @@ def early_stopping(gbm_regressor, stopping_rounds):
                 )
                 raise EarlyStopException(best_iter[i], best_score_list[i])
 
-            ## This is where we stop training:
+            # This is where we stop training:
             if gbm_regressor._stop_fit:
                 raise EarlyStopException(best_iter[i], best_score_list[i])
 

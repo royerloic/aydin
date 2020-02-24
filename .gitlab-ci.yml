@@ -49,6 +49,17 @@ black style osx:
     - conda deactivate
     - conda env remove -n blacktest
 
+flake8 osx:
+  tags:
+    - osx
+  script:
+    - conda create -n flake8 python=3.7
+    - conda activate flake8
+    - pip install flake8
+    - flake8 --ignore E501,E203,W503 aydin
+    - conda deactivate
+    - conda env remove -n flake8
+
 
 #unit tests windows:
 #  tags:

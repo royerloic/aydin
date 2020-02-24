@@ -1,11 +1,8 @@
 import time
-import pytest
 import numpy
 from skimage.data import camera
-from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
-from skimage.util import random_noise
 from aydin.io.datasets import normalise, add_noise
 from aydin.it.it_cnn import ImageTranslatorCNN
 

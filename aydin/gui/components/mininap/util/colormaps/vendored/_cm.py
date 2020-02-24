@@ -5,9 +5,7 @@ and a dictionary of these dictionaries.
 Documentation for each is in pyplot.colormaps().  Please update this
 with the purpose and type of your colormap if you add data for one here.
 """
-
 from functools import partial
-
 import numpy as np
 
 _binary_data = {
@@ -136,6 +134,7 @@ _cubehelix_data = cubehelix()
 
 _bwr_data = ((0.0, 0.0, 1.0), (1.0, 1.0, 1.0), (1.0, 0.0, 0.0))
 _brg_data = ((0.0, 0.0, 1.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0))
+
 
 # Gnuplot palette functions
 def _g0(x):

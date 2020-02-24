@@ -65,7 +65,7 @@ def test_add_layer_dims_change():
 
     # Check ndim increase to 3 when 3D data added
     data = np.random.random((10, 15, 20))
-    layer = viewer.add_image(data)
+    viewer.add_image(data)
     assert len(viewer.layers) == 1
     assert np.all(viewer.layers[0].data == data)
     assert viewer.dims.ndim == 3

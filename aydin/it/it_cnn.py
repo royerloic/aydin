@@ -1,5 +1,5 @@
-import warnings
-import time, math
+import time
+import math
 from os.path import join
 
 import numpy
@@ -8,26 +8,32 @@ from aydin.providers.opencl.opencl_provider import OpenCLProvider
 
 provider = OpenCLProvider()
 
-import tensorflow as tf
-from aydin.io.folders import get_temp_folder
-from aydin.it.cnn.models.unet_2d import unet_2d_model
-from aydin.it.cnn.models.unet_3d import unet_3d_model
-from aydin.it.it_base import ImageTranslatorBase
-from aydin.util.log.log import lsection, lprint
-from aydin.it.cnn.layers import split
-from aydin.it.cnn.layers.masking import Maskout, maskedgen, randmaskgen
-from aydin.it.cnn.layers.layers import rot90
-from aydin.regression.nn_utils.callbacks import ModelCheckpoint
+import tensorflow as tf  # noqa: E402
+from aydin.io.folders import get_temp_folder  # noqa: E402
+from aydin.it.cnn.models.unet_2d import unet_2d_model  # noqa: E402
+from aydin.it.cnn.models.unet_3d import unet_3d_model  # noqa: E402
+from aydin.it.it_base import ImageTranslatorBase  # noqa: E402
+from aydin.util.log.log import lsection, lprint  # noqa: E402
+from aydin.it.cnn.layers import split  # noqa: E402
+from aydin.it.cnn.layers.masking import Maskout, maskedgen, randmaskgen  # noqa: E402
+from aydin.it.cnn.layers.layers import rot90  # noqa: E402
+from aydin.regression.nn_utils.callbacks import ModelCheckpoint  # noqa: E402
 from aydin.it.cnn.util.callbacks import (
     EarlyStopping,
     ReduceLROnPlateau,
     CNNCallback,
-)
-from aydin.it.cnn.util.receptive_field import receptive_field_model
+)  # noqa: E402
+from aydin.it.cnn.util.receptive_field import receptive_field_model  # noqa: E402
 
 # from tensorflow.keras.models import model_from_json
-from aydin.it.cnn.util.data_util import random_sample_patches, sim_model_size
-from aydin.it.cnn.util.val_generator import val_img_generator, val_data_generator
+from aydin.it.cnn.util.data_util import (
+    random_sample_patches,
+    sim_model_size,
+)  # noqa: E402
+from aydin.it.cnn.util.val_generator import (
+    val_img_generator,
+    val_data_generator,
+)  # noqa: E402
 
 ImageDataGenerator = tf.keras.preprocessing.image.ImageDataGenerator
 
@@ -122,7 +128,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
     def save_cnn(self, path: str):
         # super().save(path)
-        if not self.model is None:
+        if self.model is not None:
             # serialize model to JSON:
             keras_model_file = join(path, 'keras_model.txt')
             model_json = self.model.to_json()
@@ -134,7 +140,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             self.model.save_weights(keras_model_file)
         return model_json
 
-    ##TODO: We exclude certain fields from saving:
+    # TODO: We exclude certain fields from saving:
     def __getstate__(self):
         state = self.__dict__.copy()
         # exclude fields below that should/cannot be saved properly:
@@ -518,7 +524,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
             lprint("Training now...")
             if self.supervised:
-                history = self.model.fit(
+                self.model.fit(
                     input_image,
                     target_image,
                     batch_size=self.batch_size,
@@ -532,7 +538,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     val_split = (
                         val_split - (val_split % self.batch_size) + self.batch_size
                     ) / self.total_num_patches
-                    history = self.model.fit(
+                    self.model.fit(
                         input_image,
                         input_image,
                         batch_size=self.batch_size,
@@ -542,7 +548,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                         validation_split=val_split,
                     )
                 else:
-                    history = self.model.fit(
+                    self.model.fit(
                         self.datagen(
                             input_image,
                             input_image,
@@ -568,7 +574,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                         ).astype(int),
                     )
             elif 'checkerbox' in self.training_architecture:
-                history = self.model.fit(
+                self.model.fit(
                     maskedgen(
                         self.tile_size,
                         self.mask_shape,
@@ -605,7 +611,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     ).astype(int),
                 )
             elif 'random' in self.training_architecture:
-                history = self.model.fit(
+                self.model.fit(
                     randmaskgen(
                         input_image,
                         self.batch_size,
@@ -644,7 +650,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
     ):
         if tile_size == numpy.unique(input_image.shape[1:-1]):
             tile_size = None
-        elif tile_size == None:
+        elif tile_size is None:
             tile_size = self.tile_size
 
         return super().translate(
@@ -751,7 +757,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 ]
         return output_image
 
-    ## TODO: modify these functions to generate tiles with the same size of tile_size
+    # TODO: modify these functions to generate tiles with the same size of tile_size
     def _get_tilling_strategy(self, batch_dims, tile_size, shape):
 
         # We will store the batch strategy as a list of integers representing the number of chunks per dimension:

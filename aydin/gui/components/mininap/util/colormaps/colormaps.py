@@ -1,4 +1,3 @@
-import os
 from .vendored import colorconv, cm
 import numpy as np
 from vispy.color import get_colormap, get_colormaps, BaseColormap, Colormap

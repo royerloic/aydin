@@ -13,5 +13,5 @@ pyinstaller -w -F -y --clean aydin.spec
 
 
 # echo "creating the dmg..."
-hdiutil create dist/aydin.dmg -srcfolder dist/aydin.app/
+hdiutil create dist/aydin.dmg -srcfolder dist/aydin
 

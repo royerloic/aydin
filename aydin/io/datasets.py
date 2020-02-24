@@ -17,7 +17,7 @@ datasets_folder = join(get_cache_folder(), 'data')
 
 try:
     os.makedirs(datasets_folder)
-except:
+except Exception:
     pass
 
 
@@ -153,7 +153,7 @@ def download_from_gdrive(
 
     try:
         os.makedirs(dest_folder)
-    except:
+    except Exception:
         pass
 
     url = f'https://drive.google.com/uc?id={id}'

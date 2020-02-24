@@ -15,7 +15,7 @@ def spinavej(x):
     shape = np.shape(x)
     dim = np.size(shape)
     '''
-    Depending on the dimension of the image 2D/3D, create an array of integers 
+    Depending on the dimension of the image 2D/3D, create an array of integers
     which increase with distance from the center of the array
     '''
     if dim == 2:
@@ -49,9 +49,9 @@ def spinavej(x):
     '''
     In the next step the output is generated. The output is an array of length
     maxindex. The elements in this array corresponds to the sum of all the elements
-    in the original array correponding to the integer position of the output array 
+    in the original array correponding to the integer position of the output array
     divided by the number of elements in the index array with the same value as the
-    integer position. 
+    integer position.
 
     Depening on the size of the input array, use either the pixel or index method.
     By-pixel method for large arrays and by-index method for smaller ones.
