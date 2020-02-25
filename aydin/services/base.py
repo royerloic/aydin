@@ -7,6 +7,7 @@ import numpy as np
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.it.it_base import ImageTranslatorBase
 from aydin.it.it_classic import ImageTranslatorClassic
+from aydin.it.it_cnn import ImageTranslatorCNN
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn import NNRegressor
 from aydin.util.log.log import lprint
@@ -122,6 +123,8 @@ class BaseService:
                 )
             elif self.backend_preference == "nn":
                 self.regressor = NNRegressor()
+            elif self.backend_preference == "cnn":
+                return None
             else:
                 raise Exception("Non-valid backend option")
         else:
@@ -146,11 +149,21 @@ class BaseService:
             )
             self.it = ImageTranslatorBase.load(self.input_model_path[:-4])
         else:
-            self.it = ImageTranslatorClassic(
-                feature_generator=feature_generator,
-                regressor=regressor,
-                normaliser_type=normaliser_type,
-                monitor=monitor,
-                balance_training_data=type(regressor) is NNRegressor,
-            )
+            if self.backend_preference == "cnn":
+                self.it = ImageTranslatorCNN(
+                    training_architecture='checkerbox',
+                    num_layer=3,
+                    batch_norm='instance',
+                    mask_shape=(5, 5),
+                    max_epochs=30,
+                    verbose=0,
+                )
+            else:
+                self.it = ImageTranslatorClassic(
+                    feature_generator=feature_generator,
+                    regressor=regressor,
+                    normaliser_type=normaliser_type,
+                    monitor=monitor,
+                    balance_training_data=type(regressor) is NNRegressor,
+                )
         return self.it
