@@ -10,7 +10,7 @@ from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.it.it_cnn import ImageTranslatorCNN
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn import NNRegressor
-from aydin.util.log.log import lprint
+from aydin.util.log.log import lprint, lsection
 
 
 class BaseService:
@@ -93,23 +93,36 @@ class BaseService:
         self.has_less_than_one_trillion_voxels = number_of_voxels < 1000000000000
 
     def get_generator(self):
-        if self.has_less_than_one_million_voxels:
-            self.generator = FastMultiscaleConvolutionalFeatures(
-                max_level=10, include_median_features=True
-            )
-        elif self.number_of_dims > 2:
-            if self.has_less_than_one_trillion_voxels:
-                dtype = np.uint16  # TODO: what about float16?
-            else:
-                dtype = np.float32
-            self.generator = FastMultiscaleConvolutionalFeatures(
-                max_level=4, include_median_features=False, dtype=dtype
-            )
+        if self.backend_preference == "cnn":
+            return None
         else:
-            self.generator = FastMultiscaleConvolutionalFeatures(
-                max_level=10, include_median_features=True
-            )
-        return self.generator
+            if self.has_less_than_one_million_voxels:
+                self.generator = FastMultiscaleConvolutionalFeatures(
+                    max_level=10, include_median_features=True
+                )
+                with lsection("Fast Feature Generator"):
+                    lprint("max level: ", str(10))
+                    lprint("include median features: ", str(True))
+            elif self.number_of_dims > 2:
+                if self.has_less_than_one_trillion_voxels:
+                    dtype = np.uint16  # TODO: what about float16?
+                else:
+                    dtype = np.float32
+                self.generator = FastMultiscaleConvolutionalFeatures(
+                    max_level=4, include_median_features=False, dtype=dtype
+                )
+                with lsection("Fast Feature Generator"):
+                    lprint("max level: ", str(4))
+                    lprint("include median features: ", str(False))
+                    lprint("dtype: ", str(dtype))
+            else:
+                self.generator = FastMultiscaleConvolutionalFeatures(
+                    max_level=10, include_median_features=True
+                )
+                with lsection("Fast Feature Generator"):
+                    lprint("max level: ", str(10))
+                    lprint("include median features: ", str(True))
+            return self.generator
 
     def get_regressor(self):
         if self.backend_preference is not None:
@@ -121,8 +134,16 @@ class BaseService:
                     n_estimators=2048,
                     patience=5,
                 )
+                with lsection("LGBM Regressor"):
+                    lprint("learning rate: ", str(0.01))
+                    lprint("number of leaves: ", str(127))
+                    lprint("max bin: ", str(512))
+                    lprint("n_estimators: ", str(2048))
+                    lprint("patience: ", str(5))
             elif self.backend_preference == "nn":
                 self.regressor = NNRegressor()
+                with lsection("NN Regressor"):
+                    lprint("with no arguments")
             elif self.backend_preference == "cnn":
                 return None
             else:
@@ -136,8 +157,16 @@ class BaseService:
                     n_estimators=2048,
                     patience=5,
                 )
+                with lsection("LGBM Regressor"):
+                    lprint("learning rate: ", str(0.01))
+                    lprint("number of leaves: ", str(127))
+                    lprint("max bin: ", str(512))
+                    lprint("n_estimators: ", str(2048))
+                    lprint("patience: ", str(5))
             else:
                 self.regressor = NNRegressor()
+                with lsection("NN Regressor"):
+                    lprint("with no arguments")
         return self.regressor
 
     def get_translator(self, feature_generator, regressor, normaliser_type, monitor):
@@ -151,13 +180,20 @@ class BaseService:
         else:
             if self.backend_preference == "cnn":
                 self.it = ImageTranslatorCNN(
-                    training_architecture='checkerbox',
+                    training_architecture="checkerbox",
                     num_layer=3,
-                    batch_norm='instance',
+                    batch_norm="instance",
                     mask_shape=(5, 5),
                     max_epochs=30,
                     verbose=0,
                 )
+                with lsection("CNN image translator"):
+                    lprint("training architecture: ", "checkerbox")
+                    lprint("number of layers: ", str(3))
+                    lprint("batch norm: ", "instance")
+                    lprint("mask shape: ", str((5, 5)))
+                    lprint("max_epochs", str(30))
+                    lprint("verbose: ", str(0))
             else:
                 self.it = ImageTranslatorClassic(
                     feature_generator=feature_generator,
@@ -166,4 +202,8 @@ class BaseService:
                     monitor=monitor,
                     balance_training_data=type(regressor) is NNRegressor,
                 )
+                with lsection("Classic image translator"):
+                    lprint("normaliser type: ", normaliser_type)
+                    lprint("monitor: ", monitor)
+                    lprint("balance training data: ", type(regressor) is NNRegressor)
         return self.it
