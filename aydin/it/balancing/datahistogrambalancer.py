@@ -15,9 +15,9 @@ class DataHistogramBalancer:
         total_entries,
         number_of_bins,
         keep_ratio=1,
-        tolerance=0.05,
+        tolerance=0.5,
         is_active=True,
-        use_median=True,
+        use_median=False,
     ):
         """
 
@@ -100,15 +100,17 @@ class DataHistogramBalancer:
 
 
 def _value_to_fill_char(x):
-    if x <= 0.01:
+    if x <= 0.00:
         return ' '
-    if x < 0.25:
+    elif x <= 0.05:
+        return '_'
+    elif x <= 0.10:
         return '·'
-    if x < 0.50:
+    elif x <= 0.25:
         return '░'
-    elif x < 0.75:
+    elif x <= 0.50:
         return '▒'
-    elif x < 1.00:
+    elif x <= 0.75:
         return '▓'
-    elif x >= 1:
-        return '█'  # ■
+    elif x > 0.75:
+        return '█'

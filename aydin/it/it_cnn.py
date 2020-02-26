@@ -204,10 +204,10 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self, image_train, image_val, batch_size, train_valid_ratio, subset='training'
     ):
         datagen_train = ImageDataGenerator(validation_split=train_valid_ratio).flow(
-            image_train, batch_size=batch_size, subset='training',
+            image_train, batch_size=batch_size, subset='training'
         )
         datagen_val = ImageDataGenerator(validation_split=train_valid_ratio).flow(
-            image_val, batch_size=batch_size, subset='validation',
+            image_val, batch_size=batch_size, subset='validation'
         )
 
         while True:
@@ -435,7 +435,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
                         predicted_monitoring_datasets = [
                             self.translate(
-                                x_m, tile_size=[64 for _ in self.input_dim[:-1]],
+                                x_m, tile_size=[64 for _ in self.input_dim[:-1]]
                             )
                             for x_m in self.monitoring_datasets
                         ]
@@ -646,7 +646,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 )
 
     def translate(
-        self, input_image, translated_image=None, batch_dims=None, tile_size=None,
+        self, input_image, translated_image=None, batch_dims=None, tile_size=None
     ):
         if tile_size == numpy.unique(input_image.shape[1:-1]):
             tile_size = None
@@ -732,11 +732,11 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
         if 'shiftconv' in self.training_architecture:
             output_image = self.infmodel.predict(
-                input_image, batch_size=input_image.shape[0], verbose=self.verbose,
+                input_image, batch_size=input_image.shape[0], verbose=self.verbose
             )
         else:
             output_image = self.infmodel.predict(
-                input_image, batch_size=self.batch_size, verbose=self.verbose,
+                input_image, batch_size=self.batch_size, verbose=self.verbose
             )
 
         if not (input_shape % 2 ** self.num_layer == 0).all():
