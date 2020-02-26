@@ -126,7 +126,4 @@ def randmaskgen(image, batch_size, p=None, train_valid_ratio=0, subset='training
         )  # pixels in training image are blocked by multiply by 0
         masknega = ~mask  # p of the pixels are 1
         target_img = masknega * image_batch
-        yield {
-            'input': train_img,
-            'input_msk': masknega.astype(np.float32),
-        }, target_img
+        yield {'input': train_img, 'input_msk': masknega.astype(np.float32)}, target_img

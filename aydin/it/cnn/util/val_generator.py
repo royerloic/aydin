@@ -36,13 +36,13 @@ def val_data_generator(img_train, img_val, marker, batch_size, train_valid_ratio
         0, img_train.shape[0], int(img_train.shape[0] * train_valid_ratio)
     )
     datagen_train = ImageDataGenerator().flow(
-        img_train[val_ind], batch_size=batch_size, shuffle=True,
+        img_train[val_ind], batch_size=batch_size, shuffle=True
     )
     datagen_val = ImageDataGenerator().flow(
-        img_val[val_ind], batch_size=batch_size, shuffle=True,
+        img_val[val_ind], batch_size=batch_size, shuffle=True
     )
     datagen_marker = ImageDataGenerator().flow(
-        ~marker[val_ind], batch_size=batch_size, shuffle=True,
+        ~marker[val_ind], batch_size=batch_size, shuffle=True
     )
 
     while True:
@@ -77,13 +77,13 @@ def val_data_generator_from_ind(
         0, img_train.shape[0], int(img_train.shape[0] * train_valid_ratio)
     )
     datagen_train = ImageDataGenerator().flow(
-        img_train[val_ind], batch_size=batch_size, shuffle=False,
+        img_train[val_ind], batch_size=batch_size, shuffle=False
     )
     datagen_val = ImageDataGenerator().flow(
-        img_val[val_ind], batch_size=batch_size, shuffle=False,
+        img_val[val_ind], batch_size=batch_size, shuffle=False
     )
     datagen_marker = ImageDataGenerator().flow(
-        ~marker[val_ind], batch_size=batch_size, shuffle=False,
+        ~marker[val_ind], batch_size=batch_size, shuffle=False
     )
 
     while True:
