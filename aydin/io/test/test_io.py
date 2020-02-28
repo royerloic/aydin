@@ -35,6 +35,7 @@ def test_opening_tif_folder():
     assert array.dtype == numpy.uint16
 
 
+@pytest.mark.heavy
 def test_opening_examples():
 
     for example in examples_single:
