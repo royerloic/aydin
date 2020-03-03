@@ -5,6 +5,7 @@ import shutil
 import numpy as np
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
+from aydin.features.tiled.tiled_features import TiledFeatureGenerator
 from aydin.it.it_base import ImageTranslatorBase
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.it.it_cnn import ImageTranslatorCNN
@@ -108,16 +109,22 @@ class BaseService:
                     dtype = np.uint16  # TODO: what about float16?
                 else:
                     dtype = np.float32
-                self.generator = FastMultiscaleConvolutionalFeatures(
+                fast_generator = FastMultiscaleConvolutionalFeatures(
                     max_level=4, include_median_features=False, dtype=dtype
+                )
+                self.generator = TiledFeatureGenerator(
+                    fast_generator, max_tile_size=512
                 )
                 with lsection("Fast Feature Generator"):
                     lprint("max level: ", str(4))
                     lprint("include median features: ", str(False))
                     lprint("dtype: ", str(dtype))
             else:
-                self.generator = FastMultiscaleConvolutionalFeatures(
+                fast_generator = FastMultiscaleConvolutionalFeatures(
                     max_level=10, include_median_features=True
+                )
+                self.generator = TiledFeatureGenerator(
+                    fast_generator, max_tile_size=512
                 )
                 with lsection("Fast Feature Generator"):
                     lprint("max level: ", str(10))
