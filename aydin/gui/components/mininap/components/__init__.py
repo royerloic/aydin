@@ -13,6 +13,7 @@ ViewerModel
     Data viewer displaying the currently rendered scene and
     layer-related controls.
 """
+# flake8: noqa
 from .viewer_model import ViewerModel
 from .layerlist import LayerList
 from .dims import Dims

@@ -1,3 +1,5 @@
+# flake8: noqa
+
 import numpy
 import pyopencl
 from pyopencl import cltypes

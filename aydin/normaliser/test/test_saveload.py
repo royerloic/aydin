@@ -1,6 +1,5 @@
 import time
-from os import remove
-from os.path import join, exists
+from os.path import join
 
 import numpy
 from skimage.exposure import rescale_intensity
@@ -10,7 +9,7 @@ from aydin.io.datasets import examples_single
 from aydin.io.folders import get_temp_folder
 from aydin.normaliser.identity import IdentityNormaliser
 from aydin.normaliser.minmax import MinMaxNormaliser
-from aydin.normaliser.normaliser_base import NormaliserBase
+from aydin.normaliser.base import NormaliserBase
 from aydin.normaliser.percentile import PercentileNormaliser
 
 

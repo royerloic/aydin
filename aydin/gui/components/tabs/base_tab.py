@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QPushButton
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFrame
 
 
 class BaseTab(QWidget):

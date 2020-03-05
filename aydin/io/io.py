@@ -1,28 +1,25 @@
-import hashlib
 import os
 import traceback
 from contextlib import contextmanager
-from os import path
 from os.path import join
 from pathlib import Path
 
 import dask
-import numcodecs
 import numpy
 import skimage
 import zarr
 from czifile import czifile, CziFile
 from tifffile import tifffile, TiffFile, memmap
 
-## Axis codes:
+# Axis codes:
 #        'X' width, 'Y' height, 'S' sample, 'I' image series|page|plane,
 #        'Z' depth, 'C' color|em-wavelength|channel, 'E' ex-wavelength|lambda,
 #        'T' time, 'R' region|tile, 'A' angle, 'P' phase, 'H' lifetime,
 #        'L' exposure, 'V' event, 'Q' unknown, '_' missing
-import aydin
-from aydin.io.folders import get_temp_folder
+
 from aydin.io.utils import get_files_with_most_frequent_extension, is_zarr_storage
 from aydin.util.log.log import lsection, lprint
+import aydin
 
 
 def is_batch(code, shape, axes):
@@ -30,11 +27,11 @@ def is_batch(code, shape, axes):
     if len(shape) == 3 and 'X' in axes and 'Y' in axes and 'I' in code:
         return False
 
-    return not code in 'XYZ'
+    return code not in 'XYZ'
 
 
 def is_channel(code):
-    return code is "C"
+    return code == "C"
 
 
 class FileMetadata:
@@ -60,11 +57,9 @@ def analyse(input_path):
         metadata.extension = (Path(input_path).suffix)[1:]
 
         is_tiff = 'tif' in metadata.extension or 'tiff' in metadata.extension
-        is_ome = is_tiff and 'ome.tif' in input_path
         is_czi = 'czi' in metadata.extension
         is_png = 'png' in metadata.extension
         is_zarr = 'zarr' in metadata.extension or is_zarr_storage(input_path)
-        is_nd2 = 'nd2' in metadata.extension
         is_npy = 'npy' in metadata.extension
 
         try:

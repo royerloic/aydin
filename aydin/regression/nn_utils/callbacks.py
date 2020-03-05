@@ -43,7 +43,7 @@ class NNCallback(Callback):
         pass
 
     def get_monitor_value(self, logs):
-        if not logs is None:
+        if logs is not None:
             monitor_value = logs.get('val_loss')
             return monitor_value
         return None

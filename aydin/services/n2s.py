@@ -1,5 +1,6 @@
 from aydin.it.monitor import Monitor
 from aydin.services.base import BaseService
+from aydin.util.log.log import lsection
 
 
 class N2SService(BaseService):
@@ -45,49 +46,54 @@ class N2SService(BaseService):
         :param noisy_image: input noisy image, must be np compatible
         :return: denoised version of the input image, will be np compatible
         """
-        self.set_image_metrics(noisy_image.shape)
-        progress_callback.emit(5)
+        with lsection("Noise2Self service is starting..."):
+            self.set_image_metrics(noisy_image.shape)
+            progress_callback.emit(5)
 
-        generator = generator if generator is not None else self.get_generator()
-        regressor = regressor if regressor is not None else self.get_regressor()
-        progress_callback.emit(41)
+            generator = generator if generator is not None else self.get_generator()
+            regressor = regressor if regressor is not None else self.get_regressor()
+            progress_callback.emit(41)
 
-        # Handle image_path if it is not None
-        if image_path is not None:
-            self.update_paths(image_path)
+            # Handle image_path if it is not None
+            if image_path is not None:
+                self.update_paths(image_path)
 
-        self.it = self.get_translator(
-            feature_generator=generator,
-            regressor=regressor,
-            normaliser_type='percentile',
-            monitor=Monitor(
-                monitoring_callbacks=monitoring_callbacks,
-                monitoring_images=monitoring_images,
-            ),
-        )
+            self.it = self.get_translator(
+                feature_generator=generator,
+                regressor=regressor,
+                normaliser_type='percentile',
+                monitor=Monitor(
+                    monitoring_callbacks=monitoring_callbacks,
+                    monitoring_images=monitoring_images,
+                ),
+            )
 
-        # Train a new model
-        self.it.train(
-            noisy_image,
-            noisy_image,
-            batch_dims=noisy_metadata.batch_dim if noisy_metadata is not None else None,
-        )
+            # Train a new model
+            self.it.train(
+                noisy_image,
+                noisy_image,
+                batch_dims=noisy_metadata.batch_dim
+                if noisy_metadata is not None
+                else None,
+            )
 
-        # Save the trained model
-        self.save_model(image_path)
+            # Save the trained model
+            self.save_model(image_path)
 
-        progress_callback.emit(80)
+            progress_callback.emit(80)
 
-        # Predict the resulting image
-        response = self.it.translate(
-            noisy_image,
-            batch_dims=noisy_metadata.batch_dim if noisy_metadata is not None else None,
-        )
+            # Predict the resulting image
+            response = self.it.translate(
+                noisy_image,
+                batch_dims=noisy_metadata.batch_dim
+                if noisy_metadata is not None
+                else None,
+            )
 
-        if noisy_metadata is not None and noisy_metadata.dtype is not None:
-            response = response.astype(noisy_metadata.dtype)
-        else:
-            response = response.astype(noisy_image.dtype)
+            if noisy_metadata is not None and noisy_metadata.dtype is not None:
+                response = response.astype(noisy_metadata.dtype)
+            else:
+                response = response.astype(noisy_image.dtype)
 
-        progress_callback.emit(100)
-        return response
+            progress_callback.emit(100)
+            return response

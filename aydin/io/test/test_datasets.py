@@ -8,8 +8,8 @@ from aydin.io.datasets import (
 )
 
 
-### DO NOT DELETE LINES BELOW !!
-### TODO: the ci flag below should not be turned on when running on the ci:
+# DO NOT DELETE LINES BELOW !!
+# TODO: the ci flag below should not be turned on when running on the ci:
 
 ci_flag = True
 

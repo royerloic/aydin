@@ -1,7 +1,7 @@
+# flake8: noqa
 import numpy
 import matplotlib.pyplot as plt
-import copy
-from aydin.it.cnn.unet import unet_model
+from aydin.it.cnn.models.unet_2d import unet_2d_model
 
 
 def bbox_idx(x, thresh=None):
@@ -10,19 +10,19 @@ def bbox_idx(x, thresh=None):
     return [[numpy.amin(i), numpy.amax(i)] for i in numpy.where(x != thresh)]
 
 
-## Check the receptive field of masking approach ==========================================
+# Check the receptive field of masking approach ==========================================
 def demo_masking():
     # Setup a model
     batch_norm = None
     supervised = False
-    shiftconv = False  #  True  #
+    shiftconv = False  # True
     batch_size = 1
     num_lyr = 5
     input_image = numpy.zeros((1, 512, 512, 1))
     input_shape = input_image.shape
     input_image1 = numpy.copy(input_image)
     input_image1[0, int(input_shape[1] / 2), int(input_shape[2] / 2), 0] = 1
-    model = unet_model(
+    model = unet_2d_model(
         input_shape[1:],
         rot_batch_size=1,
         num_lyr=num_lyr,
@@ -64,7 +64,8 @@ def demo_masking():
 
 demo_masking()
 
-## Check the receptive field of shiftconv approach ==========================================
+
+# Check the receptive field of shiftconv approach ==========================================
 def demo_shiftconv():
     batch_norm = None
     supervised = False
@@ -75,7 +76,7 @@ def demo_shiftconv():
     input_shape = input_image.shape
     input_image1 = numpy.copy(input_image)
     input_image1[0, int(input_shape[1] / 2), int(input_shape[2] / 2), 0] = 1
-    model = unet_model(
+    model = unet_2d_model(
         input_shape[1:],
         rot_batch_size=1,
         num_lyr=num_lyr,

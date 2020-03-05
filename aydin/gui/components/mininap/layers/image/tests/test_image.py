@@ -15,7 +15,7 @@ def test_random_image():
     assert layer.ndim == len(shape)
     assert layer.shape == shape
     assert layer.range == tuple((0, m, 1) for m in shape)
-    assert layer.multichannel == False
+    assert layer.multichannel is False
     assert layer._data_view.shape == shape[-2:]
 
 
@@ -48,7 +48,7 @@ def test_all_zeros_image():
     assert np.all(layer.data == data)
     assert layer.ndim == len(shape)
     assert layer.shape == shape
-    assert layer.multichannel == False
+    assert layer.multichannel is False
     assert layer._data_view.shape == shape[-2:]
 
 
@@ -61,7 +61,7 @@ def test_integer_image():
     assert np.all(layer.data == data)
     assert layer.ndim == len(shape)
     assert layer.shape == shape
-    assert layer.multichannel == False
+    assert layer.multichannel is False
     assert layer._data_view.shape == shape[-2:]
 
 
@@ -73,7 +73,7 @@ def test_bool_image():
     assert np.all(layer.data == data)
     assert layer.ndim == len(shape)
     assert layer.shape == shape
-    assert layer.multichannel == False
+    assert layer.multichannel is False
     assert layer._data_view.shape == shape[-2:]
 
 
@@ -86,7 +86,7 @@ def test_3D_image():
     assert np.all(layer.data == data)
     assert layer.ndim == len(shape)
     assert layer.shape == shape
-    assert layer.multichannel == False
+    assert layer.multichannel is False
     assert layer._data_view.shape == shape[-2:]
 
 
@@ -99,7 +99,7 @@ def test_3D_image_shape_1():
     assert np.all(layer.data == data)
     assert layer.ndim == len(shape)
     assert layer.shape == shape
-    assert layer.multichannel == False
+    assert layer.multichannel is False
     assert layer._data_view.shape == shape[-2:]
 
 
@@ -112,7 +112,7 @@ def test_4D_image():
     assert np.all(layer.data == data)
     assert layer.ndim == len(shape)
     assert layer.shape == shape
-    assert layer.multichannel == False
+    assert layer.multichannel is False
     assert layer._data_view.shape == shape[-2:]
 
 
@@ -125,7 +125,7 @@ def test_5D_image_shape_1():
     assert np.all(layer.data == data)
     assert layer.ndim == len(shape)
     assert layer.shape == shape
-    assert layer.multichannel == False
+    assert layer.multichannel is False
     assert layer._data_view.shape == shape[-2:]
 
 
@@ -138,7 +138,7 @@ def test_rgb_image():
     assert np.all(layer.data == data)
     assert layer.ndim == len(shape) - 1
     assert layer.shape == shape[:-1]
-    assert layer.multichannel == True
+    assert layer.multichannel is True
     assert layer._data_view.shape == shape[-3:]
 
 
@@ -151,7 +151,7 @@ def test_rgba_image():
     assert np.all(layer.data == data)
     assert layer.ndim == len(shape) - 1
     assert layer.shape == shape[:-1]
-    assert layer.multichannel == True
+    assert layer.multichannel is True
     assert layer._data_view.shape == shape[-3:]
 
 
@@ -164,7 +164,7 @@ def test_non_rgb_image():
     assert np.all(layer.data == data)
     assert layer.ndim == len(shape)
     assert layer.shape == shape
-    assert layer.multichannel == False
+    assert layer.multichannel is False
     assert layer._data_view.shape == shape[-2:]
 
 
@@ -179,7 +179,7 @@ def test_non_multichannel_image():
     assert np.all(layer.data == data)
     assert layer.ndim == len(shape)
     assert layer.shape == shape
-    assert layer.multichannel == False
+    assert layer.multichannel is False
     assert layer._data_view.shape == shape[-2:]
 
 
@@ -196,7 +196,7 @@ def test_changing_image():
     assert layer.ndim == len(shape_b)
     assert layer.shape == shape_b
     assert layer.range == tuple((0, m, 1) for m in shape_b)
-    assert layer.multichannel == False
+    assert layer.multichannel is False
     assert layer._data_view.shape == shape_b[-2:]
 
 
@@ -216,7 +216,7 @@ def test_changing_image_dims():
     assert layer.ndim == len(shape_b)
     assert layer.shape == shape_b
     assert layer.range == tuple((0, m, 1) for m in shape_b)
-    assert layer.multichannel == False
+    assert layer.multichannel is False
     assert layer._data_view.shape == shape_b[-2:]
 
 
@@ -239,16 +239,16 @@ def test_visiblity():
     np.random.seed(0)
     data = np.random.random((10, 15))
     layer = Image(data)
-    assert layer.visible == True
+    assert layer.visible is True
 
     layer.visible = False
-    assert layer.visible == False
+    assert layer.visible is False
 
     layer = Image(data, visible=False)
     # assert layer.visible == False
 
     layer.visible = True
-    assert layer.visible == True
+    assert layer.visible is True
 
 
 def test_opacity():

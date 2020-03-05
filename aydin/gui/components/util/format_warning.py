@@ -9,6 +9,7 @@ def show_format_warning():
     lbl = QLabel(
         "JPEG format images are not supported. Please use a lossless image format.", d
     )
+    lbl.setEnabled(True)
     d.setWindowTitle("Format Warning")
     d.setWindowModality(Qt.ApplicationModal)
     d.exec_()

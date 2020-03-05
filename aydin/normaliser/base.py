@@ -70,7 +70,7 @@ class NormaliserBase(ABC):
         :param array: array to use for calibration
         :type array: ndarray
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def normalise(self, array):
         """
@@ -82,7 +82,7 @@ class NormaliserBase(ABC):
         if array.dtype != numpy.float32:
             array = array.astype(numpy.float32)
 
-        if not self.rmin is None and not self.rmax is None:
+        if self.rmin is not None and self.rmax is not None:
             min_value = numpy.float32(self.rmin)
             max_value = numpy.float32(self.rmax)
             epsilon = numpy.float32(self.epsilon)
@@ -112,7 +112,7 @@ class NormaliserBase(ABC):
         :param array: array to denormalise
         :type array: ndarray
         """
-        if not self.rmin is None and not self.rmax is None:
+        if self.rmin is not None and self.rmax is not None:
 
             min_value = numpy.float32(self.rmin)
             max_value = numpy.float32(self.rmax)

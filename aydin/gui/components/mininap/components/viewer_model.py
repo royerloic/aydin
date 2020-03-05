@@ -622,13 +622,6 @@ class ViewerModel(KeymapMixin):
             ndim = self.dims.ndim
         self.add_points(np.empty((0, ndim)))
 
-    def _new_shapes(self):
-        if self.dims.ndim == 0:
-            ndim = 2
-        else:
-            ndim = self.dims.ndim
-        layer = self.add_shapes(np.empty((0, 0, ndim)))
-
     def _new_labels(self):
         if self.dims.ndim == 0:
             dims = (512, 512)

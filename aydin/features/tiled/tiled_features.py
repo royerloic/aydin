@@ -1,27 +1,9 @@
 import math
 
-import numpy
 import numpy as np
-import psutil
-import pyopencl as cl
-import scipy
-from pyopencl.array import to_device, Array
-
-from aydin.features.fast.features_1d import collect_feature_1d
-from aydin.features.fast.features_2d import collect_feature_2d
-from aydin.features.fast.features_3d import collect_feature_3d
-from aydin.features.fast.features_4d import collect_feature_4d
-from aydin.features.fast.integral import (
-    integral_1d,
-    integral_2d,
-    integral_3d,
-    integral_4d,
-)
 from aydin.features.base import FeatureGeneratorBase
-from aydin.providers.opencl.opencl_provider import OpenCLProvider
 from aydin.util.log.log import lsection, lprint
-from aydin.util.nd import nd_range_radii, nd_split_slices, remove_margin_slice
-from aydin.util.offcore.offcore import offcore_array
+from aydin.util.nd import nd_split_slices, remove_margin_slice
 
 
 class TiledFeatureGenerator(FeatureGeneratorBase):

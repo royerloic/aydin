@@ -1,0 +1,129 @@
+import numpy as np
+import tensorflow as tf
+
+ImageDataGenerator = tf.keras.preprocessing.image.ImageDataGenerator
+K = tf.keras.backend
+Layer = tf.keras.layers.Layer
+multiply = tf.keras.layers.multiply
+
+
+class Maskout(Layer):  #
+    def __init__(self, **kwargs):
+        """
+        A layer that mutiply mask with image. This is for masking architecture.
+        """
+        super(Maskout, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        assert isinstance(input_shape, list)
+        super(Maskout, self).build(input_shape)
+
+    def call(self, x, training=None):
+        assert isinstance(x, list)
+        return multiply(x)
+        # return K.in_train_phase(multiply(x), x[0], training=training)
+
+    def compute_output_shape(self, input_shape):
+        assert isinstance(input_shape, list)
+        shape_a, shape_b = input_shape
+        return shape_a
+
+
+def masker(batch_vol, i=None, mask_shape=None, p=None):
+    """
+    Single mask generator.
+    :param batch_vol: batch volume; desn't include batch and ch dimensions
+    :param mask_shape: mask shape e.g. (3, 3)
+    :param p: possibility of masked pixels on random masking approach
+    """
+    if p:
+        mask = np.random.uniform(size=batch_vol)
+        mask[mask > p] = 1
+        mask[mask <= p] = 0
+        mask = mask.astype(bool)
+    else:
+        i = i % np.prod(mask_shape)
+        mask = np.zeros(np.prod(mask_shape), dtype=bool)
+        mask[i] = True
+        mask = mask.reshape(mask_shape)
+        rep = np.ceil(np.asarray(batch_vol) / np.asarray(mask_shape)).astype(int)
+        mask = np.tile(mask, tuple(rep))
+        mask = mask[: batch_vol[0], : batch_vol[1]]
+    return mask
+
+
+def maskedgen(
+    batch_vol, mask_shape, image, batch_size, train_valid_ratio=0, subset='training'
+):
+    """
+    Mask generator. Returns a generator.
+    :param batch_vol: batch volume; desn't include batch and ch dimensions
+    :param mask_shape: mask shape e.g. (3, 3)
+    :param image: input image
+    :param batch_size: batch size
+    :param p: possibility of masked pixels on random masking approach
+    :param train_valid_ratio: ratio of the data will be used for validation
+    """
+    datagen_train = ImageDataGenerator(validation_split=train_valid_ratio).flow(
+        image, batch_size=batch_size, shuffle=True, subset='training'
+    )
+    datagen_val = ImageDataGenerator(validation_split=train_valid_ratio).flow(
+        image, batch_size=batch_size, shuffle=True, subset='validation'
+    )
+
+    while True:
+        if 'train' in subset:
+            image_batch = datagen_train.next()
+        else:
+            image_batch = datagen_val.next()
+        for i in range(np.prod(mask_shape).astype(int)):
+            mask = masker(
+                batch_vol, i, mask_shape, p=None
+            )  # generate a 2D mask with same size of image_batch; True value is masked.
+            masknega = np.broadcast_to(
+                np.expand_dims(np.expand_dims(mask, 0), -1), image_batch.shape
+            )  # broadcast the 2D mask to batch dimension ready for multiplication
+            train_img = (
+                np.broadcast_to(
+                    np.expand_dims(np.expand_dims(~mask, 0), -1), image_batch.shape
+                )
+                * image_batch
+            )  # pixels in training image are blocked by multiply by 0
+            target_img = masknega * image_batch
+            yield {
+                'input': train_img,
+                'input_msk': masknega.astype(np.float32),
+            }, target_img
+
+
+def randmaskgen(image, batch_size, p=None, train_valid_ratio=0, subset='training'):
+    """
+    Mask generator. Returns a generator.
+    :param batch_vol: batch volume; desn't include batch and ch dimensions
+    :param mask_shape: mask shape e.g. (3, 3)
+    :param image: input image
+    :param batch_size: batch size
+    :param p: possibility of masked pixels on random masking approach
+    """
+    datagen_train = ImageDataGenerator(validation_split=train_valid_ratio).flow(
+        image, batch_size=batch_size, shuffle=False, subset='training'
+    )
+    datagen_val = ImageDataGenerator(validation_split=train_valid_ratio).flow(
+        image, batch_size=batch_size, shuffle=False, subset='validation'
+    )
+    batch_vol = (batch_size,) + image.shape[1:]
+
+    while True:
+        if 'train' in subset:
+            image_batch = datagen_train.next()
+        else:
+            image_batch = datagen_val.next()
+        mask = masker(
+            batch_vol, p=p
+        )  # generate a 2D mask with same size of image_batch; p of the pix are 0
+        train_img = (
+            mask * image_batch
+        )  # pixels in training image are blocked by multiply by 0
+        masknega = ~mask  # p of the pixels are 1
+        target_img = masknega * image_batch
+        yield {'input': train_img, 'input_msk': masknega.astype(np.float32)}, target_img

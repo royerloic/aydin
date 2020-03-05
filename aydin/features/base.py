@@ -72,7 +72,7 @@ class FeatureGeneratorBase(ABC):
         :return: receptive field radius in pixels.
         :rtype: int
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
     @abstractmethod
     def max_non_batch_dims(self):
@@ -81,7 +81,7 @@ class FeatureGeneratorBase(ABC):
         :return: max non-batch dimensions.
         :rtype: int
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def max_voxels(self):
         """
@@ -117,7 +117,7 @@ class FeatureGeneratorBase(ABC):
         :rtype: ndarray
         """
 
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def create_feature_array(self, image, nb_features):
         """

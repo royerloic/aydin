@@ -7,7 +7,7 @@ import jsonpickle
 from aydin.analysis.correlation import correlation_distance
 from aydin.normaliser.identity import IdentityNormaliser
 from aydin.normaliser.minmax import MinMaxNormaliser
-from aydin.normaliser.normaliser_base import NormaliserBase
+from aydin.normaliser.base import NormaliserBase
 from aydin.normaliser.percentile import PercentileNormaliser
 from aydin.util.log.log import lprint, lsection
 from aydin.util.json import encode_indent
@@ -74,7 +74,7 @@ class ImageTranslatorBase(ABC):
     def _load_internals(self, path: str):
         raise NotImplementedError()
 
-    ## We exclude certain fields from saving:
+    # We exclude certain fields from saving:
     def __getstate__(self):
         state = self.__dict__.copy()
         del state['input_normaliser']
@@ -90,11 +90,11 @@ class ImageTranslatorBase(ABC):
         train_valid_ratio=0.1,
         callback_period=3,
     ):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     @abstractmethod
     def stop_training(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     @abstractmethod
     def _translate(self, input_image, batch_dims=None):
@@ -104,14 +104,14 @@ class ImageTranslatorBase(ABC):
         :param batch_dims: batch dimensions
 
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
     @abstractmethod
     def get_receptive_field_radius(self, nb_dim):
         """
         Returns the receptive field radius in voxels
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def train(
         self,
@@ -167,9 +167,6 @@ class ImageTranslatorBase(ABC):
             self.input_normaliser.calibrate(input_image)
             if not self.self_supervised:
                 self.target_normaliser.calibrate(target_image)
-
-            # image shape:
-            shape = input_image.shape
 
             # set default batch_dim value:
             if batch_dims is None:
@@ -250,9 +247,6 @@ class ImageTranslatorBase(ABC):
 
             else:
                 # We do need to do tiled inference because of a lack of memory or because a small batch size was requested:
-
-                # Receptive field:
-                receptive_field_radius = self.get_receptive_field_radius(len(shape))
 
                 # We get the tilling strategy but adjust for the max margins:
                 tilling_strategy = self._get_tilling_strategy(

@@ -35,6 +35,7 @@ def test_opening_tif_folder():
     assert array.dtype == numpy.uint16
 
 
+@pytest.mark.heavy
 def test_opening_examples():
 
     for example in examples_single:
@@ -45,7 +46,7 @@ def test_opening_examples():
 
         array, metadata = io.imread(example_file_path)
 
-        if not array is None:
+        if array is not None:
             print(
                 f"dataset: {example.value[1]}, shape:{array.shape}, dtype:{array.dtype} "
             )

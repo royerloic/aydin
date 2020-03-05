@@ -1,7 +1,6 @@
 from PyQt5.QtWidgets import QTabWidget
 
 from aydin.gui.components.tabs.roi.roi import ROITab
-from aydin.gui.components.tabs.predict.predict_n2s import PredictN2STab
 from aydin.gui.components.tabs.train.train_n2s import TrainN2STab
 from aydin.gui.components.tabs.load.load_n2s import LoadN2STab
 

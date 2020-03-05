@@ -1,12 +1,6 @@
 import numpy
-from aydin.it.cnn.cnn_util.receptive_field import receptive_field_model, bbox_idx
-
-# from aydin.providers.plaidml.plaidml_provider import PlaidMLProvider
-#
-# provider = (
-#     PlaidMLProvider()
-# )  # NOTE: This line should stay exactly here! All keras calls must be _AFTER_ the line below:
-from aydin.it.cnn.unet import unet_model
+from aydin.it.cnn.util.receptive_field import receptive_field_model, bbox_idx
+from aydin.it.cnn.models.unet_2d import unet_2d_model
 
 
 # Test masking method ====================================================================
@@ -18,9 +12,8 @@ def test_receptive_field_masking():
     num_lyrs = 5
     input_image = numpy.zeros((1, 512, 512, 1))
     input_shape = input_image.shape
-    input_image1 = numpy.copy(input_image)
-    input_image1[0, int(input_shape[1] / 2), int(input_shape[2] / 2), 0] = 1
-    model = unet_model(
+    input_image[0, int(input_shape[1] / 2), int(input_shape[2] / 2), 0] = 1
+    model = unet_2d_model(
         input_shape[1:],
         rot_batch_size=1,
         num_lyr=num_lyrs,
@@ -30,15 +23,11 @@ def test_receptive_field_masking():
     )
     # Predict test 0-image
     if not shiftconv and not supervised:
-        pred0 = model.predict(
+        pred1 = model.predict(
             [input_image, numpy.ones(input_shape)], batch_size=batch_size, verbose=1
         )
-        pred1 = model.predict(
-            [input_image1, numpy.ones(input_shape)], batch_size=batch_size, verbose=1
-        )
     else:
-        pred0 = model.predict(input_image, batch_size=batch_size, verbose=1)
-        pred1 = model.predict(input_image1, batch_size=batch_size, verbose=1)
+        pred1 = model.predict(input_image, batch_size=batch_size, verbose=1)
 
     # Calculate receptive field
     receptive_field_idx = numpy.array(bbox_idx(pred1))
@@ -57,9 +46,8 @@ def test_receptive_field_shiftconv():
     num_lyrs = 5
     input_image = numpy.zeros((1, 512, 512, 1))
     input_shape = input_image.shape
-    input_image1 = numpy.copy(input_image)
-    input_image1[0, int(input_shape[1] / 2), int(input_shape[2] / 2), 0] = 1
-    model = unet_model(
+    input_image[0, int(input_shape[1] / 2), int(input_shape[2] / 2), 0] = 1
+    model = unet_2d_model(
         input_shape[1:],
         rot_batch_size=1,
         num_lyr=num_lyrs,
@@ -69,15 +57,11 @@ def test_receptive_field_shiftconv():
     )
     # Predict test 0-image
     if not shiftconv and not supervised:
-        pred0 = model.predict(
+        pred1 = model.predict(
             [input_image, numpy.ones(input_shape)], batch_size=batch_size, verbose=1
         )
-        pred1 = model.predict(
-            [input_image1, numpy.ones(input_shape)], batch_size=batch_size, verbose=1
-        )
     else:
-        pred0 = model.predict(input_image, batch_size=batch_size, verbose=1)
-        pred1 = model.predict(input_image1, batch_size=batch_size, verbose=1)
+        pred1 = model.predict(input_image, batch_size=batch_size, verbose=1)
 
     # Calculate receptive field
     receptive_field_idx = numpy.array(bbox_idx(pred1))
