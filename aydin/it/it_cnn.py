@@ -187,8 +187,45 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.stop_fitting = True
 
     # TODO: check the order of dimensions e.g. (B, H, W, C)
-    def dim_order(self):
-        pass
+    def dim_order_forward(self, image):
+        image_dimension = len(image.shape)
+        # permutate dimensions in image to consolidate batch dimensions at the front:
+        batch_dim_axes = [i for i in range(0, image_dimension) if self.batch_dims[i]]
+        non_batch_dim_axes = [
+            i for i in range(0, image_dimension) if not self.batch_dims[i]
+        ]
+        axes_permutation = batch_dim_axes + non_batch_dim_axes
+        image = numpy.transpose(image, axes=axes_permutation)
+        nb_batch_dim = sum([(1 if i else 0) for i in self.batch_dims])
+        nb_non_batch_dim = image_dimension - nb_batch_dim
+
+        lprint(
+            f'Axis permutation for batch-dim consolidation during feature gen: {axes_permutation}'
+        )
+        lprint(
+            f'Number of batch dim: {nb_batch_dim}, number of non batch dim: {nb_non_batch_dim}'
+        )
+        return image
+
+    def dim_extender(self, image):
+        image_dimension = len(image.shape)
+        assert image_dimension <= 2, 'The dimension of input image has to be >= 2.'
+        if self.batch_dims:
+            assert len(self.batch_dims) == image_dimension, (
+                'The size of batch_dims and that of input image dimensions are different. '
+                'Please make sure them are same.'
+            )
+        if self.batch_dims is None or not any(self.batch_dims):
+            if not (numpy.array(image.shape) == 1).any():
+                if image_dimension > 4:
+                    self.batch_dims = [True for _ in range(image_dimension - 2)] + [
+                        False,
+                        False,
+                    ]
+                elif image_dimension == 4:
+                    self.batch_dims = [True, False, False, False]
+
+        return image
 
     def batch2tile_size(self, batch_size, shiftconv=True, floattype=32):
         tile_size = 1024
@@ -228,6 +265,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         callback_period=3,
     ):
         self.batch_dims = batch_dims
+
         self.callback_period = callback_period
 
         self.checkpoint = None
