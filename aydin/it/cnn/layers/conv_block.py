@@ -13,6 +13,8 @@ MaxPooling2D = tf.keras.layers.MaxPool2D
 MaxPooling3D = tf.keras.layers.MaxPool3D
 Activation = tf.keras.layers.Activation
 
+from aydin.it.cnn.layers.layers import Swish
+
 
 def conv2d_bn(xx, unit, shiftconv, norm, act, lyrname=None):
     if shiftconv:
@@ -27,6 +29,8 @@ def conv2d_bn(xx, unit, shiftconv, norm, act, lyrname=None):
         x1 = BatchNormalization(name=lyrname + '_bn')(x1)
     if act == 'ReLU':
         return Activation('relu', name=lyrname + '_relu')(x1)
+    elif act == 'swish':
+        return Swish(name=lyrname + '_swsh')(x1)
     else:
         return LeakyReLU(alpha=0.1, name=lyrname + '_lrel')(x1)
 
@@ -44,6 +48,8 @@ def conv3d_bn(xx, unit, shiftconv, norm, act, lyrname=None):
         x1 = BatchNormalization(name=lyrname + '_bn')(x1)
     if act == 'ReLU':
         return Activation('relu', name=lyrname + '_relu')(x1)
+    elif act == 'swish':
+        return Swish(name=lyrname + '_swsh')(x1)
     else:
         return LeakyReLU(alpha=0.1, name=lyrname + '_lrel')(x1)
 
@@ -56,6 +62,8 @@ def conv2d_bn_noshift(xx, unit, norm, act, lyrname=None):
         x1 = BatchNormalization(name=lyrname + '_bn')(x1)
     if act == 'ReLU':
         return Activation('relu', name=lyrname + '_relu')(x1)
+    elif act == 'swish':
+        return Swish(name=lyrname + '_swsh')(x1)
     else:
         return LeakyReLU(alpha=0.1, name=lyrname + '_lrel')(x1)
 
@@ -68,6 +76,8 @@ def conv3d_bn_noshift(xx, unit, norm, act, lyrname=None):
         x1 = BatchNormalization(name=lyrname + '_bn')(x1)
     if act == 'ReLU':
         return Activation('relu', name=lyrname + '_relu')(x1)
+    elif act == 'swish':
+        return Swish(name=lyrname + '_swsh')(x1)
     else:
         return LeakyReLU(alpha=0.1, name=lyrname + '_lrel')(x1)
 

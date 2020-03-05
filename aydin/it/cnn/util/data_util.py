@@ -70,7 +70,7 @@ def random_sample_patches(input_img, patch_size, num_patch, adoption_rate=0.5):
         hist_ind_all.append(hist_ind)
     hist_ind_all = numpy.vstack(hist_ind_all)
     hist_ind_all = hist_ind_all[(-hist_ind_all[:, 0]).argsort()]
-    hist_ind_all = hist_ind_all[:num_patch, 1:].astype(int)
+    hist_ind_all = hist_ind_all[: int(num_patch), 1:].astype(int)
 
     # Create a slice list
     patch_slice = []

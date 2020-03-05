@@ -1,16 +1,10 @@
 # flake8: noqa
 import time
 
-
 import numpy
-import skimage
 from skimage.data import camera
-from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
-from skimage.morphology import disk
-from skimage.restoration import denoise_nl_means, estimate_sigma
-from skimage.util import random_noise
 
 from aydin.io.datasets import normalise, add_noise, lizard, pollen, newyork
 from aydin.it.it_cnn import ImageTranslatorCNN
@@ -31,10 +25,12 @@ def demo(image, max_epochs=30):
     noisy = numpy.expand_dims(numpy.expand_dims(noisy, axis=2), axis=0)
     # input_dim only includes H, W, C; number of images is not included
     it = ImageTranslatorCNN(
-        training_architecture='shiftconv',
+        training_architecture='checkerbox',
         num_layer=5,
-        batch_norm='instance',
-        # tile_size=128,
+        batch_norm='instance',  # None,  #
+        activation='ReLU',
+        tile_size=128,
+        mask_shape=(3, 3),
         # total_num_patches=10,
         max_epochs=max_epochs,
         verbose=1,
@@ -64,10 +60,6 @@ def demo(image, max_epochs=30):
         viewer = napari.Viewer()
         viewer.add_image(normalise(image), name='image')
         viewer.add_image(normalise(noisy), name='noisy')
-        # viewer.add_image(n(nlm), name='nlm')
-        # viewer.add_image(n(median1), name='median1')
-        # viewer.add_image(n(median2), name='median2')
-        # viewer.add_image(n(median5), name='median5')
         viewer.add_image(normalise(denoised_inf), name='denoised_inf')
 
 

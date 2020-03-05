@@ -134,7 +134,8 @@ def unet_3d_model(
             x, initial_unit, normalization, act=activation, lyrname='last2'
         )
 
-    x = Conv3D(1, (1, 1, 1), padding='same', name='last0', activation='linear')(x)
+    # x = Conv3D(1, (1, 1, 1), padding='same', name='last0', activation='linear')(x)
+    x = Conv3D(1, 3, padding='same', name='last0', activation='linear')(x)
 
     if not shiftconv and not supervised:
         x = Maskout(name='maskout')([x, input_msk])

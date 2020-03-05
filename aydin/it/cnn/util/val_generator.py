@@ -35,20 +35,18 @@ def val_data_generator(img_train, img_val, marker, batch_size, train_valid_ratio
     val_ind = numpy.random.randint(
         0, img_train.shape[0], int(img_train.shape[0] * train_valid_ratio)
     )
-    datagen_train = ImageDataGenerator().flow(
-        img_train[val_ind], batch_size=batch_size, shuffle=True
-    )
-    datagen_val = ImageDataGenerator().flow(
-        img_val[val_ind], batch_size=batch_size, shuffle=True
-    )
-    datagen_marker = ImageDataGenerator().flow(
-        ~marker[val_ind], batch_size=batch_size, shuffle=True
-    )
+    img_train = deepcopy(img_train[val_ind])
+    img_val = deepcopy(img_val[val_ind])
+    marker = deepcopy(marker[val_ind])
 
+    j = 0
+    num_cycle = numpy.ceil(img_train.shape[0] / batch_size)
     while True:
-        train_batch = datagen_train.next()
-        val_batch = datagen_val.next()
-        marker_batch = datagen_marker.next()
+        i = numpy.mod(j, num_cycle).astype(int)
+        train_batch = img_train[batch_size * i : batch_size * (i + 1)]
+        val_batch = img_val[batch_size * i : batch_size * (i + 1)]
+        marker_batch = marker[batch_size * i : batch_size * (i + 1)]
+        j += 1
         yield {
             'input': train_batch,
             'input_msk': marker_batch.astype(numpy.float32),

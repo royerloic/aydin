@@ -34,8 +34,7 @@ from aydin.it.cnn.util.val_generator import (
     val_img_generator,
     val_data_generator,
 )  # noqa: E402
-
-ImageDataGenerator = tf.keras.preprocessing.image.ImageDataGenerator
+from aydin.it.cnn.util.data_generator import DataGenerator_2in2out
 
 
 class ImageTranslatorCNN(ImageTranslatorBase):
@@ -54,6 +53,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         batch_size=32,
         num_layer=5,
         batch_norm=None,
+        activation='ReLU',
         tile_size=None,
         total_num_patches=None,
         adoption_rate=0.5,
@@ -92,6 +92,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.batch_size = batch_size
         self.num_layer = num_layer
         self.batch_norm = batch_norm
+        self.activation_fun = activation
         self.tile_size = tile_size
         self.total_num_patches = total_num_patches
         self.adoption_rate = adoption_rate
@@ -200,25 +201,6 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 break
         return tile_size
 
-    def datagen(
-        self, image_train, image_val, batch_size, train_valid_ratio, subset='training'
-    ):
-        datagen_train = ImageDataGenerator(validation_split=train_valid_ratio).flow(
-            image_train, batch_size=batch_size, subset='training'
-        )
-        datagen_val = ImageDataGenerator(validation_split=train_valid_ratio).flow(
-            image_val, batch_size=batch_size, subset='validation'
-        )
-
-        while True:
-            if 'train' in subset:
-                train_batch = datagen_train.next()
-                yield train_batch, train_batch
-            else:
-                train_batch = datagen_train.next()
-                val_batch = datagen_val.next()
-                yield train_batch, val_batch
-
     def train(
         self,
         input_image,  # dimension (batch, H, W, C)
@@ -283,7 +265,11 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             self.total_num_patches = min(
                 self.total_num_patches, 10240
             )  # upper limit of num of patches
-            self.total_num_patches = numpy.lcm(self.total_num_patches, self.batch_size)
+            self.total_num_patches = (
+                self.total_num_patches
+                - (self.total_num_patches % self.batch_size)
+                + self.batch_size
+            )
         else:
             assert (
                 self.total_num_patches >= self.batch_size
@@ -326,7 +312,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 if self.batch_processing:
                     img_train_patch = []
                     for i in input_patch_idx:
-                        img_train_patch.append(img_train[i])
+                        img_train_patch.append(input_image[i])
                     img_train = numpy.vstack(img_train_patch)
                 else:
                     img_train_patch = []
@@ -357,6 +343,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 rot_batch_size=self.rot_batch_size,  # img_train.shape[0],
                 num_lyr=self.num_layer,
                 normalization=self.batch_norm,
+                activation=self.activation_fun,
                 supervised=self.supervised,
                 shiftconv=True if 'shiftconv' in self.training_architecture else False,
             )
@@ -366,6 +353,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 rot_batch_size=self.rot_batch_size,  # img_train.shape[0],
                 num_lyr=self.num_layer,
                 normalization=self.batch_norm,
+                activation=self.activation_fun,
                 supervised=self.supervised,
                 shiftconv=True if 'shiftconv' in self.training_architecture else False,
             )
@@ -549,12 +537,11 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     )
                 else:
                     self.model.fit(
-                        self.datagen(
+                        DataGenerator_2in2out(
                             input_image,
                             input_image,
                             batch_size=self.batch_size,
-                            train_valid_ratio=tv_ratio,
-                            subset='training',
+                            shuffle=True,
                         ),
                         epochs=self.max_epochs,
                         callbacks=callbacks,
@@ -562,12 +549,8 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                         steps_per_epoch=numpy.ceil(
                             self.total_num_patches * (1 - tv_ratio) / self.batch_size
                         ).astype(int),
-                        validation_data=self.datagen(
-                            input_image,
-                            self.img_val,
-                            batch_size=self.batch_size,
-                            train_valid_ratio=0,
-                            subset='training',
+                        validation_data=DataGenerator_2in2out(
+                            input_image, self.img_val, batch_size=self.batch_size,
                         ),
                         validation_steps=numpy.ceil(
                             self.total_num_patches * train_valid_ratio / self.batch_size
@@ -648,10 +631,10 @@ class ImageTranslatorCNN(ImageTranslatorBase):
     def translate(
         self, input_image, translated_image=None, batch_dims=None, tile_size=None
     ):
-        if tile_size == numpy.unique(input_image.shape[1:-1]):
+        if tile_size == None:
+            tile_size = numpy.unique(self.tile_size)
+        elif (numpy.unique(tile_size) == numpy.unique(input_image.shape[1:-1])).all():
             tile_size = None
-        elif tile_size is None:
-            tile_size = self.tile_size
 
         return super().translate(
             input_image,
@@ -679,7 +662,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             input_image = numpy.pad(input_image, pad_width, 'constant')
             input_shape = numpy.array(input_image.shape[1:-1])
 
-        if not (input_shape.max() % 2 ** self.num_layer == 0).all():
+        if not (input_shape % 2 ** self.num_layer == 0).all():
             pad_width0 = (
                 2 ** self.num_layer
                 - (input_shape % 2 ** self.num_layer)
@@ -703,9 +686,10 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             if len(input_image.shape[1:-1]) == 2:
                 self.infmodel = unet_2d_model(
                     [None, None, input_image.shape[-1]],
-                    rot_batch_size=input_image.shape[0],
+                    rot_batch_size=1,  # input_image.shape[0],
                     num_lyr=self.num_layer,
                     normalization=self.batch_norm,
+                    activation=self.activation_fun,
                     supervised=True
                     if 'random' in self.training_architecture
                     or 'check' in self.training_architecture
@@ -717,9 +701,10 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             elif len(input_image.shape[1:-1]) == 3:
                 self.infmodel = unet_3d_model(
                     [None, None, None, input_image.shape[-1]],
-                    rot_batch_size=input_image.shape[0],
+                    rot_batch_size=1,  # input_image.shape[0],
                     num_lyr=self.num_layer,
                     normalization=self.batch_norm,
+                    activation=self.activation_fun,
                     supervised=True
                     if 'random' in self.training_architecture
                     or 'check' in self.training_architecture
@@ -732,12 +717,17 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
         if 'shiftconv' in self.training_architecture:
             output_image = self.infmodel.predict(
-                input_image, batch_size=input_image.shape[0], verbose=self.verbose
+                input_image, batch_size=1, verbose=self.verbose,
             )
         else:
-            output_image = self.infmodel.predict(
-                input_image, batch_size=self.batch_size, verbose=self.verbose
-            )
+            try:
+                output_image = self.infmodel.predict(
+                    input_image, batch_size=self.batch_size, verbose=self.verbose,
+                )
+            except:
+                output_image = self.infmodel.predict(
+                    input_image, batch_size=1, verbose=self.verbose,
+                )
 
         if not (input_shape % 2 ** self.num_layer == 0).all():
             if len(input_shape) == 2:
@@ -776,7 +766,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
             return tilling_strategy
 
-    def _get_margins(self, shape, tilling_strategy):
+    def _get_margins(self, shape, tilling_strategy, max_margin):
 
         # Receptive field:
         receptive_field_radius = self.get_receptive_field_radius(len(shape))
