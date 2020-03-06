@@ -1,7 +1,9 @@
+import locale
 import math
 import platform
 import sys
 import time
+from importlib import reload
 
 from decorator import contextmanager
 
@@ -22,7 +24,7 @@ class Log:
     __la__ = '«'  # 'Left Arrow'
 
     #  Windows terminal is dumb. We can't use our fancy characters from Yesteryears, sad:
-    if platform.system() == "Windows":
+    if locale.getpreferredencoding() == "US-ASCII":
         __vl__ = '|'
         __br__ = '|->'
         __bd__ = '|\ '  # noqa: W605
@@ -71,7 +73,7 @@ def lsection(section_header: str):
         Log.native_print(
             Log.__vl__ * Log.depth
             + Log.__br__
-            + f'≡ {section_header} (log tree truncated here)'
+            + f'= {section_header} (log tree truncated here)'
         )
 
     Log.depth += 1
