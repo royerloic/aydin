@@ -5,6 +5,10 @@ K = tf.keras.backend
 Lambda = tf.keras.layers.Lambda
 
 
+def Swish(name=None):
+    return Lambda(tf.nn.swish, name=name)
+
+
 def rot90(xx, kk=1, lyrname=None):
     """
     Rotate tensor by 90 degrees for 2D, 3D images. Only for shift convolution architecture.

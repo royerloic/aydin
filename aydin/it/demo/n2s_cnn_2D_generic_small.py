@@ -34,7 +34,7 @@ def demo(image, max_epochs=4, image_width=200):
     # CNN based Image translation:
     # input_dim only includes H, W, C; number of images is not included
     it = ImageTranslatorCNN(
-        training_architecture='shiftconv',
+        training_architecture='random',
         num_layer=3,
         batch_norm=None,  # 'instance',
         max_epochs=max_epochs,
