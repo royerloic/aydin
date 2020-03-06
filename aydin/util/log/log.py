@@ -21,7 +21,10 @@ class Log:
     __la__ = '«'  # 'Left Arrow'
 
     #  Windows terminal is dumb. We can't use our fancy characters from Yesteryears, sad:
-    if locale.getpreferredencoding() == "US-ASCII":
+    if (
+        locale.getpreferredencoding() == "US-ASCII"
+        or locale.getpreferredencoding() == "cp1252"
+    ):
         __vl__ = '|'
         __br__ = '|->'
         __bd__ = '|\ '  # noqa: W605
