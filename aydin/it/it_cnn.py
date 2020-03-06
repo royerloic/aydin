@@ -104,7 +104,8 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.max_epochs = max_epochs
         self.patience = patience
 
-        self.batch_dims = None
+        self.axes_permutation = None
+        self.image_shape_upto3 = None
         self.callback_period = None
         self.checkpoint = None
         self.input_dim = None
@@ -186,46 +187,59 @@ class ImageTranslatorCNN(ImageTranslatorBase):
     def stop_training(self):
         self.stop_fitting = True
 
-    # TODO: check the order of dimensions e.g. (B, H, W, C)
-    def dim_order_forward(self, image):
+    def dim_order_forward(self, image, batch_dim_bool):
         image_dimension = len(image.shape)
         # permutate dimensions in image to consolidate batch dimensions at the front:
-        batch_dim_axes = [i for i in range(0, image_dimension) if self.batch_dims[i]]
+        batch_dim_axes = [i for i in range(0, image_dimension) if batch_dim_bool[i]]
         non_batch_dim_axes = [
-            i for i in range(0, image_dimension) if not self.batch_dims[i]
+            i for i in range(0, image_dimension) if not batch_dim_bool[i]
         ]
-        axes_permutation = batch_dim_axes + non_batch_dim_axes
-        image = numpy.transpose(image, axes=axes_permutation)
-        nb_batch_dim = sum([(1 if i else 0) for i in self.batch_dims])
+        self.axes_permutation = batch_dim_axes + non_batch_dim_axes
+        image = numpy.transpose(image, axes=self.axes_permutation)
+        nb_batch_dim = sum([(1 if i else 0) for i in batch_dim_bool])
         nb_non_batch_dim = image_dimension - nb_batch_dim
-
+        batch_dim_permuted = batch_dim_bool[self.axes_permutation]
         lprint(
-            f'Axis permutation for batch-dim consolidation during feature gen: {axes_permutation}'
+            f'Axis permutation for batch-dim consolidation during feature gen: {self.axes_permutation}'
         )
         lprint(
             f'Number of batch dim: {nb_batch_dim}, number of non batch dim: {nb_non_batch_dim}'
         )
-        return image
-
-    def dim_extender(self, image):
-        image_dimension = len(image.shape)
-        assert image_dimension <= 2, 'The dimension of input image has to be >= 2.'
-        if self.batch_dims:
-            assert len(self.batch_dims) == image_dimension, (
-                'The size of batch_dims and that of input image dimensions are different. '
-                'Please make sure them are same.'
+        if nb_non_batch_dim == 2:
+            lprint('The input image will be processed with 2D CNN.')
+        elif nb_non_batch_dim == 3:
+            lprint('The input image will be processed with 3D CNN.')
+        elif nb_non_batch_dim > 3:
+            lprint(
+                'The input image will be processed with 3D CNN. If this is not intended, please check batch_dims.'
             )
-        if self.batch_dims is None or not any(self.batch_dims):
-            if not (numpy.array(image.shape) == 1).any():
-                if image_dimension > 4:
-                    self.batch_dims = [True for _ in range(image_dimension - 2)] + [
-                        False,
-                        False,
-                    ]
-                elif image_dimension == 4:
-                    self.batch_dims = [True, False, False, False]
 
-        return image
+        # Limit non-batch dims < 3
+        batch_dim_upto3 = [
+            True if i < len(image.shape) - 3 else False for i in range(len(image.shape))
+        ]
+        batch_dim_upto3 = numpy.logical_or(batch_dim_upto3, batch_dim_permuted)
+        self.image_shape_upto3 = image.shape
+        # Denoised images will be first reshaped to self.image_sahpe_upto3
+
+        # Collapse batch dims
+        batch_dim_size = numpy.prod(
+            numpy.array(image.shape)[numpy.array(batch_dim_upto3)]
+        )
+        batch_dim_size = 1 if batch_dim_size == 0 else batch_dim_size
+        target_shape = (
+            [batch_dim_size]
+            + list(numpy.array(self.image_shape_upto3)[~numpy.array(batch_dim_upto3)])
+            + [1]
+        )
+        image = image.reshape(target_shape)
+        batch_dim_out = [True if i == 0 else False for i in range(len(image.shape))]
+        return image, batch_dim_out
+
+    def dim_order_backward(self, image):
+        # Reshape image
+        image = image.reshape(self.image_shape_upto3)
+        return numpy.transpose(image, axes=self.axes_permutation)
 
     def batch2tile_size(self, batch_size, shiftconv=True, floattype=32):
         tile_size = 1024
@@ -264,16 +278,32 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         train_valid_ratio=0.1,
         callback_period=3,
     ):
-        self.batch_dims = batch_dims
+        # Check for supervised & batch_input
+        if input_image is target_image:
+            self.supervised = False
+
+        # set default batch_dim value:
+        image_dimension = len(input_image.shape)
+        if batch_dims:
+            assert len(batch_dims) == image_dimension, (
+                'The size of batch_dims and that of input image dimensions are different. '
+                'Please make sure them are same.'
+            )
+        else:
+            batch_dims = (False,) * image_dimension
+        # batch_dims is the very first (original to the raw input) dimension indicator.
+
+        # Check if there're dims with size 1.
+        batch_dims_size1 = numpy.array(input_image.shape) == 1
+        batch_dims_comb = numpy.logical_or(batch_dims, batch_dims_size1)
+
+        # Reshape the input image
+        input_image, batch_dims = self.dim_order_forward(input_image, batch_dims_comb)
 
         self.callback_period = callback_period
 
         self.checkpoint = None
         self.input_dim = input_image.shape[1:]
-
-        # Check for supervised & batch_input
-        if input_image is target_image:
-            self.supervised = False
 
         # Compute tile size from batch size
         if self.tile_size is None:
@@ -379,7 +409,6 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     val_marker = numpy.vstack(marker_patch)
                     self.img_val = img_val
                     self.val_marker = val_marker
-                self.batch_dims = (True,) + (False,) * len(img_train.shape[1:])
 
                 if self.supervised:
                     target_patch = []
@@ -417,7 +446,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         super().train(
             img_train,
             target_image,
-            batch_dims=self.batch_dims,
+            batch_dims=batch_dims,
             callback_period=callback_period,
         )
 
@@ -686,16 +715,30 @@ class ImageTranslatorCNN(ImageTranslatorBase):
     def translate(
         self, input_image, translated_image=None, batch_dims=None, tile_size=None
     ):
-        if tile_size == numpy.unique(input_image.shape[1:-1]):
+        if batch_dims:
+            assert len(batch_dims) == len(input_image.shape), (
+                'The size of batch_dims and that of input image dimensions are different. '
+                'Please make sure them are same.'
+            )
+        else:
+            batch_dims = (False,) * len(input_image.shape)
+        # batch_dims is the very first (original to the raw input) dimension indicator.
+
+        # Check if there're dims with size 1.
+        batch_dims_size1 = numpy.array(input_image.shape) == 1
+        batch_dims_comb = numpy.logical_or(batch_dims, batch_dims_size1)
+
+        # Reshape the input image
+        input_image, batch_dims = self.dim_order_forward(input_image, batch_dims_comb)
+        non_batch_dims = numpy.array(input_image.shape)[numpy.invert(batch_dims)]
+
+        if (tile_size == numpy.unique(non_batch_dims[:-1])).all():
             tile_size = None
         elif tile_size is None:
             tile_size = self.tile_size
 
         return super().translate(
-            input_image,
-            translated_image,
-            batch_dims=batch_dims if batch_dims else self.batch_dims,
-            tile_size=tile_size,
+            input_image, translated_image, batch_dims=batch_dims, tile_size=tile_size,
         )
 
     def _translate(self, input_image, batch_dim=None):
@@ -793,6 +836,8 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     pad_width[3][0] : -pad_width[3][1] or None,
                     :,
                 ]
+        # Convert the dimensions back to the original
+        output_image = self.dim_order_backward(output_image)
         return output_image
 
     # TODO: modify these functions to generate tiles with the same size of tile_size
@@ -814,7 +859,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
             return tilling_strategy
 
-    def _get_margins(self, shape, tilling_strategy):
+    def _get_margins(self, shape, tilling_strategy, max_margin):
 
         # Receptive field:
         receptive_field_radius = self.get_receptive_field_radius(len(shape))

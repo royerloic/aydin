@@ -16,7 +16,7 @@ from aydin.io.datasets import normalise, add_noise, lizard, pollen, newyork
 from aydin.it.it_cnn import ImageTranslatorCNN
 
 
-def demo(image, max_epochs=30):
+def demo(image, max_epochs=10):
 
     image = normalise(image.astype(numpy.float32))
     noisy = add_noise(image)
