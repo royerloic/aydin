@@ -8,8 +8,8 @@ def test_supervised_2D():
     model2d = unet_2d_model((64, 64, 1), num_lyr=2, shiftconv=False, supervised=True)
     test_past = True
     try:
-        b = model2d.predict(a)
-    except:
+        model2d.predict(a)
+    except Exception:
         test_past = False
 
     assert test_past, 'An error was raised in supervised Unet 2D model.'
@@ -20,8 +20,8 @@ def test_shiftconv_2D():
     model2d = unet_2d_model((64, 64, 1), num_lyr=2, shiftconv=True, supervised=False)
     test_past = True
     try:
-        b = model2d.predict(a)
-    except:
+        model2d.predict(a)
+    except Exception:
         test_past = False
 
     assert test_past, 'An error was raised in shiftconv Unet 2D model.'
@@ -32,8 +32,8 @@ def test_masking_2D():
     model2d = unet_2d_model((64, 64, 1), num_lyr=2, shiftconv=False, supervised=False)
     test_past = True
     try:
-        b = model2d.predict([a, a])
-    except:
+        model2d.predict([a, a])
+    except Exception:
         test_past = False
 
     assert test_past, 'An error was raised in masking Unet 2D model.'
@@ -46,8 +46,8 @@ def test_supervised_3D():
     )
     test_past = True
     try:
-        b = model3d.predict(a)
-    except:
+        model3d.predict(a)
+    except Exception:
         test_past = False
 
     assert test_past, 'An error was raised in supervised Unet 3D model.'
@@ -60,8 +60,8 @@ def test_shiftconv_3D():
     )
     test_past = True
     try:
-        b = model3d.predict(a)
-    except:
+        model3d.predict(a)
+    except Exception:
         test_past = False
 
     assert test_past, 'An error was raised in shiftconv Unet 3D model.'
@@ -74,8 +74,8 @@ def test_masking_3D():
     )
     test_past = True
     try:
-        b = model3d.predict([a, a])
-    except:
+        model3d.predict([a, a])
+    except Exception:
         test_past = False
 
     assert test_past, 'An error was raised in masking Unet 3D model.'
