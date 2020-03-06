@@ -7,7 +7,7 @@ import numpy
 from aydin.io import io
 from aydin.io.datasets import examples_single, examples_zipped
 from aydin.io.folders import get_temp_folder
-from aydin.io.io import imread, imwrite
+from aydin.io.io import imread, imwrite_contextmanager
 
 
 def test_analysis():
@@ -65,7 +65,9 @@ def test_imwrite():
     temp_file = join(get_temp_folder(), "test_imwrite.tif")
 
     # We use a generator that takes care of everything:
-    with imwrite(temp_file, shape=array.shape, dtype=array.dtype) as tiff_array:
+    with imwrite_contextmanager(
+        temp_file, shape=array.shape, dtype=array.dtype
+    ) as tiff_array:
 
         # We write here the file
         print("Writting file...")

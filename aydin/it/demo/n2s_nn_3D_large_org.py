@@ -10,7 +10,7 @@ from aydin.features.tiled.tiled_features import TiledFeatureGenerator
 from aydin.io import io
 from aydin.io.datasets import examples_single
 from aydin.io.folders import get_temp_folder
-from aydin.io.io import imwrite
+from aydin.io.io import imwrite_contextmanager
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.nn import NNRegressor
 
@@ -53,7 +53,7 @@ def demo():
     print(f"Output file: {output_file}")
 
     # We write the stack to a temp file:
-    with imwrite(output_file, infer.shape, infer.dtype) as denoised_tiff:
+    with imwrite_contextmanager(output_file, infer.shape, infer.dtype) as denoised_tiff:
 
         # denoised = offcore_array(whole.shape, whole.dtype)
 

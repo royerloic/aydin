@@ -5,7 +5,6 @@ from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 from aydin.io.datasets import normalise, add_noise
 from aydin.it.it_cnn import ImageTranslatorCNN
-from aydin.util.log.log import Log
 
 
 def test_it_cnn_shiftconv_light():
@@ -97,7 +96,6 @@ def test_it_cnn_random_light():
     """
         Demo for self-supervised denoising using camera image with synthetic noise
     """
-    Log.override_test_exclusion = True
     start = time.time()
     max_epochs = 8
     image_width = 200

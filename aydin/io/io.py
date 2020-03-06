@@ -3,7 +3,7 @@ import traceback
 from contextlib import contextmanager
 from os.path import join
 from pathlib import Path
-
+import imageio
 import dask
 import numpy
 import skimage
@@ -219,8 +219,17 @@ def imread(input_path):
         return array, metadata
 
 
+def imwrite(array, output_path, shape, dtype):
+    if output_path[:-4] == ".tif" or output_path[:-4] == ".czi":
+        with imwrite_contextmanager(output_path, shape, dtype) as save_array:
+            output_path[:-4] = ".tif"
+            save_array[...] = array
+    else:
+        imageio.imwrite(output_path, array)
+
+
 @contextmanager
-def imwrite(output_path, shape, dtype):
+def imwrite_contextmanager(output_path, shape, dtype):
     array = memmap(output_path, shape=shape, dtype=dtype)
     try:
         yield array
