@@ -34,7 +34,7 @@ from aydin.it.cnn.util.val_generator import (
     val_img_generator,
     val_data_generator,
 )  # noqa: E402
-from aydin.it.cnn.util.data_generator import DataGenerator_2in2out
+from aydin.it.cnn.util.data_generator import DataGenerator_2in2out  # noqa: E402
 
 
 class ImageTranslatorCNN(ImageTranslatorBase):
@@ -631,7 +631,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
     def translate(
         self, input_image, translated_image=None, batch_dims=None, tile_size=None
     ):
-        if tile_size == None:
+        if tile_size is None:
             tile_size = numpy.unique(self.tile_size)
         elif (numpy.unique(tile_size) == numpy.unique(input_image.shape[1:-1])).all():
             tile_size = None
@@ -724,7 +724,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 output_image = self.infmodel.predict(
                     input_image, batch_size=self.batch_size, verbose=self.verbose,
                 )
-            except:
+            except Exception:
                 output_image = self.infmodel.predict(
                     input_image, batch_size=1, verbose=self.verbose,
                 )
