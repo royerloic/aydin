@@ -252,8 +252,6 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         batch_dim_sizes = tuple(
             numpy.array(self.image_shape_upto3)[self.batch_dim_upto3]
         )
-
-        spatial_dim_sizes = image.shape[1:-1]
         image = image.reshape(batch_dim_sizes + image.shape[1:-1])
         return numpy.transpose(image, axes=axes_reverse_perm)
 
@@ -745,7 +743,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         # Convert the dimensions back to the original
         output_image = self.dim_order_backward(result_image)
 
-        return result_image
+        return output_image
 
     def _translate(self, input_image, batch_dim=None):
         input_shape = numpy.array(input_image.shape[1:-1])
