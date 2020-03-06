@@ -237,9 +237,14 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         return image, batch_dim_out
 
     def dim_order_backward(self, image):
+        axes_reverse_perm = [0] * len(self.axes_permutation)  # generate a blank list
+        # Reverse the order of permutation
+        for i, j in enumerate(self.axes_permutation):
+            axes_reverse_perm[j] = i
+
         # Reshape image
         image = image.reshape(self.image_shape_upto3)
-        return numpy.transpose(image, axes=self.axes_permutation)
+        return numpy.transpose(image, axes=axes_reverse_perm)
 
     def batch2tile_size(self, batch_size, shiftconv=True, floattype=32):
         tile_size = 1024
