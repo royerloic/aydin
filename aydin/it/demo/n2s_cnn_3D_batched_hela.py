@@ -10,8 +10,7 @@ from aydin.it.it_cnn import ImageTranslatorCNN
 
 
 def demo(image, max_epochs=10):
-
-    batch_dims = (True, False, False, False, False)
+    batch_dims = (True, False, False, False)
 
     it = ImageTranslatorCNN(
         training_architecture='random',
@@ -50,7 +49,6 @@ def demo(image, max_epochs=10):
 image_path = examples_single.hyman_hela.get_path()
 array, metadata = io.imread(image_path)
 # array = array[0:10, 15:35, 130:167, 130:177]
-array = array[:, :, 100:300, 100:300]
-array = np.expand_dims(array.astype(np.float32), axis=-1)
+array = array[:, :, 100:300, 100:300].astype(np.float32)
 array = rescale_intensity(array, in_range='image', out_range=(0, 1))
 demo(array)
