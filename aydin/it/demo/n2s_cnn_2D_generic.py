@@ -10,7 +10,7 @@ from aydin.io.datasets import normalise, add_noise, lizard, pollen, newyork
 from aydin.it.it_cnn import ImageTranslatorCNN
 
 
-def demo(image, max_epochs=30):
+def demo(image, max_epochs=10):
 
     image = normalise(image.astype(numpy.float32))
     noisy = add_noise(image)
@@ -22,7 +22,6 @@ def demo(image, max_epochs=30):
     # nlm = denoise_nl_means(noisy, patch_size=11, sigma=estimate_sigma(noisy))
 
     # CNN based Image translation:
-    noisy = numpy.expand_dims(numpy.expand_dims(noisy, axis=2), axis=0)
     # input_dim only includes H, W, C; number of images is not included
     it = ImageTranslatorCNN(
         training_architecture='checkerbox',
@@ -44,7 +43,6 @@ def demo(image, max_epochs=30):
     # in case of batching we have to do this:
     start = time.time()
     denoised_inf = it.translate(noisy, tile_size=512)
-    denoised_inf = denoised_inf.reshape(image.shape)
     stop = time.time()
     print(f"inference: elapsed time:  {stop-start} ")
 

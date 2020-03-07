@@ -24,7 +24,6 @@ def demo(image, max_epochs=4, image_width=200):
     H0, W0 = (numpy.array(image.shape) - image_width) // 2
     image = image[H0 : H0 + image_width, W0 : W0 + image_width]
     noisy = add_noise(image)
-    noisy = numpy.expand_dims(numpy.expand_dims(noisy, axis=2), axis=0)
 
     # Classical denoisers:
     # median1 = skimage.filters.median(noisy, disk(1))
@@ -51,7 +50,6 @@ def demo(image, max_epochs=4, image_width=200):
     # in case of batching we have to do this:
     start = time.time()
     denoised_inf = it.translate(noisy, tile_size=image_width)
-    denoised_inf = denoised_inf.reshape(image.shape)
     stop = time.time()
     print(f"inference: elapsed time:  {stop-start} ")
 
