@@ -2,7 +2,7 @@ import re
 
 import numpy
 from m2cgen import interpreters
-from pyopencl.array import to_device, Array
+from pyopencl.array import Array
 
 from aydin.providers.opencl.opencl_provider import OpenCLProvider
 from aydin.regression.gbm_utils.light_gbm_assembler import LightGBMModelAssembler
@@ -66,8 +66,6 @@ class GBMOpenCLPrediction:
         with lsection("GBM OpenCL prediction:"):
             self._ensure_opencl_prodider_initialised()
 
-            type_size = 4 if dtype == 'float' else 8
-
             num_features = x.shape[-1]
             num_datapoints = x.shape[0]
 
@@ -77,15 +75,12 @@ class GBMOpenCLPrediction:
                 )
 
                 return f"""
-            
                  {forrest_code}
-        
                  __kernel void gbm_kernel(__global float *x, __global float *y)
                  {{
                    const int i = get_global_id(0);
-                   const int x_offset = {num_features}*i ; 
+                   const int x_offset = {num_features}*i ;
                    const int y_offset = i ;
-        
                    y[y_offset] = score(x+x_offset);
                  }}
                  """

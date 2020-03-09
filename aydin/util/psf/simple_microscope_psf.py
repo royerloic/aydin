@@ -1,12 +1,4 @@
-#!/usr/bin/env python
-import cmath
-import math
 import numpy
-import scipy
-import scipy.integrate
-import scipy.interpolate
-import scipy.special
-
 from aydin.util.psf.microscope_psf import MicroscopePSF
 
 

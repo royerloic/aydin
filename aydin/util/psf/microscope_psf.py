@@ -44,8 +44,8 @@ class MicroscopePSF:
 
         # Internal constants.
         self.num_basis = (
-            100
-        )  # Number of rescaled Bessels that approximate the phase function.
+            100  # Number of rescaled Bessels that approximate the phase function.
+        )
         self.rho_samples = 1000  # Number of pupil sample along the radial direction.
 
         # Microscope parameters.
@@ -118,7 +118,6 @@ class MicroscopePSF:
         This will return a numpy array with of size (zv.size, xy_size, xy_size). Note that z
         is the zeroth dimension of the PSF.
 
-        mp - The microscope parameters dictionary.
         dxy - Step size in the XY plane.
         xy_size - Number of pixels in X/Y.
         zd - A numpy array containing the camera positions in microns.
@@ -128,8 +127,6 @@ class MicroscopePSF:
         wvl - Light wavelength in microns.
         zv - The (relative) z offset value of the coverslip (negative is closer to the objective).
         """
-        mp = self.parameters
-
         # Calculate rv vector, this is 2x up-sampled.
         rv = self._calcRv(dxy, xy_size)
 
@@ -149,7 +146,6 @@ class MicroscopePSF:
         This will return a numpy array with of size (zv.size, xy_size, xy_size). Note that z
         is the zeroth dimension of the PSF.
 
-        mp - The microscope parameters dictionary.
         dxy - Step size in the XY plane.
         xy_size - Number of pixels in X/Y.
         zv - A numpy array containing the (relative) z offset values of the coverslip (negative is closer to the objective).
@@ -159,9 +155,6 @@ class MicroscopePSF:
         wvl - Light wavelength in microns.
         zd - Actual camera position in microns. If not specified the microscope tube length is used.
         """
-
-        mp = self.parameters
-
         # Calculate rv vector, this is 2x up-sampled.
         rv = self._calcRv(dxy, xy_size)
 
@@ -181,7 +174,6 @@ class MicroscopePSF:
         This will return a numpy array with of size (zv.size, xy_size, xy_size). Note that z
         is the zeroth dimension of the PSF.
 
-        mp - The microscope parameters dictionary.
         dxy - Step size in the XY plane.
         xy_size - Number of pixels in X/Y.
         pz - A numpy array containing the particle z position above the coverslip (positive values only)
@@ -192,9 +184,6 @@ class MicroscopePSF:
         zd - Actual camera position in microns. If not specified the microscope tube length is used.
         zv - The (relative) z offset value of the coverslip (negative is closer to the objective).
         """
-
-        mp = self.parameters
-
         # Calculate rv vector, this is 2x up-sampled.
         rv = self._calcRv(dxy, xy_size)
 
@@ -257,8 +246,8 @@ class MicroscopePSF:
         b = k * a * rv.reshape(-1, 1) / zd
 
         # Convenience functions for J0 and J1 Bessel functions
-        J0 = lambda x: scipy.special.jv(0, x)
-        J1 = lambda x: scipy.special.jv(1, x)
+        J0 = lambda x: scipy.special.jv(0, x)  # noqa: E731
+        J1 = lambda x: scipy.special.jv(1, x)  # noqa: E731
 
         # See equation 5 in Li, Xue, and Blu
         denom = scaling_factor * scaling_factor - b * b
@@ -286,7 +275,6 @@ class MicroscopePSF:
         you would measure by scanning the camera position (changing the microscope
         tube length).
 
-        mp - The microscope parameters dictionary.
         rv - A numpy array containing the radius values.
         zd - A numpy array containing the camera positions in microns.
 
@@ -295,9 +283,6 @@ class MicroscopePSF:
         wvl - Light wavelength in microns.
         zv - The (relative) z offset value of the coverslip (negative is closer to the objective).
         """
-
-        mp = self.parameters
-
         pz = numpy.array([pz])
         zv = numpy.array([zv])
 
@@ -478,7 +463,6 @@ class MicroscopePSF:
             zd = mp["zd0"]
 
         [scaling_factor, max_rho] = self._configure(wvl)
-        rho = numpy.linspace(0.0, max_rho, self.rho_samples)
 
         psf_rz = numpy.zeros((zv.size, rv.size))
         for i in range(zv.size):
@@ -511,7 +495,6 @@ class MicroscopePSF:
             zd = mp["zd0"]
 
         [scaling_factor, max_rho] = self._configure(wvl)
-        rho = numpy.linspace(0.0, max_rho, self.rho_samples)
 
         psf_rz = numpy.zeros((pz.size, rv.size))
         for i in range(pz.size):

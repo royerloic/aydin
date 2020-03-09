@@ -74,7 +74,7 @@ def test_opencl_inference():
     with Timer() as t:
         yp_cpu = regressor.predict(x)
     print(f' ... took {t.interval} seconds')
-    ##yp_cpu = yp_gpu*0.01 # place holder array so that rest of the code runs
+    # yp_cpu = yp_gpu*0.01 # place holder array so that rest of the code runs
 
     denoised_cpu = yp_cpu.reshape(image.shape)
     denoised_cpu = numpy.clip(denoised_cpu, 0, 1)
