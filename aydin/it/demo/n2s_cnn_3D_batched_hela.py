@@ -31,7 +31,7 @@ def demo(image, max_epochs=10):
 
     start = time.time()
     denoised = it.translate(
-        image, batch_dims=batch_dims, tile_size=100,  # min(image.shape[1:-1])
+        image, batch_dims=batch_dims, tile_size=100  # min(image.shape[1:-1])
     )
     stop = time.time()
     print(f"inference: elapsed time:  {stop-start} ")

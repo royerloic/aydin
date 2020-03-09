@@ -51,8 +51,7 @@ with napari.gui_qt():
     viewer = napari.Viewer()
     viewer.add_image(image, name='image')
     viewer.add_image(
-        rescale_intensity(denoised, in_range='image', out_range=(0, 1)),
-        name='denoised',
+        rescale_intensity(denoised, in_range='image', out_range=(0, 1)), name='denoised'
     )
 
 
