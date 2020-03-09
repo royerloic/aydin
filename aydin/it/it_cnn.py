@@ -630,7 +630,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                             self.total_num_patches * (1 - tv_ratio) / self.batch_size
                         ).astype(int),
                         validation_data=DataGenerator_2in2out(
-                            input_image, self.img_val, batch_size=self.batch_size,
+                            input_image, self.img_val, batch_size=self.batch_size
                         ),
                         validation_steps=numpy.ceil(
                             self.total_num_patches * train_valid_ratio / self.batch_size
@@ -819,16 +819,16 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
         if 'shiftconv' in self.training_architecture:
             output_image = self.infmodel.predict(
-                input_image, batch_size=1, verbose=self.verbose,
+                input_image, batch_size=1, verbose=self.verbose
             )
         else:
             try:
                 output_image = self.infmodel.predict(
-                    input_image, batch_size=self.batch_size, verbose=self.verbose,
+                    input_image, batch_size=self.batch_size, verbose=self.verbose
                 )
             except Exception:
                 output_image = self.infmodel.predict(
-                    input_image, batch_size=1, verbose=self.verbose,
+                    input_image, batch_size=1, verbose=self.verbose
                 )
 
         if not (input_shape % 2 ** self.num_layer == 0).all():
