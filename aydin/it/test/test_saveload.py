@@ -1,10 +1,8 @@
-import json
 import time
 import pytest
 from os.path import join
 
 import numpy
-from lightgbm import LGBMRegressor
 from skimage.data import camera
 from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
@@ -16,7 +14,6 @@ from aydin.io.folders import get_temp_folder
 from aydin.it.it_base import ImageTranslatorBase
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
-from aydin.regression.gbm_utils.opencl_prediction import GBMOpenCLPrediction
 from aydin.regression.nn import NNRegressor
 
 from aydin.it.it_cnn import ImageTranslatorCNN

@@ -253,7 +253,7 @@ class GBMRegressor(RegressorBase):
                     self.opencl_predictor = None
 
                     return prediction
-                except:
+                except Exception:
                     lprint(
                         f"Failed OpenCL-based regression, doing CPU based prediction."
                     )
