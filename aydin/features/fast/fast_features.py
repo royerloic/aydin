@@ -337,6 +337,10 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             # image = numpy.transpose(image, axes=axes_inverse_permutation[:-1])
             features = numpy.transpose(features, axes=axes_inverse_permutation)
 
+            # Releasing the OpenCL Ressources:
+            del self.opencl_provider
+            self.opencl_provider = None
+
             return features
 
     def compute_integral_image(

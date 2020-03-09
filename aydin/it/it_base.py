@@ -25,7 +25,6 @@ class ImageTranslatorBase(ABC):
         """
 
         self.normaliser_type = normaliser_type
-        self.models = []
         self.self_supervised = None
         self.monitor = monitor
 
