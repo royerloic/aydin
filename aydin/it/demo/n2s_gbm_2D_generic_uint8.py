@@ -6,10 +6,8 @@ import napari
 import numpy
 import numpy as np
 from skimage.data import camera
-from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
-from skimage.util import random_noise
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
 from aydin.io.datasets import normalise, add_noise, pollen, newyork, lizard
