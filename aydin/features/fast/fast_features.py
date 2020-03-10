@@ -428,7 +428,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             )
 
             # Number of median features:
-            nb_median_features = 2 ** ndim + 1
+            nb_median_features = ndim
 
             if features is not None:
 

@@ -78,7 +78,7 @@ class N2SService(BaseService):
             )
 
             # Save the trained model
-            self.save_model(image_path)
+            # self.save_model(image_path)  # TODO:  fix the problems here
 
             progress_callback.emit(80)
 

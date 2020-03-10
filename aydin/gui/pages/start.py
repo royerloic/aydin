@@ -11,7 +11,6 @@ from PyQt5.QtWidgets import (
 )
 
 from aydin.gui.pages.wizards.Noise2SelfWizard import Noise2SelfWizard
-from aydin.gui.pages.wizards.Noise2TruthWizard import Noise2TruthWizard
 
 
 class StartPage(QWidget):
@@ -56,6 +55,3 @@ class StartPage(QWidget):
 
     def switch_to_n2s(self):
         self.parent.setCentralWidget(Noise2SelfWizard(self, self.threadpool))
-
-    def switch_to_n2t(self):
-        self.parent.setCentralWidget(Noise2TruthWizard(self, self.threadpool))
