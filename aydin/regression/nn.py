@@ -1,6 +1,5 @@
 import gc
 import os
-
 import psutil
 import numpy
 import random
@@ -8,26 +7,22 @@ from os.path import join, exists
 
 # env variable setting is very important for XLA, must happen before all tensorflow imports!:
 os.environ["TF_XLA_FLAGS"] = "--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit"
-from tensorflow_core import optimizers
-from tensorflow_core.python.keras.models import Model
-from tensorflow_core.python.keras.saving.model_config import model_from_json
+from tensorflow_core import optimizers  # noqa: E402
+from tensorflow_core.python.keras.models import Model  # noqa: E402
+from tensorflow_core.python.keras.saving.model_config import (
+    model_from_json,
+)  # noqa: E402
 
-
-from aydin.io.folders import get_temp_folder
-from aydin.util.log.log import lsection, lprint
-
-
+from aydin.io.folders import get_temp_folder  # noqa: E402
 from aydin.regression.nn_utils.callbacks import (
     NNCallback,
     EarlyStopping,
     ReduceLROnPlateau,
     ModelCheckpoint,
-)
-from aydin.regression.nn_utils.models import feed_forward
-from aydin.regression.regressor_base import RegressorBase
-
-# from keras import optimizers, Model
-# from keras.engine.saving import model_from_json
+)  # noqa: E402
+from aydin.regression.nn_utils.models import feed_forward  # noqa: E402
+from aydin.regression.regressor_base import RegressorBase  # noqa: E402
+from aydin.util.log.log import lsection, lprint  # noqa: E402
 
 
 class NNRegressor(RegressorBase):
@@ -71,7 +66,7 @@ class NNRegressor(RegressorBase):
 
     def save(self, path: str):
         super().save(path)
-        if not self.model is None:
+        if self.model is not None:
             # serialize model to JSON:
             keras_model_file = join(path, 'keras_model.txt')
             model_json = self.model.to_json()
@@ -94,7 +89,7 @@ class NNRegressor(RegressorBase):
         keras_model_file = join(path, 'keras_weights.txt')
         self.model.load_weights(keras_model_file)
 
-    ## We exclude certain fields from saving:
+    # We exclude certain fields from saving:
     def __getstate__(self):
         state = self.__dict__.copy()
         del state['early_stopping']
@@ -136,7 +131,7 @@ class NNRegressor(RegressorBase):
                 )
 
             # Do we have a validation dataset?
-            has_valid_dataset = not x_valid is None and not y_valid is None
+            has_valid_dataset = x_valid is not None and y_valid is not None
 
             assert_type(x_train)
             assert_type(y_train)
@@ -216,7 +211,7 @@ class NNRegressor(RegressorBase):
             x_train = x_train.reshape(x_shape)
             y_train = y_train.reshape(y_shape)
 
-            if not x_valid is None and not y_valid is None:
+            if x_valid is not None and y_valid is not None:
                 x_valid = x_valid.reshape(x_shape)
                 y_valid = y_valid.reshape(y_shape)
 
@@ -290,7 +285,7 @@ class NNRegressor(RegressorBase):
                     x_train,
                     y_train,
                     validation_data=(x_valid, y_valid)
-                    if (not x_valid is None and not y_valid is None)
+                    if (x_valid is not None and y_valid is not None)
                     else None,
                     epochs=effective_number_of_epochs,
                     batch_size=min(batch_size, nb_data_points),
@@ -368,7 +363,7 @@ class NNRegressor(RegressorBase):
             lprint(f"NN regressor predicting done!")
 
             # We cast back yp to the correct type and range:
-            if not self.original_y_dtype is None:
+            if self.original_y_dtype is not None:
                 yp = yp.astype(self.original_y_dtype)
                 yp *= self.original_y_scale
 

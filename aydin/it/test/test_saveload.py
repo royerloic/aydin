@@ -16,7 +16,7 @@ from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 from aydin.regression.nn import NNRegressor
 
-# from aydin.it.it_cnn import ImageTranslatorCNN
+from aydin.it.it_cnn import ImageTranslatorCNN
 
 
 def n(image):
@@ -67,6 +67,8 @@ def saveload(normaliser_type, generator, regressor, batch_size=None):
     it.train(noisy, noisy)
 
     temp_file = join(get_temp_folder(), "test_it_saveload" + str(time.time()))
+    print(temp_file)
+
     it.save(temp_file)
     del it
 

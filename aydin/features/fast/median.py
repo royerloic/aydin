@@ -1,3 +1,5 @@
+# flake8: noqa
+
 median = """
 
 		//extract next color channel
@@ -155,7 +157,7 @@ def downscale_2d(opencl_provider, input, output, reduction='median'):
       """
     # print(program_code)
 
-    program = opencl_provider.build(median4 + program_code)
+    program = opencl_provider.build(median + program_code)
 
     feature_kernel = program.feature_kernel
 

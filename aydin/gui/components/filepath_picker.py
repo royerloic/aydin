@@ -1,4 +1,4 @@
-from PyQt5.Qt import *
+from PyQt5.Qt import QWidget, QVBoxLayout, QLabel, QFileDialog, Qt, QApplication
 import sys
 import os
 

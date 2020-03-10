@@ -1,6 +1,4 @@
-import math
 import time
-
 import numpy
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
@@ -67,7 +65,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             self.feature_generator = FeatureGeneratorBase.load(path)
             self.regressor = RegressorBase.load(path)
 
-    ## We exclude certain fields from saving:
+    # We exclude certain fields from saving:
     def __getstate__(self):
         state = self.__dict__.copy()
         del state['feature_generator']

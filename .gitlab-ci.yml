@@ -49,27 +49,38 @@ black style osx:
     - conda deactivate
     - conda env remove -n blacktest
 
+flake8 osx:
+  tags:
+    - osx
+  script:
+    - conda create -n flake8 python=3.7
+    - conda activate flake8
+    - pip install flake8
+    - flake8 --ignore E501,E203,W503 aydin
+    - conda deactivate
+    - conda env remove -n flake8
 
-#unit tests windows:
-#  tags:
-#    - windows
-#  script:
-#    - conda info --envs
-#    - python setup.py develop
-#    - pip install -r requirements/development.txt
-#    - python -m pytest .
-#
-#
-#unit tests linux:
-#  tags:
-#    - linux
-#  before_script:
-#    - export PATH=~/anaconda3/bin:$PATH
-#  script:
-#    - conda create -n ay37test python=3.7
-#    - source activate ay37test
-#    - python setup.py develop
-#    - pip install -r requirements/development.txt
-#    - python -m pytest .
-#    - conda deactivate
-#    - conda env remove -n ay37test
+
+unit tests windows:
+  tags:
+    - windows
+  script:
+    - conda info --envs
+    - python setup.py develop
+    - pip install -r requirements/development.txt
+    - python -m pytest .
+
+
+unit tests linux:
+  tags:
+    - linux
+  before_script:
+    - export PATH=~/anaconda3/bin:$PATH
+  script:
+    - conda create -n ay37test python=3.7
+    - source activate ay37test
+    - python setup.py develop
+    - pip install -r requirements/development.txt
+    - python -m pytest .
+    - conda deactivate
+    - conda env remove -n ay37test

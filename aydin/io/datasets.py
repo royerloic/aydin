@@ -17,7 +17,7 @@ datasets_folder = join(get_cache_folder(), 'data')
 
 try:
     os.makedirs(datasets_folder)
-except:
+except Exception:
     pass
 
 
@@ -115,6 +115,26 @@ class examples_single(Enum):
         'Flybrain_3ch_mediumSize.tif',
     )
 
+    # 2D+t
+
+    cognet_nanotube1 = (
+        '1SmrBheUc6p5qTgtIEzedCwbN87HOW_O_',
+        'Cognet_r03-s01-100mW-20ms-175 50xplpeg-173.tif',
+    )
+
+    cognet_nanotube_400fps = (
+        '1T3M6MqHkSIqzAFqz2wzfYOXdtLnFxLp3',
+        'Cognet_1-400fps.tif',
+    )
+    cognet_nanotube_200fps = (
+        '1Z501FlQOBQmPaeBMCOGy6chBDh1bDjEf',
+        'Cognet_1-200fps.tif',
+    )
+    cognet_nanotube_100fps = (
+        '1T4UvbF3MRgT4jO4ExIHprvTqUXLiMjyA',
+        'Cognet_1-100fps.tif',
+    )
+
     # XYZT
     hyman_hela = ('12qOGxfBrnzrufgbizyTkhHipgRwjSIz-', 'Hyman_HeLa.tif')
     pourquie_elec = (
@@ -153,7 +173,7 @@ def download_from_gdrive(
 
     try:
         os.makedirs(dest_folder)
-    except:
+    except Exception:
         pass
 
     url = f'https://drive.google.com/uc?id={id}'

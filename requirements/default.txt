@@ -17,6 +17,7 @@ joblib==0.13.2
 jsonpickle
 kiwisolver==1.1.0
 lightgbm==2.2.1
+m2cgen
 matplotlib==3.1.0
 numcodecs==0.6.3
 numpy==1.16.4

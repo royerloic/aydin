@@ -14,7 +14,7 @@ from aydin.util.update import get_latest_version_details, download_specific_vers
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-VERSION = '0.0.3'
+VERSION = '0.0.5'
 
 
 @click.group(invoke_without_command=True, context_settings=CONTEXT_SETTINGS)
@@ -81,8 +81,7 @@ def noise2self(**kwargs):
     )
     denoised = n2s.run(noisy, pbar, noisy_metadata=noisy_metadata, image_path=path)
     path = path[:-4] + "_denoised" + path[-4:]
-    with imwrite(path, shape=denoised.shape, dtype=denoised.dtype) as imarray:
-        imarray[...] = denoised
+    imwrite(denoised, path, denoised.shape, denoised.dtype)
 
 
 # @aydin.command()

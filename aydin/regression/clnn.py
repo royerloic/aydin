@@ -13,7 +13,6 @@ from aydin.clnn.modules.nonlin.relu import ReLU
 from aydin.clnn.modules.special.noise import Noise
 from aydin.clnn.modules.special.resize import Resize
 from aydin.clnn.optimizers.adam import ADAM
-from aydin.clnn.optimizers.sgd import SGD
 from aydin.clnn.tensor.cltensor import CLTensor
 from aydin.clnn.tensor.nptensor import NPTensor
 from aydin.regression.regressor_base import RegressorBase
@@ -118,7 +117,7 @@ class CLNNRegressor(RegressorBase):
 
         pass
 
-    ## We exclude certain fields from saving:
+    # We exclude certain fields from saving:
     def __getstate__(self):
         state = self.__dict__.copy()
         del state['dense_layers']
@@ -204,7 +203,7 @@ class CLNNRegressor(RegressorBase):
                 )
 
             # Do we have a validation dataset?
-            has_valid_dataset = not x_valid is None and not y_valid is None
+            has_valid_dataset = x_valid is not None and y_valid is not None
 
             assert_type(x_train)
             assert_type(y_train)
@@ -274,7 +273,7 @@ class CLNNRegressor(RegressorBase):
             x_train = x_train.reshape(x_shape)
             y_train = y_train.reshape(y_shape)
 
-            if not x_valid is None and not y_valid is None:
+            if x_valid is not None and y_valid is not None:
                 x_valid = x_valid.reshape(x_shape)
                 y_valid = y_valid.reshape(y_shape)
 
@@ -513,8 +512,9 @@ class CLNNRegressor(RegressorBase):
                         if regressor_callback:
                             module = self.modules[self.best_layer_index]
                             module_np = module.to_tensor_class(NPTensor)
-                            model = lambda x: module_np(x)
-                            regressor_callback(iteration, best_val_loss_ever, model)
+                            regressor_callback(
+                                iteration, best_val_loss_ever, lambda x: module_np(x)
+                            )
 
                         # Increment iterations:
                         iteration += 1
@@ -564,7 +564,7 @@ class CLNNRegressor(RegressorBase):
             y_np = y_t.nparray
 
             # We cast back yp to the correct type and range:
-            if not self.original_y_dtype is None:
+            if self.original_y_dtype is not None:
                 y_np = y_np.astype(self.original_y_dtype)
                 y_np *= self.original_y_scale
 

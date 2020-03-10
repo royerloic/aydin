@@ -1,15 +1,6 @@
-import os
+# flake8: noqa
 from distutils.version import StrictVersion
-from pathlib import Path
-from qtpy import API_NAME
 
-
-# if API_NAME == 'PySide2':
-#     # Set plugin path appropriately if using PySide2. This is a bug fix
-#     # for when both PyQt5 and Pyside2 are installed
-#     import PySide2
-#
-#     os.environ['QT_PLUGIN_PATH'] = str(Path(PySide2.__file__).parent / 'Qt' / 'plugins')
 
 from qtpy import QtCore
 

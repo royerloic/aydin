@@ -1,7 +1,7 @@
 def apply_slicing(data, slicing_string):
     """A util function to apply slicing without evaluating argument passed by user
     """
-    if slicing_string is "":
+    if slicing_string == "":
         return data
 
     try:
@@ -12,7 +12,7 @@ def apply_slicing(data, slicing_string):
             slice_string = slice_strings[_]
 
             # If it is not sliced on a dimension we build slice object to get entire dimension
-            if slice_string is ":":
+            if slice_string == ":":
                 slices_for_dims.append(slice(data.shape[_]))
             else:
                 slice_values = slice_string.split(":")

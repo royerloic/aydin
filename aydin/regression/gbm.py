@@ -1,16 +1,15 @@
+import gc
 import glob
 import math
 import multiprocessing
 from os.path import join
-from typing import List, Union
 
-import gc
 import lightgbm
 import numpy
-import psutil
 from lightgbm import Booster
 
 from aydin.regression.gbm_utils.callbacks import early_stopping
+from aydin.regression.gbm_utils.opencl_prediction import GBMOpenCLPrediction
 from aydin.regression.regressor_base import RegressorBase
 from aydin.util.log.log import lsection, lprint
 
@@ -33,6 +32,7 @@ class GBMRegressor(RegressorBase):
         patience=5,
         verbosity=-1,
         compute_load=0.9,
+        gpu_prediction=False,
     ):
 
         """
@@ -60,12 +60,14 @@ class GBMRegressor(RegressorBase):
         self.early_stopping_rounds = patience
         self.verbosity = verbosity
         self.compute_load = compute_load
+        self.gpu_prediction = gpu_prediction
 
+        self.opencl_predictor = None
         self.model = None
 
     def save(self, path: str):
         super().save(path)
-        if not self.model is None:
+        if self.model is not None:
             if isinstance(self.model, (list,)):
                 counter = 0
                 for model in self.model:
@@ -91,7 +93,7 @@ class GBMRegressor(RegressorBase):
                 booster = Booster(model_file=lgbm_file)
                 self.model.append(booster)
 
-    ## We exclude certain fields from saving:
+    # We exclude certain fields from saving:
     def __getstate__(self):
         state = self.__dict__.copy()
         del state['model']
@@ -103,7 +105,7 @@ class GBMRegressor(RegressorBase):
 
     def _get_params(self, num_samples, dtype=numpy.float32):
         min_data_in_leaf = 20 + int(0.01 * (num_samples / self.num_leaves))
-        # print(f'min_data_in_leaf: {min_data_in_leaf}')
+        lprint(f'min_data_in_leaf: {min_data_in_leaf}')
 
         objective = self.metric
         if objective == 'l1':
@@ -171,9 +173,10 @@ class GBMRegressor(RegressorBase):
             def lgbm_callback(env):
                 try:
                     val_loss = env.evaluation_result_list[0][2]
-                except:
+                except Exception as e:
                     val_loss = 0
                     lprint("Problem with getting loss from LightGBM 'env' in callback")
+                    print(str(e))
                 if regressor_callback:
                     regressor_callback(env.iteration, val_loss, env.model)
                 else:
@@ -235,5 +238,28 @@ class GBMRegressor(RegressorBase):
                 lprint(f"Using a provided model! (Typical for callbacks)")
 
             lprint(f"GBM regressor predicting now...")
-            return model_to_use.predict(x, num_iteration=model_to_use.best_iteration)
+            if self.gpu_prediction:
+                try:
+                    lprint(f"Attempting OpenCL-based regression.")
+                    if self.opencl_predictor is None:
+                        self.opencl_predictor = GBMOpenCLPrediction()
+
+                    prediction = self.opencl_predictor.predict(
+                        self.model, x, num_iteration=model_to_use.best_iteration
+                    )
+
+                    # We clear the OpenCL ressources:
+                    del self.opencl_predictor
+                    self.opencl_predictor = None
+
+                    return prediction
+                except Exception:
+                    lprint(
+                        f"Failed OpenCL-based regression, doing CPU based prediction."
+                    )
+
+            prediction = model_to_use.predict(
+                x, num_iteration=model_to_use.best_iteration
+            )
             lprint(f"GBM regressor predicting done!")
+            return prediction

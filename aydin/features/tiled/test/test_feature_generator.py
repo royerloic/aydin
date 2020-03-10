@@ -13,7 +13,7 @@ def n(image):
     )
 
 
-def test_collect_feature_2d():
+def test_collect_feature_2d_detailed():
 
     scales = [1, 3, 7]
     widths = [3, 3, 3]

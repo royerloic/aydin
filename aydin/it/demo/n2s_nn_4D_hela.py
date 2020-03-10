@@ -1,7 +1,8 @@
+# flake8: noqa
 import time
 
 import napari
-import numpy as np
+import numpy
 from skimage.exposure import rescale_intensity
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
@@ -16,11 +17,11 @@ def demo():
     image_path = examples_single.hyman_hela.get_path()
     image, metadata = io.imread(image_path)
     print(image.shape)
-    image = image[0:10, 15:35, 130:167, 130:177].astype(np.float16)
+    image = image[0:10, 15:35, 130:167, 130:177].astype(numpy.float16)
     print(image.shape)
     image = rescale_intensity(image, in_range='image', out_range=(0, 1))
 
-    generator = FastMultiscaleConvolutionalFeatures(max_level=3)
+    generator = FastMultiscaleConvolutionalFeatures(max_level=7)
 
     regressor = NNRegressor()
 

@@ -1,10 +1,6 @@
-import math
-
 import numpy
 import numpy as np
-import psutil
 import pyopencl as cl
-import scipy
 from pyopencl.array import to_device, Array
 
 from aydin.features.fast.features_1d import collect_feature_1d
@@ -21,7 +17,7 @@ from aydin.features.base import FeatureGeneratorBase
 from aydin.providers.opencl.opencl_provider import OpenCLProvider
 from aydin.util.log.log import lsection, lprint
 from aydin.util.nd import nd_range_radii
-from aydin.util.offcore.offcore import offcore_array
+
 
 # TODO:  rename to FastMultiscaleConvolutionalFeatureGenerator
 class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
@@ -95,7 +91,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         # native ressources associated:
         self.opencl_provider = None
 
-    ## We exclude certain fields from saving:
+    # We exclude certain fields from saving:
     def __getstate__(self):
         state = self.__dict__.copy()
         if 'opencl_provider' in state:
@@ -181,9 +177,9 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                 f'Number of batch dim: {nb_batch_dim}, number of non batch dim: {nb_non_batch_dim}'
             )
 
-            #### PLEASE DO NOT DELETE THIS CODE !!!!!!!!
-            ###
-            ##
+            #   PLEASE DO NOT DELETE THIS CODE !!!!!!!!
+            #
+            #
             # # Set default aspect ratio based on image dimension:
             # if features_aspect_ratio is None:
             #     features_aspect_ratio = (1,) * image_dimension
@@ -332,7 +328,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             if feature_last_dim:
                 features = np.moveaxis(features, 0, -1)
 
-            # computes the inverse permutation from the permutation use to consolidate batch dimensions:
+            # computes the inverse permutation from the permutation used to consolidate batch dimensions:
             axes_inverse_permutation = [
                 axes_permutation.index(l) for l in range(len(axes_permutation))
             ] + [image_dimension]
@@ -340,6 +336,10 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             # permutates dimensions back:
             # image = numpy.transpose(image, axes=axes_inverse_permutation[:-1])
             features = numpy.transpose(features, axes=axes_inverse_permutation)
+
+            # Releasing the OpenCL Ressources:
+            del self.opencl_provider
+            self.opencl_provider = None
 
             return features
 
@@ -412,7 +412,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         with lsection(
             f'{ "Counting" if features is None else "Collecting"} features of dimension {len(image_gpu.shape)}'
         ):
-            if not features is None:
+            if features is not None:
                 lprint(f"Features array provided has shape: {features.shape} ")
 
             # Ensure we have an openCL provider initialised:
@@ -554,7 +554,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
             if scale == 2 and width == 1:
                 # This is the special case of scale-two-features:
                 features_shifts = list(
-                    [shift for shift in features_shifts if not 1 in shift]
+                    [shift for shift in features_shifts if 1 not in shift]
                 )
 
             # print(f'Feature shifts: {features_shifts}')
