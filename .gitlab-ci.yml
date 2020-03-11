@@ -67,7 +67,8 @@ unit tests windows:
   script:
     - conda info --envs
     - python setup.py develop
-    - pip install -r requirements/development.txt
+#    - pip install -r requirements/development.txt
+    - pip install pytest
     - python -m pytest .
 
 

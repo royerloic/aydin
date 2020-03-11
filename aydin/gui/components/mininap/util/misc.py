@@ -100,8 +100,8 @@ def calc_data_range(data):
     values : list of float
         Range of values.
     """
-    min = data.min()
-    max = data.max()
+    min = np.amin(data)
+    max = np.amax(data)
     if min == max:
         min = 0
         max = 1
