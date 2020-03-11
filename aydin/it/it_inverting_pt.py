@@ -26,24 +26,6 @@ class InvertingImageTranslator(ImageTranslatorBase):
         Inverting image translator
     """
 
-    #     num_leaves=127,
-    #     n_estimators=2048,
-    #     max_bin=512,
-    #     learning_rate=0.01,
-    #     loss='l1',
-    #     patience=5,
-    #     verbosity=-1,
-    #     compute_load=0.9,
-    #     gpu_prediction=False,
-
-    # feature_generator = FastMultiscaleConvolutionalFeatures(),
-    # regressor = GBMRegressor(),
-    # normaliser_type = 'percentile',
-    # balance_training_data = None,
-    # keep_ratio = 1,
-    # max_voxels_for_training = 4e6,
-    # monitor = None,
-
     def __init__(
         self,
         max_epochs=1024,
@@ -57,7 +39,7 @@ class InvertingImageTranslator(ImageTranslatorBase):
         keep_ratio=1,
         max_voxels_for_training=4e6,
         monitor=None,
-        use_cuda=False,
+        use_cuda=True,
         device_index=0,
     ):
         """
@@ -69,7 +51,9 @@ class InvertingImageTranslator(ImageTranslatorBase):
         """
         super().__init__(normaliser_type, monitor=monitor)
 
+        use_cuda = use_cuda and (torch.cuda.device_count() > 0)
         self.device = torch.device(f"cuda:{device_index}" if use_cuda else "cpu")
+        lprint(f"Using device: {self.device}")
 
         self.max_epochs = max_epochs
         self.patience = patience
