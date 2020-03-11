@@ -193,9 +193,13 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         image_dimension = len(image.shape)
         # permutate dimensions in image to consolidate batch dimensions at the front:
         batch_dim_axes = [i for i in range(0, image_dimension) if batch_dim_bool[i]]
-        non_batch_dim_axes = [
-            i for i in range(0, image_dimension) if not batch_dim_bool[i]
-        ]
+        non_batch_dim_axes = numpy.array(
+            [i for i in range(0, image_dimension) if not batch_dim_bool[i]]
+        )
+        # make sure the smallest size dimension comes to the first in non_batch_dim
+        non_batch_img_size = [image.shape[i] for i in non_batch_dim_axes]
+        non_batch_dim_axes = list(non_batch_dim_axes[numpy.argsort(non_batch_img_size)])
+
         self.axes_permutation = batch_dim_axes + non_batch_dim_axes
         image = numpy.transpose(image, axes=self.axes_permutation)
         nb_batch_dim = sum([(1 if i else 0) for i in batch_dim_bool])
@@ -320,10 +324,11 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             ), 'Number of layers is too large.'
             self.tile_size = self.tile_size - self.tile_size % 2 ** self.num_layer
         else:
-            assert numpy.unique(self.tile_size).size == 1, (
-                'Tiles with different length in each dim are currently not accepted.'
-                'Please make tile_size with the same length in all dimensions. '
-            )
+            if 'shiftconv' in self.training_architecture:
+                assert numpy.unique(self.tile_size).size == 1, (
+                    'shiftconv only accepts tile_size with same length in all dimensions.'
+                    'Please make tile_size with the same length in all dimensions. '
+                )
         lprint(f'Patch size: {self.tile_size}')
 
         # Check if the tile_size is appropriate for the model
@@ -332,11 +337,11 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
         tile_size = numpy.array(self.tile_size)
         assert (
-            tile_size / 2 ** self.num_layer > 0
-        ).any(), f'Sampling patch size is too small. Patch size has to be >= {2 ** self.num_layer}. Change number of layers of patch size.'
+            tile_size.max() / 2 ** self.num_layer > 0
+        ).any(), f'Tile size is too small. The largest dimension of tile size has to be >= {2 ** self.num_layer}.'
         assert (
-            tile_size % 2 ** self.num_layer == 0
-        ).any(), f'Sampling patch size has to be multiple of 2^{self.num_layer}'
+            tile_size[-2:] % 2 ** self.num_layer == 0
+        ).any(), f'Tile sizes on XY plane have to be multiple of 2^{self.num_layer}'
 
         # Determine total number of patches
         if self.total_num_patches is None:
@@ -731,7 +736,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         if numpy.array(tile_size == numpy.unique(non_batch_dims[:-1])).all():
             tile_size = None
 
-        result_image = numpy.zeros(input_image.shape)
+        result_image = numpy.zeros(input_image.shape, dtype=numpy.float32)
         for batch_index in range(input_image.shape[0]):
             result_image[batch_index] = super().translate(
                 input_image[batch_index : batch_index + 1],
@@ -746,11 +751,14 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         return output_image
 
     def _translate(self, input_image, batch_dim=None):
+        reshaped_for_cube = False
+        reshaped_for_model = False
         input_shape = numpy.array(input_image.shape[1:-1])
         if abs(numpy.diff(input_shape)).min() != 0:
+            reshaped_for_cube = True
             input_shape_max = numpy.ones(input_shape.shape) * input_shape.max()
             pad_square = (input_shape_max - input_shape) / 2
-            pad_width = (
+            pad_width1 = (
                 [[0, 0]]
                 + [
                     [
@@ -761,16 +769,17 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 ]
                 + [[0, 0]]
             )
-            input_image = numpy.pad(input_image, pad_width, 'constant')
+            input_image = numpy.pad(input_image, pad_width1, 'edge')
             input_shape = numpy.array(input_image.shape[1:-1])
 
         if not (input_shape % 2 ** self.num_layer == 0).all():
+            reshaped_for_model = True
             pad_width0 = (
                 2 ** self.num_layer
                 - (input_shape % 2 ** self.num_layer)
                 # + pad_square
             ) / 2
-            pad_width = (
+            pad_width2 = (
                 [[0, 0]]
                 + [
                     [
@@ -781,7 +790,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 ]
                 + [[0, 0]]
             )
-            input_image = numpy.pad(input_image, pad_width, 'constant')
+            input_image = numpy.pad(input_image, pad_width2, 'edge')
 
         # Change the batch_size in split layer or input dimensions accordingly
         if self.infmodel is None:
@@ -814,6 +823,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     shiftconv=True
                     if 'shiftconv' in self.training_architecture
                     else False,
+                    original_zdim=self.input_dim[1],
                 )
             self.infmodel.set_weights(self.model.get_weights())
 
@@ -831,20 +841,36 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     input_image, batch_size=1, verbose=self.verbose
                 )
 
-        if not (input_shape % 2 ** self.num_layer == 0).all():
+        if reshaped_for_model:
             if len(input_shape) == 2:
                 output_image = output_image[
                     0:1,
-                    pad_width[1][0] : -pad_width[1][1] or None,
-                    pad_width[2][0] : -pad_width[2][1] or None,
+                    pad_width2[1][0] : -pad_width2[1][1] or None,
+                    pad_width2[2][0] : -pad_width2[2][1] or None,
                     :,
                 ]
             else:
                 output_image = output_image[
                     0:1,
-                    pad_width[1][0] : -pad_width[1][1] or None,
-                    pad_width[2][0] : -pad_width[2][1] or None,
-                    pad_width[3][0] : -pad_width[3][1] or None,
+                    pad_width2[1][0] : -pad_width2[1][1] or None,
+                    pad_width2[2][0] : -pad_width2[2][1] or None,
+                    pad_width2[3][0] : -pad_width2[3][1] or None,
+                    :,
+                ]
+        if reshaped_for_cube:
+            if len(input_shape) == 2:
+                output_image = output_image[
+                    0:1,
+                    pad_width1[1][0] : -pad_width1[1][1] or None,
+                    pad_width1[2][0] : -pad_width1[2][1] or None,
+                    :,
+                ]
+            else:
+                output_image = output_image[
+                    0:1,
+                    pad_width1[1][0] : -pad_width1[1][1] or None,
+                    pad_width1[2][0] : -pad_width1[2][1] or None,
+                    pad_width1[3][0] : -pad_width1[3][1] or None,
                     :,
                 ]
 
