@@ -42,7 +42,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         kernel_shapes=['li'] * 2 + ['l2'] * 3 + ['l1+nc'] * 5 + ['l1+oc'] * 2,
         max_level=12,
         exclude_scale_one=True,
-        include_median_features=False,
+        include_spatial_features=False,
         dtype=numpy.float32,
     ):
         """
@@ -69,7 +69,7 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
         self.kernel_shapes = kernel_shapes
         self.max_level = max_level
         self.exclude_scale_one = exclude_scale_one
-        self.include_median_features = include_median_features
+        self.include_spatial_features = include_spatial_features
 
         self.dtype = dtype
 
@@ -427,8 +427,8 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                 ndim, exclude_center_feature
             )
 
-            # Number of median features:
-            nb_median_features = ndim
+            # Number of spatial features:
+            nb_spatial_features = ndim
 
             if features is not None:
 
@@ -514,20 +514,56 @@ class FastMultiscaleConvolutionalFeatures(FeatureGeneratorBase):
                         # Increment feature counter:
                         feature_index += 1
 
-                # Median features:
-                if self.include_median_features:
-                    with lsection(f"Computing scale 2 features:"):
-                        pass
-                        # with napari.gui_qt():
-                        #     viewer = Viewer()
-                        #     viewer.add_image(features, name='features')
+                # Spatial features:
+                if self.include_spatial_features:
+                    with lsection(f"Computing spatial features:"):
+                        for dim in range(ndim):
+                            # Create an empty feature array
+                            feature = numpy.zeros(
+                                features.shape[1:], dtype=numpy.float32
+                            )
+
+                            # Get the length on the dimension we want to iterate over
+                            dim_length = features.shape[1:][dim]
+
+                            # Iterate over the dimension of interest
+                            for ind in range(dim_length):
+                                # Prepare a placeholder 'ndim' slice object
+                                slicing = [slice(None)] * len(feature.shape)
+
+                                # Change the slicing on the dimension we are iterating over
+                                slicing[dim] = slice(ind, ind + 1, 1)
+
+                                # Put the normalized position value across dimensions we are NOT iterating over
+                                feature[tuple(slicing)] = float(ind) / dim_length
+
+                            if self.dtype == numpy.uint8:
+                                feature *= 255
+                            elif self.dtype == numpy.uint16:
+                                feature *= 255 * 255
+
+                            if self.check_nans and np.isnan(
+                                np.sum(features[feature_index])
+                            ):
+                                raise Exception(f'NaN values occur in features!')
+
+                            # We put the computed feature into the main array that holds all features:
+                            # casting is done as needed:
+                            features[feature_index] = feature.astype(
+                                self.dtype, copy=False
+                            )
+
+                            # Increment feature counter:
+                            feature_index += 1
 
                 # We return the array holding all computed features:
                 return features
 
             else:
                 # In this case we are just here to count the _number_ of features, and return that count:
-                return len(feature_description_list) + nb_median_features
+                return len(feature_description_list) + (
+                    nb_spatial_features if self.include_spatial_features else 0
+                )
 
     def get_feature_descriptions(self, ndim, exclude_center):
         feature_description_list = []

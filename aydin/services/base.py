@@ -99,36 +99,36 @@ class BaseService:
         else:
             if self.has_less_than_one_million_voxels:
                 self.generator = FastMultiscaleConvolutionalFeatures(
-                    max_level=10, include_median_features=True
+                    max_level=10, include_spatial_features=True
                 )
                 with lsection("Fast Feature Generator"):
                     lprint("max level: ", str(10))
-                    lprint("include median features: ", str(True))
+                    lprint("include spatial features: ", str(True))
             elif self.number_of_dims > 2:
                 if self.has_less_than_one_trillion_voxels:
                     dtype = np.uint16  # TODO: what about float16?
                 else:
                     dtype = np.float32
                 fast_generator = FastMultiscaleConvolutionalFeatures(
-                    max_level=4, include_median_features=False, dtype=dtype
+                    max_level=4, include_spatial_features=True, dtype=dtype
                 )
                 self.generator = TiledFeatureGenerator(
                     fast_generator, max_tile_size=512
                 )
                 with lsection("Fast Feature Generator"):
                     lprint("max level: ", str(4))
-                    lprint("include median features: ", str(False))
+                    lprint("include spatial features: ", str(True))
                     lprint("dtype: ", str(dtype))
             else:
                 fast_generator = FastMultiscaleConvolutionalFeatures(
-                    max_level=10, include_median_features=True
+                    max_level=10, include_spatial_features=True
                 )
                 self.generator = TiledFeatureGenerator(
                     fast_generator, max_tile_size=512
                 )
                 with lsection("Fast Feature Generator"):
                     lprint("max level: ", str(10))
-                    lprint("include median features: ", str(True))
+                    lprint("include spatial features: ", str(True))
             return self.generator
 
     def get_regressor(self):
