@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy
 from aydin.it.cnn.layers.split import split
 from aydin.it.cnn.layers.masking import Maskout
 from aydin.it.cnn.layers.layers import rot90
@@ -17,6 +18,7 @@ Conv3D = tf.keras.layers.Conv3D
 ZeroPadding3D = tf.keras.layers.ZeroPadding3D
 Cropping3D = tf.keras.layers.Cropping3D
 UpSampling3D = tf.keras.layers.UpSampling3D
+K = tf.keras.backend
 
 
 def unet_3d_model(
@@ -29,6 +31,7 @@ def unet_3d_model(
     shiftconv=True,
     initial_unit=48,
     learning_rate=0.001,
+    original_zdim=None,
 ):
 
     """
@@ -47,11 +50,15 @@ def unet_3d_model(
     :param supervised: supervised or unsupervised
     :param initial_unit: number of filters in the first layer
     :param learning_rate: learning rate
-
+    :param original_zdim: size of z dimension used in training. <inference only>
     """
 
     # Configure
     shiftconv = unet_checks(input_dim, num_lyr, supervised, shiftconv)
+    if original_zdim:
+        zdim = original_zdim
+    else:
+        zdim = input_dim[0]
 
     # Generate a model
     input_lyr = Input(input_dim, name='input')
@@ -72,6 +79,7 @@ def unet_3d_model(
         x = input_lyr
 
     skiplyr = [x]
+    down2D_n = 0
     for i in range(num_lyr):
         x = conv3d_bn(
             x,
@@ -81,7 +89,14 @@ def unet_3d_model(
             activation,
             lyrname=f'enc{i}',
         )
-        x = mxpooling_down3D(x, shiftconv, lyrname=f'enc{i}pl')
+        if zdim > 3:
+            pool_size = (2, 2, 2)
+            zdim = numpy.floor(zdim / 2)
+        else:
+            pool_size = (1, 2, 2)
+            down2D_n += 1
+        x = mxpooling_down3D(x, shiftconv, pool_size, lyrname=f'enc{i}pl')
+
         if i != num_lyr - 1:
             skiplyr.append(x)
 
@@ -95,7 +110,11 @@ def unet_3d_model(
     )
 
     for i in range(num_lyr):
-        x = UpSampling3D((2, 2, 2), name=f'up{i}')(x)
+        if down2D_n > 0:
+            x = UpSampling3D((1, 2, 2), name=f'up{i}')(x)
+            down2D_n -= 1
+        else:
+            x = UpSampling3D((2, 2, 2), name=f'up{i}')(x)
         x = Concatenate(name=f'cnct{i}')([x, skiplyr.pop()])
         x = conv3d_bn(
             x,

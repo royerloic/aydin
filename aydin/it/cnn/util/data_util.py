@@ -31,7 +31,9 @@ def random_sample_patches(input_img, patch_size, num_patch, adoption_rate=0.5):
             ind = numpy.hstack(
                 [k]
                 + [
-                    numpy.random.choice(coordinates[i], 1, replace=True).astype(int)
+                    numpy.random.choice(
+                        1 if coordinates[i] == 0 else coordinates[i], 1, replace=True
+                    ).astype(int)
                     for i in range(coordinates.size)
                 ]
             )

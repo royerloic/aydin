@@ -92,11 +92,11 @@ def mxpooling_down2D(xx, shiftconv, lyrname=None):
     return x1
 
 
-def mxpooling_down3D(xx, shiftconv, lyrname=None):
+def mxpooling_down3D(xx, shiftconv, pool_size=(2, 2, 2), lyrname=None):
     if shiftconv:
         x1 = ZeroPadding3D(((0, 0), (0, 0), (1, 0)), name=lyrname + '_0pd')(xx)
         x1 = Cropping3D(((0, 0), (0, 0), (0, 1)), name=lyrname + '_crp')(x1)
     else:
         x1 = xx
-    x1 = MaxPooling3D((2, 2, 2), name=lyrname + '_mpl')(x1)
+    x1 = MaxPooling3D(pool_size, name=lyrname + '_mpl')(x1)
     return x1
