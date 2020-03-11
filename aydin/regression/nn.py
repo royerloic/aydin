@@ -56,8 +56,8 @@ class NNRegressor(RegressorBase):
         self.patience = patience
         self.depth = depth
 
-        loss = 'mae' if loss == 'l1' else loss
-        loss = 'mse' if loss == 'l2' else loss
+        loss = 'mae' if loss.lower() == 'l1' else loss
+        loss = 'mse' if loss.lower() == 'l2' else loss
         self.loss = loss
 
         self.model = None

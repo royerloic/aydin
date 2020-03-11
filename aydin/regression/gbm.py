@@ -124,16 +124,16 @@ class GBMRegressor(RegressorBase):
             # "min_data_in_leaf": min_data_in_leaf,
             "subsample_for_bin": 200000,
             "num_threads": max(1, int(self.compute_load * multiprocessing.cpu_count())),
-            "metric": self.metric,
+            "metric": self.metric.lower(),
             'verbosity': -1,  # self.verbosity,
             "bagging_freq": 1,
             "bagging_fraction": 0.8,
             # "device_type" : 'gpu'
         }
 
-        if self.metric == 'l1':
+        if self.metric.lower() == 'l1':
             params["lambda_l1"] = 0.01
-        elif self.metric == 'l2':
+        elif self.metric.lower() == 'l2':
             params["lambda_l2"] = 0.01
         else:
             params["lambda_l1"] = 0.01

@@ -9,7 +9,7 @@ from skimage.measure import compare_ssim as ssim
 
 # from aydin.clnn.tensor.cltensor import CLTensor
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
-from aydin.io.datasets import newyork, normalise, add_noise, pollen, lizard
+from aydin.io.datasets import newyork, normalise, add_noise, pollen, lizard, characters
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.clnn import CLNNRegressor
 
@@ -88,3 +88,5 @@ pollen_image = pollen()
 demo(pollen_image, "pollen")
 newyork_image = newyork()
 demo(newyork_image, "newyork")
+characters_image = characters()
+demo(characters_image, "characters")

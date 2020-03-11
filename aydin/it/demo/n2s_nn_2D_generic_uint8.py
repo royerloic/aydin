@@ -12,7 +12,7 @@ from skimage.measure import compare_ssim as ssim
 from skimage.util import random_noise
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
-from aydin.io.datasets import normalise, add_noise, pollen, newyork, lizard
+from aydin.io.datasets import normalise, add_noise, pollen, newyork, lizard, characters
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.nn import NNRegressor
 
@@ -87,3 +87,5 @@ pollen_image = pollen()
 demo(pollen_image, "pollen")
 newyork_image = newyork()
 demo(newyork_image, "newyork")
+characters_image = characters()
+demo(characters_image, "characters")

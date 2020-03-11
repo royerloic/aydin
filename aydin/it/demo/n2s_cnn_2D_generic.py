@@ -6,7 +6,7 @@ from skimage.data import camera
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 
-from aydin.io.datasets import normalise, add_noise, lizard, pollen, newyork
+from aydin.io.datasets import normalise, add_noise, lizard, pollen, newyork, characters
 from aydin.it.it_cnn import ImageTranslatorCNN
 
 
@@ -69,3 +69,5 @@ pollen_image = pollen()
 demo(pollen_image)
 newyork_image = newyork()
 demo(newyork_image)
+characters_image = characters()
+demo(characters_image, "characters")

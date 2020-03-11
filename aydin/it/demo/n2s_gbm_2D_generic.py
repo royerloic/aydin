@@ -12,7 +12,7 @@ from skimage.morphology import disk
 from skimage.restoration import denoise_nl_means, estimate_sigma
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
-from aydin.io.datasets import newyork, pollen, normalise, add_noise, lizard
+from aydin.io.datasets import newyork, pollen, normalise, add_noise, lizard, characters
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 from aydin.util.log.log import Log
@@ -102,3 +102,5 @@ pollen_image = pollen()
 demo(pollen_image, "pollen")
 newyork_image = newyork()
 demo(newyork_image, "newyork")
+characters_image = characters()
+demo(characters_image, "characters")

@@ -1,7 +1,7 @@
-from models.babyunet import BabyUnet
-from models.dncnn import DnCNN
-from models.singleconv import SingleConvolution
-from models.unet import Unet
+from aydin.it.pytorch.models.babyunet import BabyUnet
+from aydin.it.pytorch.models.dncnn import DnCNN
+from aydin.it.pytorch.models.singleconv import SingleConvolution
+from aydin.it.pytorch.models.unet import Unet
 
 
 def get_model(name, in_channels, out_channels, **kwargs):

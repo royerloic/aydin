@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.convblock import ConvBlock
+from aydin.it.pytorch.models.convblock import ConvBlock
 
 
 class Unet(nn.Module):
@@ -10,16 +10,20 @@ class Unet(nn.Module):
         self,
         n_channel_in=1,
         n_channel_out=1,
-        residual=False,
-        down='conv',
-        up='tconv',
+        n_internal_channels=8,
+        residual=True,
+        down='avgpool',
+        up='bilinear',
         activation='leakyrelu',
+        norm=None,
         softmax=False,
     ):
         super(Unet, self).__init__()
 
         self.residual = residual
         self.softmax = softmax
+
+        nic = n_internal_channels
 
         if down == 'maxpool':
             self.down1 = nn.MaxPool2d(kernel_size=2)
@@ -31,11 +35,15 @@ class Unet(nn.Module):
             self.down2 = nn.AvgPool2d(kernel_size=2)
             self.down3 = nn.AvgPool2d(kernel_size=2)
             self.down4 = nn.AvgPool2d(kernel_size=2)
-        elif down == 'conv':
-            self.down1 = nn.Conv2d(32, 32, kernel_size=2, stride=2, groups=32)
-            self.down2 = nn.Conv2d(64, 64, kernel_size=2, stride=2, groups=64)
-            self.down3 = nn.Conv2d(128, 128, kernel_size=2, stride=2, groups=128)
-            self.down4 = nn.Conv2d(256, 256, kernel_size=2, stride=2, groups=256)
+        elif down == 'convpool':
+            self.down1 = nn.Conv2d(nic, nic, kernel_size=2, stride=2, groups=32)
+            self.down2 = nn.Conv2d(nic * 2, nic * 2, kernel_size=2, stride=2, groups=64)
+            self.down3 = nn.Conv2d(
+                nic * 4, nic * 4, kernel_size=2, stride=2, groups=128
+            )
+            self.down4 = nn.Conv2d(
+                nic * 8, nic * 8, kernel_size=2, stride=2, groups=256
+            )
 
             self.down1.weight.data = 0.01 * self.down1.weight.data + 0.25
             self.down2.weight.data = 0.01 * self.down2.weight.data + 0.25
@@ -48,15 +56,29 @@ class Unet(nn.Module):
             self.down4.bias.data = 0.01 * self.down4.bias.data + 0
 
         if up == 'bilinear' or up == 'nearest':
-            self.up1 = lambda x: nn.functional.interpolate(x, mode=up, scale_factor=2)
-            self.up2 = lambda x: nn.functional.interpolate(x, mode=up, scale_factor=2)
-            self.up3 = lambda x: nn.functional.interpolate(x, mode=up, scale_factor=2)
-            self.up4 = lambda x: nn.functional.interpolate(x, mode=up, scale_factor=2)
+            self.up1 = lambda x: nn.functional.interpolate(
+                x, mode=up, scale_factor=2, align_corners=False
+            )
+            self.up2 = lambda x: nn.functional.interpolate(
+                x, mode=up, scale_factor=2, align_corners=False
+            )
+            self.up3 = lambda x: nn.functional.interpolate(
+                x, mode=up, scale_factor=2, align_corners=False
+            )
+            self.up4 = lambda x: nn.functional.interpolate(
+                x, mode=up, scale_factor=2, align_corners=False
+            )
         elif up == 'tconv':
-            self.up1 = nn.ConvTranspose2d(256, 256, kernel_size=2, stride=2, groups=256)
-            self.up2 = nn.ConvTranspose2d(128, 128, kernel_size=2, stride=2, groups=128)
-            self.up3 = nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2, groups=64)
-            self.up4 = nn.ConvTranspose2d(32, 32, kernel_size=2, stride=2, groups=32)
+            self.up1 = nn.ConvTranspose2d(
+                nic * 8, nic * 8, kernel_size=2, stride=2, groups=nic * 8
+            )
+            self.up2 = nn.ConvTranspose2d(
+                nic * 4, nic * 4, kernel_size=2, stride=2, groups=nic * 4
+            )
+            self.up3 = nn.ConvTranspose2d(
+                nic * 2, nic * 2, kernel_size=2, stride=2, groups=nic * 2
+            )
+            self.up4 = nn.ConvTranspose2d(nic, nic, kernel_size=2, stride=2, groups=nic)
 
             self.up1.weight.data = 0.01 * self.up1.weight.data + 0.25
             self.up2.weight.data = 0.01 * self.up2.weight.data + 0.25
@@ -68,20 +90,44 @@ class Unet(nn.Module):
             self.up3.bias.data = 0.01 * self.up3.bias.data + 0
             self.up4.bias.data = 0.01 * self.up4.bias.data + 0
 
-        self.conv1 = ConvBlock(n_channel_in, 32, residual, activation)
-        self.conv2 = ConvBlock(32, 64, residual, activation)
-        self.conv3 = ConvBlock(64, 128, residual, activation)
-        self.conv4 = ConvBlock(128, 256, residual, activation)
+        self.conv1 = ConvBlock(
+            n_channel_in, nic, residual=residual, activation=activation, norm=norm
+        )
+        self.conv2 = ConvBlock(
+            nic, nic * 2, residual=residual, activation=activation, norm=norm
+        )
+        self.conv3 = ConvBlock(
+            nic * 2, nic * 4, residual=residual, activation=activation, norm=norm
+        )
+        self.conv4 = ConvBlock(
+            nic * 4, nic * 8, residual=residual, activation=activation, norm=norm
+        )
 
-        self.conv5 = ConvBlock(256, 256, residual, activation)
+        self.conv5 = ConvBlock(
+            nic * 8, nic * 8, residual=residual, activation=activation, norm=norm
+        )
 
-        self.conv6 = ConvBlock(2 * 256, 128, residual, activation)
-        self.conv7 = ConvBlock(2 * 128, 64, residual, activation)
-        self.conv8 = ConvBlock(2 * 64, 32, residual, activation)
-        self.conv9 = ConvBlock(2 * 32, n_channel_out, residual, activation)
+        self.conv6 = ConvBlock(
+            2 * nic * 8, nic * 4, residual=residual, activation=activation, norm=norm
+        )
+        self.conv7 = ConvBlock(
+            2 * nic * 4, nic * 2, residual=residual, activation=activation, norm=norm
+        )
+        self.conv8 = ConvBlock(
+            2 * nic * 2, nic, residual=residual, activation=activation, norm=norm
+        )
+        self.conv9 = ConvBlock(
+            2 * nic, n_channel_out, residual=residual, activation=activation, norm=norm
+        )
 
         if self.residual:
-            self.convres = ConvBlock(n_channel_in, n_channel_out, residual, activation)
+            self.convres = ConvBlock(
+                n_channel_in,
+                n_channel_out,
+                residual=residual,
+                activation=activation,
+                norm=norm,
+            )
 
     def forward(self, x):
         c0 = x

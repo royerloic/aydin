@@ -7,7 +7,7 @@ class ConvBlock(nn.Module):
         in_channels,
         out_channels,
         dropout=False,
-        norm='instance',
+        norm=None,
         residual=True,
         activation='leakyrelu',
         in_place_activation=True,
@@ -28,12 +28,13 @@ class ConvBlock(nn.Module):
 
         self.norm1 = None
         self.norm2 = None
-        if norm == 'batch':
-            self.norm1 = nn.BatchNorm2d(out_channels)
-            self.norm2 = nn.BatchNorm2d(out_channels)
-        elif norm == 'instance':
-            self.norm1 = nn.InstanceNorm2d(out_channels, affine=True)
-            self.norm2 = nn.InstanceNorm2d(out_channels, affine=True)
+        if norm is not None:
+            if norm == 'batch':
+                self.norm1 = nn.BatchNorm2d(out_channels)
+                self.norm2 = nn.BatchNorm2d(out_channels)
+            elif norm == 'instance':
+                self.norm1 = nn.InstanceNorm2d(out_channels, affine=True)
+                self.norm2 = nn.InstanceNorm2d(out_channels, affine=True)
 
         if self.transpose:
             self.conv1 = nn.ConvTranspose2d(

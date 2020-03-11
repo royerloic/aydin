@@ -54,6 +54,10 @@ def pollen():
     return examples_single.generic_pollen.get_array()
 
 
+def characters():
+    return examples_single.characters.get_array()
+
+
 class examples_single(Enum):
     def get_path(self):
         download_from_gdrive(*self.value, datasets_folder)
@@ -69,6 +73,9 @@ class examples_single(Enum):
     generic_newyork = ('15Nuu_NU3iNuoPRmpFbrGIY0VT0iCmuKu', 'newyork.png')
     generic_lizard = ('1GUc6jy5QH5DaiUskCrPrf64YBOLzT6j1', 'lizard.png')
     generic_pollen = ('1S0o2NWtD1shB5DfGRIqOFxTLOi8cHQD-', 'pollen.png')
+
+    # Characters:
+    characters = ('1ZWkHFI2iddKa9qv6tft4QZlCoDS5fLMK', 'characters.jpg')
 
     # XYC (RGB)
     celldiv = ('120w8j2XgJgwD0w0nqX-Gd0C4Qi_gJ8oO', 'Example-noisy1.png')

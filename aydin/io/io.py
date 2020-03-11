@@ -54,11 +54,12 @@ def analyse(input_path):
         metadata = FileMetadata()
 
         metadata.is_folder = is_folder = os.path.isdir(input_path)
-        metadata.extension = (Path(input_path).suffix)[1:]
+        metadata.extension = ((Path(input_path).suffix)[1:]).lower()
 
         is_tiff = 'tif' in metadata.extension or 'tiff' in metadata.extension
         is_czi = 'czi' in metadata.extension
         is_png = 'png' in metadata.extension
+        is_jpg = 'jpg' in metadata.extension or 'jpeg' in metadata.extension
         is_zarr = 'zarr' in metadata.extension or is_zarr_storage(input_path)
         is_npy = 'npy' in metadata.extension
 
@@ -106,6 +107,17 @@ def analyse(input_path):
                 array = skimage.io.imread(input_path)
 
                 metadata.format = 'png'
+                metadata.shape = array.shape
+                metadata.dtype = array.dtype
+
+                # TODO: Check order:
+                metadata.axes = "YX"
+
+            elif is_jpg:
+                lprint(f"Analysing file {input_path} as JPEG file")
+                array = skimage.io.imread(input_path)
+
+                metadata.format = 'jpg'
                 metadata.shape = array.shape
                 metadata.dtype = array.dtype
 
