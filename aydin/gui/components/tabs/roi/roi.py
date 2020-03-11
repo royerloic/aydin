@@ -22,7 +22,7 @@ class ROITab(BaseTab):
 
     def load_tab(self):
         # Read the input image
-        self.image_data = read_image_from_path(
+        self.image_data, self.image_metadata = read_image_from_path(
             self.wizard.upload_tab.noisy_input_picker.lbl_text.text()
         )
 
