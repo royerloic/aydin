@@ -94,4 +94,4 @@ def collect_feature_nd(n_dim, tile_size):
 
     print(f'Average absolute difference: {avg_abs_diff}')
 
-    assert avg_abs_diff < 0.001
+    assert avg_abs_diff < 0.0014
