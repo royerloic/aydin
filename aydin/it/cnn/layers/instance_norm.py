@@ -1,11 +1,11 @@
-import tensorflow as tf
-
-K = tf.keras.backend
-Layer = tf.keras.layers.Layer
-InputSpec = tf.keras.layers.InputSpec
-initializers = tf.keras.initializers
-regularizers = tf.keras.regularizers
-constraints = tf.keras.constraints
+from tensorflow_core.python.keras.api.keras import (
+    constraints,
+    backend,
+    initializers,
+    regularizers,
+)
+from tensorflow_core.python.keras.engine.base_layer import Layer
+from tensorflow.python.keras.engine.input_spec import InputSpec
 
 
 class InstanceNormalization(Layer):
@@ -118,7 +118,7 @@ class InstanceNormalization(Layer):
         self.built = True
 
     def call(self, inputs, training=None):
-        input_shape = K.int_shape(inputs)
+        input_shape = backend.int_shape(inputs)
         reduction_axes = list(range(0, len(input_shape)))
 
         if self.axis is not None:
@@ -126,8 +126,8 @@ class InstanceNormalization(Layer):
 
         del reduction_axes[0]
 
-        mean = K.mean(inputs, reduction_axes, keepdims=True)
-        stddev = K.std(inputs, reduction_axes, keepdims=True) + self.epsilon
+        mean = backend.mean(inputs, reduction_axes, keepdims=True)
+        stddev = backend.std(inputs, reduction_axes, keepdims=True) + self.epsilon
         normed = (inputs - mean) / stddev
 
         broadcast_shape = [1] * len(input_shape)
@@ -135,10 +135,10 @@ class InstanceNormalization(Layer):
             broadcast_shape[self.axis] = input_shape[self.axis]
 
         if self.scale:
-            broadcast_gamma = K.reshape(self.gamma, broadcast_shape)
+            broadcast_gamma = backend.reshape(self.gamma, broadcast_shape)
             normed = normed * broadcast_gamma
         if self.center:
-            broadcast_beta = K.reshape(self.beta, broadcast_shape)
+            broadcast_beta = backend.reshape(self.beta, broadcast_shape)
             normed = normed + broadcast_beta
         return normed
 

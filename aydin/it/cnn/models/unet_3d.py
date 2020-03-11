@@ -1,24 +1,23 @@
-import tensorflow as tf
 import numpy
-from aydin.it.cnn.layers.split import split
-from aydin.it.cnn.layers.masking import Maskout
-from aydin.it.cnn.layers.layers import rot90
-from aydin.it.cnn.layers.conv_block import (
+from tensorflow_core.python.keras.api.keras import optimizers
+from tensorflow_core.python.keras.engine.input_layer import Input
+from tensorflow_core.python.keras.layers.convolutional import (
+    UpSampling3D,
+    ZeroPadding3D,
+    Cropping3D,
+    Conv3D,
+)
+from tensorflow_core.python.keras.layers.merge import Concatenate
+from tensorflow_core.python.keras.models import Model
+
+from aydin.it.cnn.layers.util import split, rot90
+from aydin.it.cnn.layers.maskout import Maskout
+from aydin.it.cnn.models.utils.conv_block import (
     conv3d_bn_noshift,
     conv3d_bn,
     mxpooling_down3D,
 )
-from aydin.it.cnn.models.utils.checks import unet_checks
-
-optimizers = tf.keras.optimizers
-Model = tf.keras.models.Model
-Input = tf.keras.layers.Input
-Concatenate = tf.keras.layers.Concatenate
-Conv3D = tf.keras.layers.Conv3D
-ZeroPadding3D = tf.keras.layers.ZeroPadding3D
-Cropping3D = tf.keras.layers.Cropping3D
-UpSampling3D = tf.keras.layers.UpSampling3D
-K = tf.keras.backend
+from aydin.it.cnn.models.utils.input_verify import input_verify_for_unet
 
 
 def unet_3d_model(
@@ -54,7 +53,7 @@ def unet_3d_model(
     """
 
     # Configure
-    shiftconv = unet_checks(input_dim, num_lyr, supervised, shiftconv)
+    shiftconv = input_verify_for_unet(input_dim, num_lyr, supervised, shiftconv)
     if original_zdim:
         zdim = original_zdim
     else:
