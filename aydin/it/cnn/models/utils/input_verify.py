@@ -3,7 +3,7 @@ import numpy as np
 from aydin.util.log.log import lsection, lprint
 
 
-def unet_checks(input_dim, num_lyr, supervised, shiftconv):
+def input_verify_for_unet(input_dim, num_lyr, supervised, shiftconv):
     """
     This is to check if the input data is compatible with the model.
     :param input_dim: input dimension

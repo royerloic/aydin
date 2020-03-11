@@ -1,19 +1,18 @@
+from tensorflow_core.python.keras.layers.advanced_activations import LeakyReLU
+from tensorflow_core.python.keras.layers.convolutional import (
+    ZeroPadding2D,
+    Conv2D,
+    Cropping2D,
+    ZeroPadding3D,
+    Conv3D,
+    Cropping3D,
+)
+from tensorflow_core.python.keras.layers.core import Activation
+from tensorflow_core.python.keras.layers.normalization_v2 import BatchNormalization
+from tensorflow_core.python.keras.layers.pooling import MaxPooling2D, MaxPooling3D
+
 from aydin.it.cnn.layers.instance_norm import InstanceNormalization
-import tensorflow as tf
-from aydin.it.cnn.layers.layers import Swish
-
-
-Conv2D = tf.keras.layers.Conv2D
-Conv3D = tf.keras.layers.Conv3D
-LeakyReLU = tf.keras.layers.LeakyReLU
-ZeroPadding2D = tf.keras.layers.ZeroPadding2D
-ZeroPadding3D = tf.keras.layers.ZeroPadding3D
-Cropping2D = tf.keras.layers.Cropping2D
-Cropping3D = tf.keras.layers.Cropping3D
-BatchNormalization = tf.keras.layers.BatchNormalization
-MaxPooling2D = tf.keras.layers.MaxPool2D
-MaxPooling3D = tf.keras.layers.MaxPool3D
-Activation = tf.keras.layers.Activation
+from aydin.it.cnn.layers.util import Swish
 
 
 def conv2d_bn(xx, unit, shiftconv, norm, act, lyrname=None):

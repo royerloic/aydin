@@ -1,8 +1,25 @@
 import numpy as np
 import tensorflow as tf
+from tensorflow_core.python.keras import backend
+from tensorflow_core.python.keras.layers.core import Lambda
 
-K = tf.keras.backend
-Lambda = tf.keras.layers.Lambda
+
+def split(
+    x, idx, batchsize=1, lyrname=None
+):  # TODO: refactor into a class or a util function
+    """
+    Split tensor at the batch axis. Only for shift convolution architecture.
+    :param x: input tensor
+    :param idx: index for the split chunk
+    :param batchsize: batch size
+    :param lyrname: layer name
+    """
+    out_shape = backend.int_shape(x[0])
+    return Lambda(
+        lambda xx: xx[idx * batchsize : (idx + 1) * batchsize],
+        output_shape=out_shape,
+        name=lyrname,
+    )
 
 
 def Swish(name=None):
@@ -15,7 +32,7 @@ def rot90(xx, kk=1, lyrname=None):
     :param xx: input tensor from previous layer
     :param kk: index for rotation (crock wise).
     """
-    out_shape = list(K.int_shape(xx))
+    out_shape = list(backend.int_shape(xx))
     if kk % 2 == 1 and 0 < kk % 6 < 5:
         out_shape[-3:-1] = np.flip(out_shape[-3:-1], 0)
     elif abs(kk) % 6 == 5 or kk % 6 == 0:
@@ -42,35 +59,39 @@ def rot90(xx, kk=1, lyrname=None):
         direction = [-3, -2, 1, -2]
     if abs(kk) % 6 == 5 and len(out_shape) == 5:
         return Lambda(
-            lambda xx: K.reverse(K.permute_dimensions(xx, tp_axis2), axes=direction[2]),
+            lambda xx: backend.reverse(
+                backend.permute_dimensions(xx, tp_axis2), axes=direction[2]
+            ),
             output_shape=out_shape[1:],
             name=lyrname,
         )
     elif kk % 6 == 0 and len(out_shape) == 5 and kk != 0:
         return Lambda(
-            lambda xx: K.reverse(K.permute_dimensions(xx, tp_axis2), axes=direction[3]),
+            lambda xx: backend.reverse(
+                backend.permute_dimensions(xx, tp_axis2), axes=direction[3]
+            ),
             output_shape=out_shape[1:],
             name=lyrname,
         )
     else:
         if kk % 4 == 1:
             return Lambda(
-                lambda xx: K.reverse(
-                    K.permute_dimensions(xx, tp_axis), axes=direction[0]
+                lambda xx: backend.reverse(
+                    backend.permute_dimensions(xx, tp_axis), axes=direction[0]
                 ),
                 output_shape=out_shape[1:],
                 name=lyrname,
             )
         elif kk % 4 == 2:
             return Lambda(
-                lambda xx: K.reverse(K.reverse(xx, axes=-2), axes=-3),
+                lambda xx: backend.reverse(backend.reverse(xx, axes=-2), axes=-3),
                 output_shape=out_shape[1:],
                 name=lyrname,
             )
         elif kk % 4 == 3:
             return Lambda(
-                lambda xx: K.reverse(
-                    K.permute_dimensions(xx, tp_axis), axes=direction[1]
+                lambda xx: backend.reverse(
+                    backend.permute_dimensions(xx, tp_axis), axes=direction[1]
                 ),
                 output_shape=out_shape[1:],
                 name=lyrname,
@@ -82,7 +103,7 @@ def rot90(xx, kk=1, lyrname=None):
 # The following code is more sofisticated and works fine with everything except serializing to JSON,
 # and thus is not used anymore.
 # def rot90(xx, kk=1, lyrname=None):  # rotate tensor by 90 degrees for 2D, 3D images
-#     out_shape = list(K.int_shape(xx))
+#     out_shape = list(backend.int_shape(xx))
 #
 #     def rot(x1, out_shape, k=1):
 #
@@ -107,12 +128,12 @@ def rot90(xx, kk=1, lyrname=None):
 #         else:
 #             direction = [-3, 1, -2]
 #         if k % 6 == 5 and len(out_shape) == 5:
-#             x1 = K.reverse(K.permute_dimensions(x1, tp_axis2), axes=direction[1])
+#             x1 = backend.reverse(backend.permute_dimensions(x1, tp_axis2), axes=direction[1])
 #         elif k % 6 == 0 and len(out_shape) == 5:
-#             x1 = K.reverse(K.permute_dimensions(x1, tp_axis2), axes=direction[2])
+#             x1 = backend.reverse(backend.permute_dimensions(x1, tp_axis2), axes=direction[2])
 #         elif 0 < k % 6 < 5:
 #             for i in range(abs(k)):
-#                 x1 = K.reverse(K.permute_dimensions(x1, tp_axis), axes=direction[0])
+#                 x1 = backend.reverse(backend.permute_dimensions(x1, tp_axis), axes=direction[0])
 #         return x1
 #
 #     if kk % 2 == 1 and 0 < kk % 6 < 5:
