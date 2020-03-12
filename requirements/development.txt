@@ -3,3 +3,4 @@ flake8==3.7.9
 napari==0.2.12
 pre-commit>=1.16.1
 pytest==5.0.1
+https://github.com/pyinstaller/pyinstaller/tarball/develop
