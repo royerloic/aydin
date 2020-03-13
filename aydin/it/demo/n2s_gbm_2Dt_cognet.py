@@ -19,7 +19,7 @@ def demo():
     today = date.today()
     filename = f"result_{today.strftime('%m_%d_%Y_%H_%M_%S')}.tiff"
 
-    image_path = examples_single.cognet_nanotube_200fps.get_path()
+    image_path = examples_single.cognet_nanotube_400fps.get_path()
     array, metadata = io.imread(image_path)
     print(array.shape)
     train = array  # [0:320]

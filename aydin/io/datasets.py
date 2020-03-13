@@ -42,8 +42,8 @@ def lizard():
     return examples_single.generic_lizard.get_array()
 
 
-def camera():
-    return examples_single.generic_newyork.get_array()
+# def camera():
+#    return examples_single.generic_camera.get_array()
 
 
 def newyork():

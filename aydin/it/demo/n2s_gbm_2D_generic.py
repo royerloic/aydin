@@ -34,7 +34,12 @@ def demo(image, name):
 
     nlm = denoise_nl_means(noisy, patch_size=11, sigma=estimate_sigma(noisy))
 
-    generator = FastMultiscaleConvolutionalFeatures()
+    generator = FastMultiscaleConvolutionalFeatures(
+        kernel_widths=[11, 1, 1, 1, 1],
+        kernel_scales=[1, 11, 31, 71, 151],
+        kernel_shapes=['l1', 'l1', 'l1', 'l1', 'l1'],
+        exclude_scale_one=False,
+    )
     regressor = GBMRegressor(patience=20)
 
     it = ImageTranslatorClassic(

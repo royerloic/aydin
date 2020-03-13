@@ -1,24 +1,25 @@
 import os
-
-import psutil
-import time, math
-from os.path import join
+from math import log1p, sqrt
 
 import numpy
-import random
-
+import scipy
 import torch
+from scipy.ndimage import median_filter
 from torch import nn
 from torch.utils.data import Dataset
 
-from aydin.it.pytorch.models.unet import Unet
 from aydin.it.it_base import ImageTranslatorBase
+from aydin.it.pytorch.models.RonnebergerUnet import RonnebergerUNet
+from aydin.it.pytorch.models.basicunet import BasicUnet
+from aydin.it.pytorch.models.feedforward import FeedForward
+from aydin.it.pytorch.models.slimnet import SlimNet
+from aydin.it.pytorch.models.unet import Unet
 from aydin.util.log.log import lsection, lprint
 from aydin.util.nd import extract_tiles
 
 
 def to_numpy(tensor):
-    return tensor.clone().detach().numpy()
+    return tensor.clone().detach().cpu().numpy()
 
 
 class InvertingImageTranslator(ImageTranslatorBase):
@@ -134,7 +135,7 @@ class InvertingImageTranslator(ImageTranslatorBase):
         ndim = input_image.ndim
 
         # Dataset:
-        tilesize = 64
+        tilesize = min(input_image.shape)
         mode = 'grid'
         dataset = self._get_dataset(
             input_image,
@@ -147,20 +148,38 @@ class InvertingImageTranslator(ImageTranslatorBase):
         lprint(f"Number tiles for training: {len(dataset)}")
         lprint(f"Tile dimensions: {tilesize}")
 
-        num_workers = max(3, os.cpu_count() // 2)
-        num_workers = 0  # TODO: remove this line!
+        # num_workers = max(3, os.cpu_count() // 2)
+        num_workers = 0  # faster if data is already in memory...
         lprint(f"Number of workers for loading data: {num_workers}")
         data_loader = torch.utils.data.DataLoader(
-            dataset, batch_size=self.batch_size, shuffle=True, num_workers=num_workers
+            dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=num_workers,
+            pin_memory=True,
         )
 
         # Model
-        self.model = Unet().to(self.device)
+        self.model = SlimNet(num_channels=512, sf_factor=1, kernel_size=13, levels=5)
+        self.model.set_trivial_basis()
+        self.model.set_donut()
+        # RonnebergerUNet(1, 1, depth=3, wf=4)
+
+        self.model = self.model.to(self.device)
+        number_of_parameters = sum(
+            p.numel() for p in self.model.parameters() if p.requires_grad
+        )
+        lprint(f"Number of trainable parameters: {number_of_parameters}")
 
         # Optimiser:
-        lprint(f"Optimiser: Adam")
+        optimiser_class = torch.optim.Adam
+        lprint(f"Optimiser: {optimiser_class}")
         lprint(f"Learning rate : {self.learning_rate}")
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
+        optimizer = optimiser_class(
+            self.model.trainable_parameters(),
+            lr=self.learning_rate,
+            weight_decay=0.1 * self.learning_rate,
+        )
 
         # Loss functon:
         loss_function = nn.L1Loss()
@@ -172,26 +191,16 @@ class InvertingImageTranslator(ImageTranslatorBase):
             lprint(f"Training loss: L1")
 
         # Masking function:
-        patch_size = 5
-        repeats = patch_size ** ndim
-        lprint(f"Masking mode: checkerboard interpolation")
-        lprint(f"Masking tile-size: {patch_size}")
-        lprint(f"Masking repeats: {repeats}")
+        density = 0.1
+        lprint(f"Masking mode: random zero")
 
-        def masking_function(images, index):
-            phasex = (index) % patch_size
-            phasey = ((index) // patch_size) % patch_size
-            mask = self._get_single_pixel_mask(
-                images[0].shape, patch_size, phasex, phasey
-            )
-            mask = mask.to(self.device)
-            masked_images = (1 - mask) * images
-            # self._mask_single_pixel_with_interpolation(images, mask)
-            return masked_images, mask
+        def maskgen_function(shape, density):
+            mask = (torch.FloatTensor(*shape).uniform_(0, 1) < density).float()
+            return mask
 
         # Start training:
         self._train_loop(
-            data_loader, optimizer, loss_function, masking_function, repeats=repeats
+            data_loader, optimizer, loss_function, maskgen_function, density=density
         )
 
     def _get_dataset(
@@ -230,78 +239,106 @@ class InvertingImageTranslator(ImageTranslatorBase):
 
         if mode == 'grid':
             return TrainingDataset(input_image, target_image, tilesize)
+        else:
+            return None
 
     def _train_loop(
-        self, data_loader, optimizer, loss_function, masking_function, repeats
+        self, data_loader, optimizer, loss_function, maskgen_function, density
     ):
+
+        donut_filter = (1.0 / (3 * 3 - 1)) * numpy.array(
+            [[1.0, 1.0, 1.0], [1.0, 0.0, 1.0], (1.0, 1.0, 1.0)]
+        )
+        donut_filter = donut_filter[numpy.newaxis, numpy.newaxis, :, :]
+        donut_filter = torch.Tensor(donut_filter)
+        donut_filter = donut_filter.to(self.device, non_blocking=True)
 
         with lsection(f"Training loop:"):
             lprint(f"Maximum number of epochs: {self.max_epochs}")
             lprint(
                 f"Training type: {'self-supervised' if self.self_supervised else 'supervised'}"
             )
-            iteration = 0
+
             for epoch in range(self.max_epochs):
-                with lsection(f"Epoch {epoch}, iteration: {iteration}:"):
+                with lsection(f"Epoch {epoch}:"):
+
+                    current_density = density / (1 + 0.1 * sqrt(epoch))
+                    current_density = max(0.05, current_density)
+
+                    loss_value = 0
+                    iteration = 0
+
                     for i, (input_images, target_images) in enumerate(data_loader):
-                        lprint(f"index: {i}")
+                        repeats = 1  # max(1, int(1.2/current_density))
+                        lprint(
+                            f"index: {i}, input shape:{input_images.shape}, target shape:{target_images.shape}, density:{current_density}, repeats:{repeats}"
+                        )
 
-                        loss_value = 0
+                        # Clear gradients w.r.t. parameters
+                        optimizer.zero_grad()
 
-                        for j in range(repeats):
-                            input_images = input_images.to(self.device)
-                            target_images = target_images.to(self.device)
+                        for repeat in range(0, repeats):
+                            input_images_gpu = input_images.to(
+                                self.device, non_blocking=True
+                            )
+                            target_images_gpu = target_images.to(
+                                self.device, non_blocking=True
+                            )
+                            mask_gpu = maskgen_function(
+                                input_images.shape, current_density
+                            ).to(self.device, non_blocking=True)
 
-                            if self.self_supervised:
-                                input_images, mask = masking_function(
-                                    input_images, index=j
+                            masking = False
+
+                            if masking:
+                                inv_mask_gpu = 1.0 - mask_gpu
+                                filtered_input_images_gpu = torch.nn.functional.conv2d(
+                                    input_images_gpu, donut_filter, stride=1, padding=1
+                                )
+                                input_images_gpu = (
+                                    input_images_gpu * inv_mask_gpu
+                                    + filtered_input_images_gpu * (mask_gpu)
                                 )
 
-                            # Clear gradients w.r.t. parameters
-                            optimizer.zero_grad()
-
                             # Forward pass:
-                            output_images = self.model(input_images)
+                            output_images_gpu = self.model(input_images_gpu)
                             # output_images = self.forward_model(output_images)
 
-                            # Self-supervised loss:
-                            if self.self_supervised:
-                                output_images = output_images * mask
-                                target_images = target_images * mask
+                            # loss:
+                            if masking:
+                                loss = loss_function(
+                                    output_images_gpu * mask_gpu,
+                                    target_images_gpu * mask_gpu,
+                                )
+                            else:
+                                loss = loss_function(
+                                    output_images_gpu, target_images_gpu
+                                )
 
-                            if epoch > 5 and j == 0:
-                                import napari
+                            # Back-propagation:
+                            loss.backward(retain_graph=repeat < repeats - 1)
 
-                                with napari.gui_qt():
-                                    viewer = napari.Viewer()
-                                    viewer.add_image(
-                                        to_numpy(input_images), name='input_images'
-                                    )
-                                    viewer.add_image(
-                                        to_numpy(output_images), name='output_images'
-                                    )
-                                    viewer.add_image(
-                                        to_numpy(target_images), name='target_images'
-                                    )
-
-                            # compute the loss:
-                            loss = loss_function(output_images, target_images)
-
-                            # Getting gradients w.r.t. parameters
-                            loss.backward()
+                            # update training loss for whole image:
+                            loss_value += loss.item()
+                            iteration += 1
 
                             # Updating parameters
                             optimizer.step()
 
-                            # update training loss for whole image:
-                            loss_value += loss.item()
+                        lprint(f"Training loss value: {loss_value/iteration}")
 
-                            if self._stop_training_flag:
-                                return
+                        # import napari
+                        # with napari.gui_qt():
+                        #     viewer = napari.Viewer()
+                        #     viewer.add_image(to_numpy(mask_gpu), name='mask_gpu')
+                        #     viewer.add_image(to_numpy(input_images_gpu), name='input_images_gpu')
+                        #     viewer.add_image(to_numpy(filtered_input_images_gpu), name='filtered_input_images_gpu')
+                        #     viewer.add_image(to_numpy(masked_input_images_gpu), name='masked_input_images_gpu')
+                        #     viewer.add_image(to_numpy(output_images_gpu), name='output_images_gpu')
+                        #     viewer.add_image(to_numpy(target_images_gpu), name='target_images_gpu')
 
-                        lprint(f"Training loss value: {loss_value}")
-
-                        iteration += 1
+                    if self._stop_training_flag:
+                        return
 
     def _translate(self, input_image, batch_dims=None):
         """
@@ -312,9 +349,9 @@ class InvertingImageTranslator(ImageTranslatorBase):
         """
 
         input_image = torch.Tensor(input_image[numpy.newaxis, numpy.newaxis, ...])
-        input_image.to(self.device)
+        input_image = input_image.to(self.device)
         inferred_image: torch.Tensor = self.model(input_image)
-        inferred_image = inferred_image.detach().numpy()
+        inferred_image = inferred_image.detach().cpu().numpy()
         inferred_image = inferred_image.squeeze()
         return inferred_image
 
@@ -325,23 +362,23 @@ class InvertingImageTranslator(ImageTranslatorBase):
                 M[i, j] = 1 if (i % size == phasex and j % size == phasey) else 0
         return torch.Tensor(M)
 
-    def _mask_single_pixel_with_interpolation(self, image, mask):
-        device = image.device
-
-        mask = mask.to(device)
-        mask_ones = torch.ones(mask.shape)
-        mask_ones = mask_ones.to(device)
-        mask_inv = mask_ones - mask
-        mask_inv = mask_inv.to(device)
-
-        kernel = (1.0 / (3 * 3 - 1)) * numpy.array(
-            [[1.0, 1.0, 1.0], [1.0, 0.0, 1.0], (1.0, 1.0, 1.0)]
-        )
-        kernel = kernel[numpy.newaxis, numpy.newaxis, :, :]
-        kernel = torch.Tensor(kernel)
-
-        kernel = kernel.to(device)
-
-        filtered_tensor = torch.nn.functional.conv2d(image, kernel, stride=1, padding=1)
-
-        return filtered_tensor * mask + image * mask_inv
+        # if epoch > 10 and j == 0:
+        #     import napari
+        #     with torch.no_grad():
+        #         with napari.gui_qt():
+        #             viewer = napari.Viewer()
+        #             viewer.add_image(
+        #                 to_numpy(mask), name='mask'
+        #             )
+        #             viewer.add_image(
+        #                 to_numpy(1.0-mask), name='inv_mask'
+        #             )
+        #             viewer.add_image(
+        #                 to_numpy(input_images), name='input_images'
+        #             )
+        #             viewer.add_image(
+        #                 to_numpy(output_images), name='output_images'
+        #             )
+        #             viewer.add_image(
+        #                 to_numpy(target_images), name='target_images'
+        #             )
