@@ -27,10 +27,11 @@ def normalise(image):
     )
 
 
-def add_noise(image, intensity=5, type='gaussian', variance=0.01, dtype=numpy.float32):
+def add_noise(image, intensity=5, variance=0.01, sap=0.0, dtype=numpy.float32):
     numpy.random.seed(0)
     noisy = numpy.random.poisson(image * intensity) / intensity
-    noisy = random_noise(noisy, mode=type, var=variance, seed=0)
+    noisy = random_noise(noisy, mode="gaussian", var=variance, seed=0)
+    noisy = random_noise(noisy, mode="s&p", amount=sap, seed=0)
     noisy = noisy.astype(dtype)
     return noisy
 

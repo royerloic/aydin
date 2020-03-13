@@ -10,23 +10,22 @@ from aydin.io.datasets import examples_single
 from aydin.it.it_cnn import ImageTranslatorCNN
 
 image_path = '../test_data/labeled_mararia/raw/p1.tif'
-image, metadata = io.imread(image_path)
+image, metadata = io.imread(image_path)  # (13, 520, 696)
 # image = image[0:10, 15:35, 130:167, 130:177]
 # image = image[:, :, 100:300, 100:300]
-image = np.expand_dims(np.expand_dims(image.astype(np.float32), axis=-1), axis=0)
-image = rescale_intensity(image, in_range='image', out_range=(0, 1))
+image = rescale_intensity(image.astype(np.float32), in_range='image', out_range=(0, 1))
 max_epochs = 10
 # def demo(image, max_epochs=10):
 
-batch_dims = (True, False, False, False, False)
+batch_dims = (False, False, False)
 
 it = ImageTranslatorCNN(
     training_architecture='random',
-    num_layer=2,
+    num_layer=3,
     batch_norm='instance',  # None,  #
     activation='ReLU',
-    mask_shape=(5, 5),
-    tile_size=12,
+    mask_shape=(3, 3, 3),
+    tile_size=[12, 64, 64],
     # total_num_patches=10,
     max_epochs=max_epochs,
     verbose=1,
@@ -41,7 +40,7 @@ start = time.time()
 denoised = it.translate(
     image,
     batch_dims=batch_dims,
-    tile_size=256,  # image.shape[1:-1],  # [12, 12, 12],  # min(image.shape[1:-1])
+    tile_size=128,  # image.shape[1:-1],  # [12, 12, 12],  # min(image.shape[1:-1])
 )
 stop = time.time()
 print(f"inference: elapsed time:  {stop-start} ")

@@ -40,7 +40,7 @@ def demo():
         max_level=9,
         dtype=numpy.float16,
         exclude_scale_one=True,
-        include_median_features=False,
+        include_spatial_features=False,
     )
     generator = TiledFeatureGenerator(generator, max_tile_size=512)
 

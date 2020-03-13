@@ -1,33 +1,5 @@
-import numpy as np
-import tensorflow as tf
 from copy import deepcopy
-
-ImageDataGenerator = tf.keras.preprocessing.image.ImageDataGenerator
-K = tf.keras.backend
-Layer = tf.keras.layers.Layer
-multiply = tf.keras.layers.multiply
-
-
-class Maskout(Layer):  #
-    def __init__(self, **kwargs):
-        """
-        A layer that mutiply mask with image. This is for masking architecture.
-        """
-        super(Maskout, self).__init__(**kwargs)
-
-    def build(self, input_shape):
-        assert isinstance(input_shape, list)
-        super(Maskout, self).build(input_shape)
-
-    def call(self, x, training=None):
-        assert isinstance(x, list)
-        return multiply(x)
-        # return K.in_train_phase(multiply(x), x[0], training=training)
-
-    def compute_output_shape(self, input_shape):
-        assert isinstance(input_shape, list)
-        shape_a, shape_b = input_shape
-        return shape_a
+import numpy as np
 
 
 def masker(batch_vol, i=None, mask_shape=None, p=None):
@@ -49,7 +21,8 @@ def masker(batch_vol, i=None, mask_shape=None, p=None):
         mask = mask.reshape(mask_shape)
         rep = np.ceil(np.asarray(batch_vol) / np.asarray(mask_shape)).astype(int)
         mask = np.tile(mask, tuple(rep))
-        mask = mask[: batch_vol[0], : batch_vol[1]]
+        ind = tuple([slice(batch_vol[i]) for i in range(len(batch_vol))])
+        mask = mask[ind]
     return mask
 
 

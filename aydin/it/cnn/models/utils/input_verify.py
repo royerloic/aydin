@@ -3,7 +3,7 @@ import numpy as np
 from aydin.util.log.log import lsection, lprint
 
 
-def unet_checks(input_dim, num_lyr, supervised, shiftconv):
+def input_verify_for_unet(input_dim, num_lyr, supervised, shiftconv):
     """
     This is to check if the input data is compatible with the model.
     :param input_dim: input dimension
@@ -22,10 +22,11 @@ def unet_checks(input_dim, num_lyr, supervised, shiftconv):
             # assert (
             #     supervised != shiftconv
             # ), 'Shift convolution scheme is only available for self-supervised learning.'
-            assert (
-                np.mod(input_dim[:-1], np.repeat(2 ** num_lyr, len(input_dim[:-1])))
-                == 0
-            ).all(), 'Each dimension of the input image has to be a multiple of 2^num_layer. '
+            if shiftconv:
+                assert (
+                    np.mod(input_dim[:-1], np.repeat(2 ** num_lyr, len(input_dim[:-1])))
+                    == 0
+                ).all(), 'Each dimension of the input image has to be a multiple of 2^num_layer for shiftconv. '
             if supervised:
                 lprint('Model will be created for supervised learning.')
             elif not supervised and shiftconv:

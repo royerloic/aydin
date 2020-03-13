@@ -15,12 +15,6 @@ def demo(image, max_epochs=10):
     image = normalise(image.astype(numpy.float32))
     noisy = add_noise(image)
 
-    # Classical denoisers:
-    # median1 = skimage.filters.median(noisy, disk(1))
-    # median2 = skimage.filters.median(noisy, disk(2))
-    # median5 = skimage.filters.median(noisy, disk(5))
-    # nlm = denoise_nl_means(noisy, patch_size=11, sigma=estimate_sigma(noisy))
-
     # CNN based Image translation:
     # input_dim only includes H, W, C; number of images is not included
     it = ImageTranslatorCNN(
