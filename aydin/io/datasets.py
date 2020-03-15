@@ -68,22 +68,28 @@ class examples_single(Enum):
         array, _ = io.imread(self.get_path())
         return array
 
-    # XY natural images:
+    # XY natural images (2D monochrome):
     generic_crowd = ('13UHK8MjhBviv31mAW2isdG4G-aGaNJIj', 'crowd.tif')
     generic_mandrill = ('1B33ELiFuCV0OJ6IHh7Ix9lvImwI_QkR-', 'mandrill.tif')
     generic_newyork = ('15Nuu_NU3iNuoPRmpFbrGIY0VT0iCmuKu', 'newyork.png')
     generic_lizard = ('1GUc6jy5QH5DaiUskCrPrf64YBOLzT6j1', 'lizard.png')
     generic_pollen = ('1S0o2NWtD1shB5DfGRIqOFxTLOi8cHQD-', 'pollen.png')
 
-    # Characters:
+    # Characters (2D monochrome, inverted):
     characters = ('1ZWkHFI2iddKa9qv6tft4QZlCoDS5fLMK', 'characters.jpg')
 
     # XYC (RGB)
     celldiv = ('120w8j2XgJgwD0w0nqX-Gd0C4Qi_gJ8oO', 'Example-noisy1.png')
 
-    # XY
+    # XY ()
     fmdd_hv115 = ('12C3_nW_wCFftKN0_XmGNoe-v72mp31p-', 'HV115_P0500510039.png')
     fmdd_hv110 = ('1B6WMgiaaUozgqwvHQtM0NwTUpmKuauKO', 'HV110_P0500510004.png')
+
+    # XY
+    scheffer_fibsem = (
+        '1ZXRElGaq9Bshj-8sHKe95q-fH06bxQnM',
+        'Scheffer_Dro_7column_iso04000.png',
+    )
 
     # XY
     # metha_pol = (
