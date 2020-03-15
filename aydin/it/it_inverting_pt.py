@@ -1,21 +1,21 @@
-import os
-from math import log1p, sqrt
+import math
 
 import numpy
-import scipy
 import torch
-from scipy.ndimage import median_filter
 from torch import nn
+from torch.optim import Adam, SGD
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import Dataset
 
 from aydin.it.it_base import ImageTranslatorBase
-from aydin.it.pytorch.models.RonnebergerUnet import RonnebergerUNet
-from aydin.it.pytorch.models.basicunet import BasicUnet
-from aydin.it.pytorch.models.feedforward import FeedForward
-from aydin.it.pytorch.models.slimnet import SlimNet
-from aydin.it.pytorch.models.unet import Unet
+from aydin.it.pytorch.models.skipnet import SkipNet2D
+from aydin.it.pytorch.optimisers.esadam import ESAdam
 from aydin.util.log.log import lsection, lprint
 from aydin.util.nd import extract_tiles
+
+torch.manual_seed(0)
+numpy.random.seed(0)
+# torch.backends.cudnn.deterministic = True
 
 
 def to_numpy(tensor):
@@ -132,81 +132,120 @@ class InvertingImageTranslator(ImageTranslatorBase):
     ):
         self._stop_training_flag = False
 
+        shape = input_image.shape
         ndim = input_image.ndim
 
-        # Dataset:
-        tilesize = min(input_image.shape)
-        mode = 'grid'
-        dataset = self._get_dataset(
+        # tile size:
+        tile_size = min(1024, min(shape))
+
+        # Decide on how many voxels to be used for validation:
+        num_val_voxels = int(train_valid_ratio * input_image.size)
+        lprint(
+            f"Number of voxels used for validation: {num_val_voxels} (train_valid_ratio={train_valid_ratio})"
+        )
+
+        # Generate random coordinates for these voxels:
+        val_voxels = tuple(numpy.random.randint(d, size=num_val_voxels) for d in shape)
+        lprint(f"Validation voxel coordinates: {val_voxels}")
+
+        # Training Tile size:
+        train_tile_size = tile_size
+        lprint(f"Train Tile dimensions: {train_tile_size}")
+
+        # Prepare Training Dataset:
+        train_dataset = self._get_dataset(
             input_image,
             target_image,
             self.self_supervised,
-            tilesize=tilesize,
-            mode=mode,
+            tilesize=train_tile_size,
+            mode='grid',
+            is_training_data=True,
+            validation_voxels=val_voxels,
         )
-        lprint(f"Tile generation mode: {mode}")
-        lprint(f"Number tiles for training: {len(dataset)}")
-        lprint(f"Tile dimensions: {tilesize}")
+        lprint(f"Number tiles for training: {len(train_dataset)}")
 
+        # Validation Tile size:
+        val_tile_size = tile_size
+        lprint(f"Validation Tile dimensions: {val_tile_size}")
+
+        # Prepare Validation dataset:
+        val_dataset = self._get_dataset(
+            input_image,
+            target_image,
+            self.self_supervised,
+            tilesize=val_tile_size,
+            mode='grid',
+            is_training_data=False,
+            validation_voxels=val_voxels,
+        )
+        lprint(f"Number tiles for training: {len(val_dataset)}")
+
+        # Training Data Loader:
         # num_workers = max(3, os.cpu_count() // 2)
         num_workers = 0  # faster if data is already in memory...
-        lprint(f"Number of workers for loading data: {num_workers}")
-        data_loader = torch.utils.data.DataLoader(
-            dataset,
-            batch_size=self.batch_size,
+        lprint(f"Number of workers for loading training/validation data: {num_workers}")
+        train_data_loader = torch.utils.data.DataLoader(
+            train_dataset,
+            batch_size=1,  # self.batch_size,
+            shuffle=True,
+            num_workers=num_workers,
+            pin_memory=True,
+        )
+
+        val_data_loader = torch.utils.data.DataLoader(
+            val_dataset,
+            batch_size=1,
             shuffle=True,
             num_workers=num_workers,
             pin_memory=True,
         )
 
         # Model
-        self.model = SlimNet(num_channels=512, sf_factor=1, kernel_size=13, levels=5)
-        self.model.set_trivial_basis()
-        self.model.set_donut()
-        # RonnebergerUNet(1, 1, depth=3, wf=4)
+        self.model = SkipNet2D(1, 1)
+        # lprint(f"Model: {self.model}")
 
         self.model = self.model.to(self.device)
         number_of_parameters = sum(
-            p.numel() for p in self.model.parameters() if p.requires_grad
+            p.numel() for p in self.model.trainable_parameters() if p.requires_grad
         )
-        lprint(f"Number of trainable parameters: {number_of_parameters}")
+        lprint(f"Number of trainable parameters in model: {number_of_parameters}")
 
         # Optimiser:
-        optimiser_class = torch.optim.Adam
-        lprint(f"Optimiser: {optimiser_class}")
+        optimiser_class = ESAdam
+        lprint(f"Optimiser class: {optimiser_class}")
         lprint(f"Learning rate : {self.learning_rate}")
         optimizer = optimiser_class(
             self.model.trainable_parameters(),
             lr=self.learning_rate,
-            weight_decay=0.1 * self.learning_rate,
+            weight_decay=0.01 * self.learning_rate,
         )
+        lprint(f"Optimiser: {optimizer}")
 
         # Loss functon:
         loss_function = nn.L1Loss()
         if self.loss.lower() == 'l2':
-            lprint(f"Training loss: L2")
-            loss_function = nn.MSELoss()
+            lprint(f"Training/Validation loss: L2")
+            loss_function = nn.MSELoss(reduction='none')
         elif self.loss.lower() == 'l1':
-            loss_function = nn.L1Loss()
-            lprint(f"Training loss: L1")
-
-        # Masking function:
-        density = 0.1
-        lprint(f"Masking mode: random zero")
-
-        def maskgen_function(shape, density):
-            mask = (torch.FloatTensor(*shape).uniform_(0, 1) < density).float()
-            return mask
+            loss_function = nn.L1Loss(reduction='none')
+            lprint(f"Training/Validation loss: L1")
 
         # Start training:
         self._train_loop(
-            data_loader, optimizer, loss_function, maskgen_function, density=density
+            train_data_loader, val_data_loader, optimizer, loss_function, num_val_voxels
         )
 
     def _get_dataset(
-        self, input_image, target_image, self_supervised, tilesize, mode='grid'
+        self,
+        input_image: numpy.ndarray,
+        target_image: numpy.ndarray,
+        self_supervised: bool,
+        tilesize: int,
+        mode: str,
+        is_training_data: bool,
+        validation_voxels,
     ):
-        class TrainingDataset(Dataset):
+        class _Dataset(Dataset):
             def __init__(self, input_image, target_image, tilesize):
                 """
                 """
@@ -228,30 +267,58 @@ class InvertingImageTranslator(ImageTranslatorBase):
                     )
                 )
 
+                if not is_training_data:
+                    mask_image = numpy.zeros_like(input_image)
+                    mask_image[validation_voxels[0], validation_voxels[1]] = 1
+
+                    self.mask_tiles = extract_tiles(
+                        mask_image,
+                        tile_size=tilesize,
+                        extraction_step=tilesize,
+                        flatten=True,
+                    )
+
             def __len__(self):
                 return len(self.input_tiles)
 
             def __getitem__(self, index):
-                return (
-                    self.input_tiles[index, numpy.newaxis, ...],
-                    self.target_tiles[index, numpy.newaxis, ...],
-                )
+                input = self.input_tiles[index, numpy.newaxis, ...]
+                target = self.target_tiles[index, numpy.newaxis, ...]
+                if is_training_data:
+                    return (input, target)
+                else:
+                    mask = self.mask_tiles[index, numpy.newaxis, ...]
+                    return (input, target, mask)
+
+        if is_training_data:
+            input_image = input_image.copy()
+            input_image[validation_voxels[0], validation_voxels[1]] = 0
+            target_image = target_image.copy()
+            target_image[validation_voxels[0], validation_voxels[1]] = 0
 
         if mode == 'grid':
-            return TrainingDataset(input_image, target_image, tilesize)
+            return _Dataset(input_image, target_image, tilesize)
         else:
             return None
 
     def _train_loop(
-        self, data_loader, optimizer, loss_function, maskgen_function, density
+        self,
+        train_data_loader,
+        val_data_loader,
+        optimizer,
+        loss_function,
+        num_val_voxels,
     ):
 
-        donut_filter = (1.0 / (3 * 3 - 1)) * numpy.array(
-            [[1.0, 1.0, 1.0], [1.0, 0.0, 1.0], (1.0, 1.0, 1.0)]
+        # Scheduler:
+        scheduler = ReduceLROnPlateau(
+            optimizer, 'min', factor=0.99, verbose=True, patience=32
         )
-        donut_filter = donut_filter[numpy.newaxis, numpy.newaxis, :, :]
-        donut_filter = torch.Tensor(donut_filter)
-        donut_filter = donut_filter.to(self.device, non_blocking=True)
+
+        self.model.training = True
+
+        best_loss = math.inf
+        best_model_state_dict = None
 
         with lsection(f"Training loop:"):
             lprint(f"Maximum number of epochs: {self.max_epochs}")
@@ -262,83 +329,131 @@ class InvertingImageTranslator(ImageTranslatorBase):
             for epoch in range(self.max_epochs):
                 with lsection(f"Epoch {epoch}:"):
 
-                    current_density = density / (1 + 0.1 * sqrt(epoch))
-                    current_density = max(0.05, current_density)
-
-                    loss_value = 0
+                    # Train:
+                    self.model.train()
+                    train_loss_value = 0
                     iteration = 0
+                    for i, (input_images, target_images) in enumerate(
+                        train_data_loader
+                    ):
 
-                    for i, (input_images, target_images) in enumerate(data_loader):
-                        repeats = 1  # max(1, int(1.2/current_density))
                         lprint(
-                            f"index: {i}, input shape:{input_images.shape}, target shape:{target_images.shape}, density:{current_density}, repeats:{repeats}"
+                            f"index: {i}, input shape:{input_images.shape}, target shape:{target_images.shape}"
                         )
+
+                        # Adding training noise to input:
+                        with torch.no_grad():
+                            alpha = 1e-9
+                            lprint(f"Training noise level: {alpha}")
+                            training_noise = alpha * (
+                                torch.rand_like(input_images) - 0.5
+                            )
+                            input_images += training_noise
 
                         # Clear gradients w.r.t. parameters
                         optimizer.zero_grad()
 
-                        for repeat in range(0, repeats):
-                            input_images_gpu = input_images.to(
-                                self.device, non_blocking=True
-                            )
-                            target_images_gpu = target_images.to(
-                                self.device, non_blocking=True
-                            )
-                            mask_gpu = maskgen_function(
-                                input_images.shape, current_density
-                            ).to(self.device, non_blocking=True)
+                        input_images_gpu = input_images.to(
+                            self.device, non_blocking=True
+                        )
+                        target_images_gpu = target_images.to(
+                            self.device, non_blocking=True
+                        )
 
-                            masking = False
+                        # Forward pass:
+                        output_images_gpu = self.model(input_images_gpu)
+                        # output_images = self.forward_model(output_images)
 
-                            if masking:
-                                inv_mask_gpu = 1.0 - mask_gpu
-                                filtered_input_images_gpu = torch.nn.functional.conv2d(
-                                    input_images_gpu, donut_filter, stride=1, padding=1
-                                )
-                                input_images_gpu = (
-                                    input_images_gpu * inv_mask_gpu
-                                    + filtered_input_images_gpu * (mask_gpu)
-                                )
+                        # loss:
+                        loss = loss_function(
+                            output_images_gpu, target_images_gpu
+                        ).mean()
 
+                        # Back-propagation:
+                        loss.backward()
+
+                        # update training loss for whole image:
+                        train_loss_value += loss.item()
+                        iteration += 1
+
+                    train_loss_value /= iteration
+                    lprint(f"Training loss value: {train_loss_value}")
+
+                    # Updating parameters
+                    self.model.pre_optimisation()
+                    optimizer.step()
+                    self.model.post_optimisation()
+
+                    # Validate:
+                    self.model.eval()
+                    val_loss_value = 0
+                    iteration = 0
+                    for i, (input_images, target_images, mask_images) in enumerate(
+                        val_data_loader
+                    ):
+
+                        input_images_gpu = input_images.to(
+                            self.device, non_blocking=True
+                        )
+                        target_images_gpu = target_images.to(
+                            self.device, non_blocking=True
+                        )
+                        mask_images_gpu = mask_images.to(self.device, non_blocking=True)
+
+                        with torch.no_grad():
                             # Forward pass:
                             output_images_gpu = self.model(input_images_gpu)
-                            # output_images = self.forward_model(output_images)
 
                             # loss:
-                            if masking:
-                                loss = loss_function(
-                                    output_images_gpu * mask_gpu,
-                                    target_images_gpu * mask_gpu,
-                                )
-                            else:
-                                loss = loss_function(
-                                    output_images_gpu, target_images_gpu
-                                )
+                            loss = loss_function(
+                                output_images_gpu * mask_images_gpu,
+                                target_images_gpu * mask_images_gpu,
+                            )
 
-                            # Back-propagation:
-                            loss.backward(retain_graph=repeat < repeats - 1)
+                            # Select validation voxels:
+                            loss = loss.mean().cpu()
 
-                            # update training loss for whole image:
-                            loss_value += loss.item()
+                            # update validation loss for whole image:
+                            val_loss_value += (
+                                loss.item()
+                                * torch.numel(output_images_gpu)
+                                / num_val_voxels
+                            )
                             iteration += 1
 
-                            # Updating parameters
-                            optimizer.step()
+                    val_loss_value /= iteration
+                    lprint(f"Validation loss value: {val_loss_value}")
 
-                        lprint(f"Training loss value: {loss_value/iteration}")
+                    # Learning rate schedule:
+                    scheduler.step(val_loss_value)
 
-                        # import napari
-                        # with napari.gui_qt():
-                        #     viewer = napari.Viewer()
-                        #     viewer.add_image(to_numpy(mask_gpu), name='mask_gpu')
-                        #     viewer.add_image(to_numpy(input_images_gpu), name='input_images_gpu')
-                        #     viewer.add_image(to_numpy(filtered_input_images_gpu), name='filtered_input_images_gpu')
-                        #     viewer.add_image(to_numpy(masked_input_images_gpu), name='masked_input_images_gpu')
-                        #     viewer.add_image(to_numpy(output_images_gpu), name='output_images_gpu')
-                        #     viewer.add_image(to_numpy(target_images_gpu), name='target_images_gpu')
+                    if val_loss_value < best_loss:
+                        lprint(f"## New best loss!")
+                        best_loss = val_loss_value
+                        from collections import OrderedDict
+
+                        best_model_state_dict = {
+                            k: v.to('cpu') for k, v in self.model.state_dict().items()
+                        }
+                        best_model_state_dict = OrderedDict(best_model_state_dict)
+                    else:
+                        pass
+                        # No improvement, reload best model weights to date:
+                        if (
+                            epoch % 64 == 0 and best_model_state_dict
+                        ):  # epoch % 5 == 0 and
+                            lprint(f"Reloading best model to date!")
+                            self.model.load_state_dict(best_model_state_dict)
+                        # optimizer.trigger_perturbation()
+
+                    lprint(f"## Best loss value: {best_loss}")
 
                     if self._stop_training_flag:
-                        return
+                        lprint(f"Training interupted!")
+                        break
+
+        lprint(f"Reloading best model to date!")
+        self.model.load_state_dict(best_model_state_dict)
 
     def _translate(self, input_image, batch_dims=None):
         """
@@ -347,38 +462,10 @@ class InvertingImageTranslator(ImageTranslatorBase):
         :param batch_dims: batch dimensions
         :return:
         """
-
+        self.model.training = False
         input_image = torch.Tensor(input_image[numpy.newaxis, numpy.newaxis, ...])
         input_image = input_image.to(self.device)
         inferred_image: torch.Tensor = self.model(input_image)
         inferred_image = inferred_image.detach().cpu().numpy()
         inferred_image = inferred_image.squeeze()
         return inferred_image
-
-    def _get_single_pixel_mask(self, shape, size, phasex, phasey):
-        M = numpy.zeros(shape[-2:])
-        for i in range(shape[-2]):
-            for j in range(shape[-1]):
-                M[i, j] = 1 if (i % size == phasex and j % size == phasey) else 0
-        return torch.Tensor(M)
-
-        # if epoch > 10 and j == 0:
-        #     import napari
-        #     with torch.no_grad():
-        #         with napari.gui_qt():
-        #             viewer = napari.Viewer()
-        #             viewer.add_image(
-        #                 to_numpy(mask), name='mask'
-        #             )
-        #             viewer.add_image(
-        #                 to_numpy(1.0-mask), name='inv_mask'
-        #             )
-        #             viewer.add_image(
-        #                 to_numpy(input_images), name='input_images'
-        #             )
-        #             viewer.add_image(
-        #                 to_numpy(output_images), name='output_images'
-        #             )
-        #             viewer.add_image(
-        #                 to_numpy(target_images), name='target_images'
-        #             )

@@ -3,11 +3,10 @@ import time
 
 import numpy
 from skimage.data import camera
-from skimage.filters import gaussian
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 
-from aydin.io.datasets import normalise, add_noise, characters, newyork
+from aydin.io.datasets import normalise, add_noise, newyork, characters
 from aydin.it.it_inverting_pt import InvertingImageTranslator
 
 
@@ -40,9 +39,9 @@ def demo(image, max_epochs=10):
 
     print(denoised_inf.shape)
 
-    # image = numpy.clip(image, 0, 1)
-    # noisy_image = numpy.clip(noisy_image, 0, 1)
-    # denoised_inf = numpy.clip(denoised_inf, 0, 1)
+    image = numpy.clip(image, 0, 1)
+    noisy_image = numpy.clip(noisy_image, 0, 1)
+    denoised_inf = numpy.clip(denoised_inf, 0, 1)
     print("noisy       :", psnr(image, noisy_image), ssim(noisy_image, image))
     print("denoised_inf:", psnr(image, denoised_inf), ssim(denoised_inf, image))
 

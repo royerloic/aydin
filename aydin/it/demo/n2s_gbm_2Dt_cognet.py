@@ -22,8 +22,8 @@ def demo():
     image_path = examples_single.cognet_nanotube_400fps.get_path()
     array, metadata = io.imread(image_path)
     print(array.shape)
-    train = array  # [0:320]
-    infer = array  # [0:320]
+    train = array
+    infer = array
 
     # print(f"Number of distinct features in image: {len(numpy.unique(infer))}")
 
@@ -36,10 +36,11 @@ def demo():
         kernel_scales=[1] + [2] + [2 ** i - 1 for i in range(2, 12)],
         kernel_shapes=['l2'] * 2 + ['l2'] * 3 + ['l1+nc'] * 5 + ['l1+oc'] * 2,
         max_level=9,
+        include_spatial_features=True,
     )
     generator = TiledFeatureGenerator(generator, max_tile_size=512)
 
-    regressor = GBMRegressor(patience=20)
+    regressor = GBMRegressor(patience=20, gpu_prediction=True)
 
     it = ImageTranslatorClassic(generator, regressor, normaliser_type='percentile')
 

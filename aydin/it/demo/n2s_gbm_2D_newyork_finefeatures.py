@@ -2,46 +2,63 @@
 import os
 import time
 
-import napari
 import numpy
 import numpy as np
+import skimage
 from skimage.data import camera
-from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
-from skimage.util import random_noise
+from skimage.morphology import disk
+from skimage.restoration import denoise_nl_means, estimate_sigma
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
-from aydin.io.datasets import normalise, add_noise, pollen, newyork, lizard, characters
+from aydin.io.datasets import newyork, pollen, normalise, add_noise, lizard, characters
 from aydin.it.it_classic import ImageTranslatorClassic
-from aydin.regression.nn import NNRegressor
-
-"""
-    Demo for self-supervised denoising using camera image with synthetic noise
-"""
+from aydin.regression.gbm import GBMRegressor
+from aydin.util.log.log import Log
 
 
 def demo(image, name):
+    """
+        Demo for self-supervised denoising using camera image with synthetic noise
+    """
+
+    # Log.set_log_max_depth(5)
 
     image = normalise(image.astype(np.float32))
     noisy = add_noise(image)
 
-    generator = FastMultiscaleConvolutionalFeatures(dtype=numpy.uint8)
-    regressor = NNRegressor(max_epochs=50)
+    generator = FastMultiscaleConvolutionalFeatures(
+        kernel_widths=[11, 1, 1, 1, 1, 1],  # , 1, 1, 1, 1],
+        kernel_scales=[1, 11, 23, 47, 95, 191],  # , 11, 31, 71, 151],
+        kernel_shapes=[
+            'l1',
+            'l1',
+            'l1',
+            'l1',
+            'l1',
+            'l1',
+        ],  # , 'l1', 'l1', 'l1', 'l1'],
+        exclude_scale_one=False,
+        include_spatial_features=True,
+    )
+
+    regressor = GBMRegressor(n_estimators=4096, patience=20)  # n_estimators=4096,
 
     it = ImageTranslatorClassic(
         feature_generator=generator, regressor=regressor, normaliser_type='identity'
     )
 
-    start_time = time.time()
-    it.train(noisy, noisy, max_epochs=15, patience=20)
-    elapsedtime = time.time() - start_time
-    print(f"time elapsed: {elapsedtime} s")
+    start = time.time()
+    it.train(noisy, noisy)
+    stop = time.time()
+    print(f"Training: elapsed time:  {stop-start} ")
 
+    # in case of batching we have to do this:
     start = time.time()
     denoised = it.translate(noisy)
     stop = time.time()
-    print(f"inference: elapsed time:  {stop - start} ")
+    print(f"inference: elapsed time:  {stop-start} ")
 
     image = numpy.clip(image, 0, 1)
     noisy = numpy.clip(noisy, 0, 1)
@@ -70,7 +87,9 @@ def demo(image, name):
     plt.title('Original')
     plt.subplots_adjust(left=0.01, right=0.99, top=0.95, bottom=0.01, hspace=0.1)
     os.makedirs("demo_results", exist_ok=True)
-    plt.savefig(f'demo_results/n2s_nn_2D_{name}_uint.png')
+    plt.savefig(f'demo_results/n2s_gbm_2D_{name}_finefeatures.png')
+
+    import napari
 
     with napari.gui_qt():
         viewer = napari.Viewer()
@@ -79,13 +98,13 @@ def demo(image, name):
         viewer.add_image(normalise(denoised), name='denoised')
 
 
-camera_image = camera()
-demo(camera_image, "camera")
-lizard_image = lizard()
-demo(lizard_image, "lizard")
-pollen_image = pollen()
-demo(pollen_image, "pollen")
+# camera_image = camera()
+# demo(camera_image, "camera")
+# lizard_image = lizard()
+# demo(lizard_image, "lizard")
+# pollen_image = pollen()
+# demo(pollen_image, "pollen")
 newyork_image = newyork()
 demo(newyork_image, "newyork")
-characters_image = characters()
-demo(characters_image, "characters")
+# characters_image = characters()
+# demo(characters_image, "characters")

@@ -56,7 +56,7 @@ def demo(image, name):
 
     import matplotlib.pyplot as plt
 
-    plt.figure(figsize=(2.7 * 5, 5))
+    plt.figure(figsize=(2.7 * 5, 5), dpi=300)
     plt.subplot(1, 3, 1)
     plt.imshow(normalise(noisy), cmap='gray')
     plt.axis('off')

@@ -15,7 +15,7 @@ class GaussianLayer(nn.Module):
     ):
         super(GaussianLayer, self).__init__()
         self.seq = nn.Sequential(
-            nn.ReflectionPad2d(10),
+            nn.ReflectionPad2d((kernel_size - 1) // 2),
             nn.Conv2d(
                 num_channels_in,
                 num_channels_out,
@@ -23,7 +23,7 @@ class GaussianLayer(nn.Module):
                 stride=1,
                 padding=0,
                 bias=False,
-                groups=3,
+                groups=num_channels_in,
             ),
         )
 
@@ -37,11 +37,10 @@ class GaussianLayer(nn.Module):
         if donut:
             kernel[center, center] = 0
 
-        import napari
-
-        with napari.gui_qt():
-            viewer = napari.Viewer()
-            viewer.add_image(kernel, name='kernel')
+        # import napari
+        # with napari.gui_qt():
+        #     viewer = napari.Viewer()
+        #     viewer.add_image(kernel, name='kernel')
 
         for name, f in self.named_parameters():
             f.data.copy_(torch.from_numpy(kernel))

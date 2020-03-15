@@ -25,8 +25,8 @@ def demo():
     image_path = examples_single.cognet_nanotube_200fps.get_path()
     array, metadata = io.imread(image_path)
     print(array.shape)
-    train = array[0:120]
-    infer = array[0:120]
+    train = array  # [0:120]
+    infer = array  # [0:120]
 
     # print(f"Number of distinct features in image: {len(numpy.unique(infer))}")
 
@@ -37,10 +37,10 @@ def demo():
     generator = FastMultiscaleConvolutionalFeatures(  # kernel_widths=[3, 3, 1, 1, 1,  1,  1,  1,   1,   1],
         # kernel_scales=[0, 1, 2, 3, 7, 15, 31, 63, 127, 255],
         # kernel_shapes=['li'] * 2 + ['l1'] * 8,
-        max_level=9,
+        max_level=10,
         dtype=numpy.float16,
         exclude_scale_one=True,
-        include_spatial_features=False,
+        include_spatial_features=True,
     )
     generator = TiledFeatureGenerator(generator, max_tile_size=512)
 

@@ -34,13 +34,9 @@ def demo(image, name):
 
     nlm = denoise_nl_means(noisy, patch_size=11, sigma=estimate_sigma(noisy))
 
-    generator = FastMultiscaleConvolutionalFeatures(
-        kernel_widths=[11, 1, 1, 1, 1],
-        kernel_scales=[1, 11, 31, 71, 151],
-        kernel_shapes=['l1', 'l1', 'l1', 'l1', 'l1'],
-        exclude_scale_one=False,
-    )
-    regressor = GBMRegressor(patience=20)
+    generator = FastMultiscaleConvolutionalFeatures()
+
+    regressor = GBMRegressor(n_estimators=4096, patience=20)  # n_estimators=4096,
 
     it = ImageTranslatorClassic(
         feature_generator=generator, regressor=regressor, normaliser_type='identity'
@@ -69,7 +65,7 @@ def demo(image, name):
 
     import matplotlib.pyplot as plt
 
-    plt.figure(figsize=(2.7 * 5, 5))
+    plt.figure(figsize=(2.7 * 5, 5), dpi=300)
     plt.subplot(1, 3, 1)
     plt.imshow(normalise(noisy), cmap='gray')
     plt.axis('off')
