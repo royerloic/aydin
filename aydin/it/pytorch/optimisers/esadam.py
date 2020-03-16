@@ -37,8 +37,9 @@ class ESAdam(Optimizer):
         eps=1e-8,
         weight_decay=0,
         amsgrad=False,
-        grad_metric_threshold=0.05,
-        perturbation=1.0,
+        patience=8,
+        threshold=0.05,
+        perturbation=2.0,
     ):
         if not 0.0 <= lr:
             raise ValueError("Invalid learning rate: {}".format(lr))
@@ -54,12 +55,14 @@ class ESAdam(Optimizer):
             eps=eps,
             weight_decay=weight_decay,
             amsgrad=amsgrad,
-            grad_metric_threshold=grad_metric_threshold,
+            patience=patience,
+            threshold=threshold,
             perturbation=perturbation,
         )
 
-        self.grad_metric = 1
-        self.do_perturb = False
+        self.last_grad_metric = 1
+        self.patience_counter = 0
+        self.step_counter = 0
 
         super().__init__(params, defaults)
 
@@ -79,7 +82,6 @@ class ESAdam(Optimizer):
         if closure is not None:
             loss = closure()
 
-        perturbation_happened = False
         new_grad_metric = 0
 
         for group in self.param_groups:
@@ -93,6 +95,37 @@ class ESAdam(Optimizer):
                     )
 
                 new_grad_metric += grad.norm(p=2) ** 2
+
+        new_grad_metric = math.sqrt(new_grad_metric)
+        lprint(f"Gradient metric: {new_grad_metric}")
+
+        if new_grad_metric < self.last_grad_metric:
+            self.patience_counter += 1
+        else:
+            self.patience_counter = 0
+
+        perturb = False
+        if (
+            new_grad_metric < group['threshold']
+            and self.patience_counter >= group['patience']
+        ):
+            perturb = True
+            self.patience_counter = 0
+            lprint(
+                f"!! Grad metric too low, and decreasing for too long: triggering perturbation !!"
+            )
+
+        self.last_grad_metric = new_grad_metric
+
+        for group in self.param_groups:
+            for p in group['params']:
+                if p.grad is None:
+                    continue
+                grad: torch.Tensor = p.grad.data
+                if grad.is_sparse:
+                    raise RuntimeError(
+                        'Adam does not support sparse gradients, please consider SparseAdam instead'
+                    )
 
                 amsgrad = group['amsgrad']
 
@@ -146,21 +179,14 @@ class ESAdam(Optimizer):
 
                 p.data.addcdiv_(-step_size, exp_avg, denom)
 
-                if self.do_perturb or self.grad_metric < group['grad_metric_threshold']:
-                    perturbation_happened = True
-                    perturbation = torch.rand_like(p.data) - 0.5
-                    p.data += group['perturbation'] * step_size * perturbation
-                    self.do_perturb = False
+                noise = torch.rand_like(p.data) - 0.5
+                p.data += 0.5 / math.sqrt(1 + self.step_counter) * step_size * noise
 
-        new_grad_metric = math.sqrt(new_grad_metric)
+                if perturb:
+                    p.data += (
+                        new_grad_metric * group['perturbation'] * step_size * noise
+                    )
 
-        self.grad_metric = new_grad_metric
-
-        lprint(f"Gradient metric: {new_grad_metric}")
-        if perturbation_happened:
-            lprint(f"Grad metric too low, triggering perturbation!")
+        self.step_counter += 1
 
         return loss
-
-    def trigger_perturbation(self):
-        self.do_perturb = True

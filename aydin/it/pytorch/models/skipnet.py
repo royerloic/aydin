@@ -1,3 +1,5 @@
+from random import random
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,8 +16,8 @@ class SkipNet2D(nn.Module):
         num_input_channels=1,
         num_output_channels=1,
         kernel_sizes=[9, 7, 5, 3, 3, 3, 3, 3, 3],
-        num_features=[32, 16, 8, 4, 2, 1, 1, 1, 1],
-        layers=6,
+        num_features=[64, 32, 16, 8, 4, 2, 1, 1, 1],
+        layers=2,
         num_channels=None,
     ):
         super().__init__()
@@ -46,7 +48,10 @@ class SkipNet2D(nn.Module):
                 dilation=dilation,
                 padding_mode='zeros',
                 groups=min(current_num_channels, num),
-            )  #
+            )
+
+            # self.initialise_skipconv(size, skipconv)
+
             total_num_features += num
             current_radius += dilation * radius
             current_num_channels = num
@@ -75,6 +80,27 @@ class SkipNet2D(nn.Module):
             num_channels, num_output_channels, kernel_size=1, padding=0
         )
 
+    def initialise_skipconv(self, size, skipconv):
+        with torch.no_grad():
+            skipconv_shape = skipconv._parameters['weight'].shape
+            nb_filters = skipconv_shape[0]
+            nb_channels = skipconv_shape[1]
+
+            skipconv._parameters['bias'] *= 0
+            skipconv._parameters['weight'][:, :, :, :] = 0
+
+            if nb_filters < size * size:
+                skipconv._parameters['weight'][:, :, i, j] = 1
+            else:
+                for i in range(0, size):
+                    for j in range(0, size):
+                        index = i * size + j
+                        if index >= nb_filters:
+                            break
+                        skipconv._parameters['weight'][index, :, i, j] = 1 + 0.001 * (
+                            random() - 0.5
+                        )
+
     def forward(self, x0):
 
         x = x0
@@ -82,8 +108,8 @@ class SkipNet2D(nn.Module):
         for scale_index in range(self.num_scales):
             skipconv = self.skipconvlist[scale_index]
             x = skipconv(x)
-            x = F.leaky_relu(x, inplace=True, negative_slope=0.01)
             features.append(x)
+            x = F.leaky_relu(x, inplace=True, negative_slope=0.01)
 
         x = torch.cat(features, 1)
 

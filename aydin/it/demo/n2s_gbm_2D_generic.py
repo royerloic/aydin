@@ -12,7 +12,16 @@ from skimage.morphology import disk
 from skimage.restoration import denoise_nl_means, estimate_sigma
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
-from aydin.io.datasets import newyork, pollen, normalise, add_noise, lizard, characters
+from aydin.io.datasets import (
+    newyork,
+    pollen,
+    normalise,
+    add_noise,
+    lizard,
+    characters,
+    examples_single,
+    fibsem,
+)
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 from aydin.util.log.log import Log
@@ -27,6 +36,7 @@ def demo(image, name):
 
     image = normalise(image.astype(np.float32))
     noisy = add_noise(image)
+    # noisy = image
 
     median1 = skimage.filters.median(noisy, disk(1))
     median2 = skimage.filters.median(noisy, disk(2))
@@ -105,3 +115,5 @@ newyork_image = newyork()
 demo(newyork_image, "newyork")
 characters_image = characters()
 demo(characters_image, "characters")
+fibsem_image = fibsem()
+demo(fibsem_image, "fibsem")

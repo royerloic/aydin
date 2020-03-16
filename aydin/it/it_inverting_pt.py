@@ -30,8 +30,8 @@ class InvertingImageTranslator(ImageTranslatorBase):
     def __init__(
         self,
         max_epochs=1024,
-        patience=3,
-        patience_epsilon=0.000001,
+        patience=1024,
+        patience_epsilon=0.0,
         learning_rate=0.01,
         batch_size=64,
         loss='l1',
@@ -40,6 +40,7 @@ class InvertingImageTranslator(ImageTranslatorBase):
         keep_ratio=1,
         max_voxels_for_training=4e6,
         monitor=None,
+        optimiser_class=Adam,
         use_cuda=True,
         device_index=0,
     ):
@@ -56,6 +57,7 @@ class InvertingImageTranslator(ImageTranslatorBase):
         self.device = torch.device(f"cuda:{device_index}" if use_cuda else "cpu")
         lprint(f"Using device: {self.device}")
 
+        self.optimiser_class = optimiser_class
         self.max_epochs = max_epochs
         self.patience = patience
         self.patience_epsilon = patience_epsilon
@@ -211,10 +213,9 @@ class InvertingImageTranslator(ImageTranslatorBase):
         lprint(f"Number of trainable parameters in model: {number_of_parameters}")
 
         # Optimiser:
-        optimiser_class = ESAdam
-        lprint(f"Optimiser class: {optimiser_class}")
+        lprint(f"Optimiser class: {self.optimiser_class}")
         lprint(f"Learning rate : {self.learning_rate}")
-        optimizer = optimiser_class(
+        optimizer = self.optimiser_class(
             self.model.trainable_parameters(),
             lr=self.learning_rate,
             weight_decay=0.01 * self.learning_rate,
@@ -319,6 +320,7 @@ class InvertingImageTranslator(ImageTranslatorBase):
 
         best_loss = math.inf
         best_model_state_dict = None
+        patience_counter = 0
 
         with lsection(f"Training loop:"):
             lprint(f"Maximum number of epochs: {self.max_epochs}")
@@ -428,7 +430,11 @@ class InvertingImageTranslator(ImageTranslatorBase):
                     scheduler.step(val_loss_value)
 
                     if val_loss_value < best_loss:
-                        lprint(f"## New best loss!")
+                        lprint(f"## New best val loss!")
+                        if val_loss_value < best_loss - self.patience_epsilon:
+                            lprint(f"## Good enough to reset patience!")
+                            patience_counter = 0
+
                         best_loss = val_loss_value
                         from collections import OrderedDict
 
@@ -436,15 +442,23 @@ class InvertingImageTranslator(ImageTranslatorBase):
                             k: v.to('cpu') for k, v in self.model.state_dict().items()
                         }
                         best_model_state_dict = OrderedDict(best_model_state_dict)
+
                     else:
-                        pass
-                        # No improvement, reload best model weights to date:
+                        # No improvement:
+                        lprint(
+                            f"No improvement of validation loss. patience = {patience_counter}/{self.patience} "
+                        )
+                        patience_counter += 1
+
                         if (
-                            epoch % 64 == 0 and best_model_state_dict
+                            epoch % self.patience // 2 == 0 and best_model_state_dict
                         ):  # epoch % 5 == 0 and
                             lprint(f"Reloading best model to date!")
                             self.model.load_state_dict(best_model_state_dict)
-                        # optimizer.trigger_perturbation()
+
+                        if patience_counter > self.patience:
+                            lprint(f"Early stopping!")
+                            break
 
                     lprint(f"## Best loss value: {best_loss}")
 

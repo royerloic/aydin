@@ -59,6 +59,13 @@ def characters():
     return examples_single.characters.get_array()
 
 
+def fibsem(full=False):
+    array = examples_single.scheffer_fibsem.get_array()
+    if not full:
+        array = array[0:1024, 0:1024]
+    return array
+
+
 class examples_single(Enum):
     def get_path(self):
         download_from_gdrive(*self.value, datasets_folder)

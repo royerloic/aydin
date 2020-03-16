@@ -129,8 +129,10 @@ class GBMOpenCLPrediction:
             y = numpy.zeros(num_datapoints)
 
             with lsection("Running kernels:"):
-                for one_slice in kernel_slices:
-                    with lsection(f"Kernel slice : {one_slice}"):
+                for index, one_slice in enumerate(kernel_slices):
+                    with lsection(
+                        f"Kernel slice {index+1}/{len(kernel_slices)}: {one_slice}"
+                    ):
                         with lsection("Generating kernel program code:"):
                             program_code = get_program(tree_slice=one_slice)
                             lprint(f"Kernel program length: {len(program_code)}")

@@ -6,7 +6,7 @@ from skimage.data import camera
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 
-from aydin.io.datasets import normalise, add_noise, newyork, characters
+from aydin.io.datasets import normalise, add_noise, newyork, characters, examples_single
 from aydin.it.it_inverting_pt import InvertingImageTranslator
 
 
@@ -21,6 +21,7 @@ def demo(image, max_epochs=10):
     # )
 
     noisy_image = add_noise(image)
+    # noisy_image = image
 
     it = InvertingImageTranslator(
         max_epochs=1000, learning_rate=0.01, normaliser_type='identity'
@@ -56,4 +57,5 @@ def demo(image, max_epochs=10):
 
 
 image = camera()
+# image = examples_single.scheffer_fibsem.get_array()[0:1024, 0:1024]
 demo(image)

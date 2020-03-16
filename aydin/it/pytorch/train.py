@@ -236,9 +236,7 @@ def train(
         print("epoch %d" % epoch)
 
         if params['verbosity'] == 'low':
-            loader = (
-                train_data_loader
-            )  # tqdm(train_data_loader, total=len(train_data_loader))
+            loader = train_data_loader  # tqdm(train_data_loader, total=len(train_data_loader))
         else:
             loader = tqdm(train_data_loader, total=len(train_data_loader))
 
