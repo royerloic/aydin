@@ -3,25 +3,21 @@ import math
 import numpy
 import torch
 from torch import nn
+from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import Dataset
 
 from aydin.it.it_base import ImageTranslatorBase
 from aydin.it.pytorch.models.skipnet import SkipNet2D
-from aydin.it.pytorch.optimisers.esadam import ESAdam
 from aydin.util.log.log import lsection, lprint
 from aydin.util.nd import extract_tiles
-
-torch.manual_seed(0)
-numpy.random.seed(0)
-# torch.backends.cudnn.deterministic = True
 
 
 def to_numpy(tensor):
     return tensor.clone().detach().cpu().numpy()
 
 
-class InvertingImageTranslator(ImageTranslatorBase):
+class SkipNetImageTranslator(ImageTranslatorBase):
     """
         Inverting image translator
     """
@@ -65,14 +61,14 @@ class InvertingImageTranslator(ImageTranslatorBase):
         self.keep_ratio = keep_ratio
         self.balance_training_data = balance_training_data
 
-        self.l1_weight_regularisation = 0 * 1e-6
-        self.l2_weight_regularisation = 0 * 1e-6
+        self.l1_weight_regularisation = 1e-9
+        self.l2_weight_regularisation = 1e-9
         self.input_noise = 0.001
         self.reload_best_model_period = 128
         self.reduce_lr_patience = 128
         self.reduce_lr_factor = 0.5
         self.model_class = SkipNet2D
-        self.optimiser_class = ESAdam
+        self.optimiser_class = Adam
         self.max_tile_size = 1024
 
         self._stop_training_flag = False
@@ -106,10 +102,6 @@ class InvertingImageTranslator(ImageTranslatorBase):
     def get_receptive_field_radius(self, nb_dim):
         # TODO: estimate receptive field radius
         return 10
-
-    def forward_model(self, images):
-        pass
-        # implement forward model: convolution with kernel
 
     def train(
         self,
@@ -215,7 +207,7 @@ class InvertingImageTranslator(ImageTranslatorBase):
 
         self.model = self.model.to(self.device)
         number_of_parameters = sum(
-            p.numel() for p in self.model.trainable_parameters() if p.requires_grad
+            p.numel() for p in self.model.parameters() if p.requires_grad
         )
         lprint(f"Number of trainable parameters in model: {number_of_parameters}")
 
@@ -223,7 +215,7 @@ class InvertingImageTranslator(ImageTranslatorBase):
         lprint(f"Optimiser class: {self.optimiser_class}")
         lprint(f"Learning rate : {self.learning_rate}")
         optimizer = self.optimiser_class(
-            self.model.trainable_parameters(),
+            self.model.parameters(),
             lr=self.learning_rate,
             weight_decay=self.l2_weight_regularisation,
         )
@@ -273,8 +265,8 @@ class InvertingImageTranslator(ImageTranslatorBase):
                     )
                 )
 
-                mask_image = numpy.zeros_like(input_image)
-                mask_image[validation_voxels[0], validation_voxels[1]] = 1
+                mask_image = numpy.zeros_like(input_image, dtype=numpy.bool)
+                mask_image[validation_voxels[0], validation_voxels[1]] = True
 
                 self.mask_tiles = extract_tiles(
                     mask_image,
@@ -359,27 +351,22 @@ class InvertingImageTranslator(ImageTranslatorBase):
 
                         # Forward pass:
                         output_images_gpu = self.model(input_images_gpu)
-                        # output_images = self.forward_model(output_images)
 
                         # training loss:
                         training_loss = loss_function(
-                            output_images_gpu * (1 - mask_images_gpu),
-                            target_images_gpu * (1 - mask_images_gpu),
+                            output_images_gpu * (~mask_images_gpu),
+                            target_images_gpu * (~mask_images_gpu),
                         ).mean()
                         loss = training_loss
 
                         # Weight regularisation:
                         if self.l1_weight_regularisation > 0:
                             weight_regularization_loss = 0
-                            total_number_of_trainable_parameters = 0
-                            for param in self.model.trainable_parameters():
-                                total_number_of_trainable_parameters += torch.numel(
-                                    param
-                                )
+                            total_number_of_parameters = 0
+                            for param in self.model.parameters():
+                                total_number_of_parameters += torch.numel(param)
                                 weight_regularization_loss += torch.norm(param, 0.99)
-                            weight_regularization_loss /= (
-                                total_number_of_trainable_parameters
-                            )
+                            weight_regularization_loss /= total_number_of_parameters
                             loss += (
                                 self.l1_weight_regularisation
                                 * weight_regularization_loss

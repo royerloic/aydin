@@ -12,7 +12,7 @@ class SkipNet2D(nn.Module):
         num_output_channels=1,
         kernel_sizes=[7, 5, 3, 3, 3, 3, 3, 3],
         num_features=[64, 32, 16, 8, 4, 2, 1, 1],
-        layers=6,
+        layers=3,
         num_channels=None,
     ):
         super().__init__()
@@ -111,25 +111,27 @@ class SkipNet2D(nn.Module):
         x = torch.cat(features, 1)
 
         y = None
+        f = 1
         for dense in self.denseconvlist:
             x = dense(x)
             x = F.leaky_relu(x, inplace=True, negative_slope=0.01)
             if y is None:
                 y = x
             else:
-                y = y + x
+                y = y + f * x
+            f *= 0.5
 
         y = self.finalconv(y)
 
         return y
 
-    def trainable_parameters(self):
+    def parameters(self, recurse=True):
         from itertools import chain
 
         return chain(
-            self.skipconvlist.parameters(),
-            self.denseconvlist.parameters(),
-            self.finalconv.parameters(),
+            self.skipconvlist.parameters(recurse),
+            self.denseconvlist.parameters(recurse),
+            self.finalconv.parameters(recurse),
         )
 
     def post_optimisation(self):

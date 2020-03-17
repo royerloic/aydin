@@ -1,13 +1,16 @@
 # flake8: noqa
 import time
+from statistics import median
 
 import numpy
+from scipy.signal import convolve2d
 from skimage.data import camera
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 
 from aydin.io.datasets import normalise, add_noise, newyork, characters, examples_single
-from aydin.it.it_inverting_pt import InvertingImageTranslator
+from aydin.it.it_skipnet import SkipNetImageTranslator
+from aydin.util.psf.simple_microscope_psf import SimpleMicroscopePSF
 
 
 def demo(image):
@@ -16,14 +19,10 @@ def demo(image):
 
     image = normalise(image.astype(numpy.float32))
 
-    # blurred_image = gaussian(
-    #     image, sigma=(1.5, 1.5), truncate=3.5, multichannel=False, preserve_range=True
-    # )
-
     noisy_image = add_noise(image)
     # noisy_image = image
 
-    it = InvertingImageTranslator(
+    it = SkipNetImageTranslator(
         max_epochs=1000, learning_rate=0.01, normaliser_type='identity'
     )
 
@@ -52,10 +51,10 @@ def demo(image):
         viewer = napari.Viewer()
         viewer.add_image(normalise(image), name='image')
         viewer.add_image(normalise(noisy_image), name='noisy')
-        # viewer.add_image(normalise(blurred_image), name='blurred')
         viewer.add_image(normalise(denoised_inf), name='denoised')
+
+    return ssim(denoised_inf, image)
 
 
 image = camera()
-# image = examples_single.scheffer_fibsem.get_array()[0:1024, 0:1024]
 demo(image)
