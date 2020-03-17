@@ -1,17 +1,18 @@
-import time
 import math
+import random
+import time
 from os.path import join
 
 import numpy
-import random
+
 from aydin.providers.opencl.opencl_provider import OpenCLProvider
 
 provider = OpenCLProvider()
 
 import tensorflow as tf  # noqa: E402
 from aydin.io.folders import get_temp_folder  # noqa: E402
-from aydin.it.cnn.models.unet_2d import unet_2d_model  # noqa: E402
-from aydin.it.cnn.models.unet_3d import unet_3d_model  # noqa: E402
+from aydin.it.cnn.models.unet_2d import UNet2DModel  # noqa: E402
+from aydin.it.cnn.models.unet_3d import Unet3DModel  # noqa: E402
 from aydin.it.it_base import ImageTranslatorBase  # noqa: E402
 from aydin.util.log.log import lsection, lprint  # noqa: E402
 
@@ -31,11 +32,10 @@ from aydin.it.cnn.util.data_util import (
     random_sample_patches,
     sim_model_size,
 )  # noqa: E402
-from aydin.it.cnn.util.val_generator import (
+from aydin.it.cnn.util.validation_generator import (
     val_img_generator,
     val_data_generator,
 )  # noqa: E402
-from aydin.it.cnn.util.data_generator import DataGenerator_2in2out  # noqa: E402
 
 
 class ImageTranslatorCNN(ImageTranslatorBase):
@@ -45,6 +45,8 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         Using CNN (Unet and Co)
 
     """
+
+    verbose = 0
 
     def __init__(
         self,
@@ -63,7 +65,6 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         ReduceLR_patience=None,
         min_delta=0,
         mask_p=0.1,
-        verbose=0,
         max_epochs=1024,
         patience=4,
     ):
@@ -81,7 +82,6 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         :param ReduceLR_patience: patience for reduced learn rate
         :param min_delta: 1e-6; minimum delta to determine if loss is dropping
         :param mask_p: possibility of masked pixels in ramdom masking approach
-        :param verbose: print out training status from keras
         :param max_epochs: maximum epoches
         :param patience: patience for EarlyStop or ReducedLR to be triggered
         """
@@ -102,7 +102,6 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.ReduceLR_patience = ReduceLR_patience
         self.min_delta = min_delta
         self.p = mask_p
-        self.verbose = verbose
         self.max_epochs = max_epochs
         self.patience = patience
 
@@ -236,13 +235,12 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             numpy.array(image.shape)[numpy.array(self.batch_dim_upto3)]
         )
         batch_dim_size = 1 if batch_dim_size == 0 else batch_dim_size
-        target_shape = (
-            [batch_dim_size]
-            + list(
-                numpy.array(self.image_shape_upto3)[~numpy.array(self.batch_dim_upto3)]
-            )
-            + [1]
+        spatial_dim_size = list(
+            numpy.array(self.image_shape_upto3)[
+                numpy.invert(numpy.array(self.batch_dim_upto3))
+            ]
         )
+        target_shape = [batch_dim_size] + spatial_dim_size + [1]
         image = image.reshape(target_shape)
         batch_dim_out = [True if i == 0 else False for i in range(len(image.shape))]
         return image, batch_dim_out
@@ -337,6 +335,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             self.tile_size = [self.tile_size for _ in self.input_dim[:-1]]
 
         tile_size = numpy.array(self.tile_size)
+
         assert (
             tile_size.max() / 2 ** self.num_layer > 0
         ).any(), f'Tile size is too small. The largest dimension of tile size has to be >= {2 ** self.num_layer}.'
@@ -423,25 +422,70 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 else:
                     target_image = img_train
 
+        # Check if it is self-supervised
+        if self.supervised:
+            lprint('Model will be created for supervised learning.')
+            lprint(
+                'Shift convolution will be turned off automatically because supervised learning was selected.'
+            )
+        elif (
+            'shiftconv' == self.training_architecture and self.supervised is False
+        ):  # TODO: refactor asserts
+            assert (
+                numpy.mod(
+                    img_train.shape[1:][:-1],
+                    numpy.repeat(2 ** self.num_layer, len(img_train.shape[1:][:-1])),
+                )
+                == 0
+            ).all(), 'Each dimension of the input image has to be a multiple of 2^num_layer for shiftconv. '
+            lprint(
+                'Model will be generated for self-supervised learning with shift convlution scheme.'
+            )
+            assert (
+                numpy.diff(img_train.shape[1:][:2]) == 0
+            ), 'Make sure the input image shape is cubic as shiftconv mode involves rotation.'
+            assert (
+                numpy.mod(
+                    img_train.shape[1:][:-1],
+                    numpy.repeat(
+                        2 ** (self.num_layer - 1), len(img_train.shape[1:][:-1])
+                    ),
+                )
+                == 0
+            ).all(), (
+                'Each dimension of the input image has to be a multiple of '
+                '2^(num_layer-1) as shiftconv mode involvs pixel shift. '
+            )
+        else:
+            lprint(
+                'Model will be generated for self-supervised with moving-blind spot scheme.'
+            )
+
         if len(self.tile_size) == 2:
-            self.model = unet_2d_model(
+            self.model = UNet2DModel(
                 img_train.shape[1:],
                 rot_batch_size=self.rot_batch_size,  # img_train.shape[0],
                 num_lyr=self.num_layer,
                 normalization=self.batch_norm,
                 activation=self.activation_fun,
                 supervised=self.supervised,
-                shiftconv=True if 'shiftconv' in self.training_architecture else False,
+                shiftconv=True
+                if 'shiftconv' == self.training_architecture
+                and self.supervised is False
+                else False,
             )
         elif len(self.tile_size) == 3:
-            self.model = unet_3d_model(
+            self.model = Unet3DModel(
                 img_train.shape[1:],
                 rot_batch_size=self.rot_batch_size,  # img_train.shape[0],
                 num_lyr=self.num_layer,
                 normalization=self.batch_norm,
                 activation=self.activation_fun,
                 supervised=self.supervised,
-                shiftconv=True if 'shiftconv' in self.training_architecture else False,
+                shiftconv=True
+                if 'shiftconv' == self.training_architecture
+                and self.supervised is False
+                else False,
             )
         with lsection(f'CNN model summary:'):
             lprint(f'Number of parameters in the model: {self.model.count_params()}')
@@ -607,41 +651,34 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     verbose=self.verbose,
                 )
             elif 'shiftconv' in self.training_architecture:
+                steps_per_epoch = numpy.ceil(
+                    self.total_num_patches / self.batch_size
+                ).astype(int)
+                validation_data = [input_image, self.img_val]
+
                 if self.batch_processing:
                     val_split = self.total_num_patches * train_valid_ratio
                     val_split = (
                         val_split - (val_split % self.batch_size) + self.batch_size
                     ) / self.total_num_patches
-                    self.model.fit(
-                        input_image,
-                        input_image,
-                        batch_size=self.batch_size,
-                        epochs=self.max_epochs,
-                        callbacks=callbacks,
-                        verbose=self.verbose,
-                        validation_split=val_split,
-                    )
-                else:
-                    self.model.fit(
-                        DataGenerator_2in2out(
-                            input_image,
-                            input_image,
-                            batch_size=self.batch_size,
-                            shuffle=True,
-                        ),
-                        epochs=self.max_epochs,
-                        callbacks=callbacks,
-                        verbose=self.verbose,
-                        steps_per_epoch=numpy.ceil(
-                            self.total_num_patches * (1 - tv_ratio) / self.batch_size
-                        ).astype(int),
-                        validation_data=DataGenerator_2in2out(
-                            input_image, self.img_val, batch_size=self.batch_size
-                        ),
-                        validation_steps=numpy.ceil(
-                            self.total_num_patches * train_valid_ratio / self.batch_size
-                        ).astype(int),
-                    )
+                    steps_per_epoch = numpy.ceil(
+                        self.total_num_patches * val_split
+                    ).astype(int)
+                    validation_data = [
+                        input_image[int(self.total_num_patches * val_split) :],
+                        input_image[int(self.total_num_patches * val_split) :],
+                    ]
+
+                self.model.fit(
+                    input_image,
+                    input_image,
+                    epochs=self.max_epochs,
+                    callbacks=callbacks,
+                    verbose=self.verbose,
+                    steps_per_epoch=steps_per_epoch,
+                    batch_size=self.batch_size,
+                    validation_data=validation_data,
+                )
             elif 'checkerbox' in self.training_architecture:
                 self.model.fit(
                     maskedgen(
@@ -796,7 +833,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         # Change the batch_size in split layer or input dimensions accordingly
         if self.infmodel is None:
             if len(input_image.shape[1:-1]) == 2:
-                self.infmodel = unet_2d_model(
+                self.infmodel = UNet2DModel(
                     [None, None, input_image.shape[-1]],
                     rot_batch_size=1,  # input_image.shape[0],
                     num_lyr=self.num_layer,
@@ -811,7 +848,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     else False,
                 )
             elif len(input_image.shape[1:-1]) == 3:
-                self.infmodel = unet_3d_model(
+                self.infmodel = Unet3DModel(
                     [None, None, None, input_image.shape[-1]],
                     rot_batch_size=1,  # input_image.shape[0],
                     num_lyr=self.num_layer,
