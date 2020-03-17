@@ -10,7 +10,7 @@ from aydin.io.datasets import normalise, add_noise, newyork, characters, example
 from aydin.it.it_inverting_pt import InvertingImageTranslator
 
 
-def demo(image, max_epochs=10):
+def demo(image):
 
     # image = image[0:1024, 0:1024]
 

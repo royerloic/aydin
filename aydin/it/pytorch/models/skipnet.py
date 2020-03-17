@@ -4,20 +4,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import numpy as np
-
-from aydin.it.pytorch.models.box import BoxBlurLayer
-from aydin.it.pytorch.models.gaussian import GaussianLayer
-
 
 class SkipNet2D(nn.Module):
     def __init__(
         self,
         num_input_channels=1,
         num_output_channels=1,
-        kernel_sizes=[9, 7, 5, 3, 3, 3, 3, 3, 3],
-        num_features=[64, 32, 16, 8, 4, 2, 1, 1, 1],
-        layers=2,
+        kernel_sizes=[7, 5, 3, 3, 3, 3, 3, 3],
+        num_features=[64, 32, 16, 8, 4, 2, 1, 1],
+        layers=6,
         num_channels=None,
     ):
         super().__init__()
@@ -87,19 +82,21 @@ class SkipNet2D(nn.Module):
             nb_channels = skipconv_shape[1]
 
             skipconv._parameters['bias'] *= 0
-            skipconv._parameters['weight'][:, :, :, :] = 0
+            # skipconv._parameters['weight'][:, :, :, :] = 0
 
             if nb_filters < size * size:
-                skipconv._parameters['weight'][:, :, i, j] = 1
+                skipconv._parameters['weight'][:, :, :, :] = 1 / (size * size)
             else:
+                index = 0
                 for i in range(0, size):
                     for j in range(0, size):
-                        index = i * size + j
-                        if index >= nb_filters:
-                            break
-                        skipconv._parameters['weight'][index, :, i, j] = 1 + 0.001 * (
-                            random() - 0.5
-                        )
+                        if i != j:
+                            index += 1
+                            if index >= nb_filters:
+                                break
+                            skipconv._parameters['weight'][
+                                index, :, i, j
+                            ] = 1 + 0.001 * (random() - 0.5)
 
     def forward(self, x0):
 
@@ -134,12 +131,6 @@ class SkipNet2D(nn.Module):
             self.denseconvlist.parameters(),
             self.finalconv.parameters(),
         )
-
-    def pre_optimisation(self):
-        with torch.no_grad():
-            for skipconv in self.skipconvlist[0:1]:  # [0:1]
-                indexes = tuple((i - 1) // 2 for i in skipconv.kernel_size)
-                skipconv._parameters['weight'].grad[:, :, indexes[0], indexes[1]] = 0
 
     def post_optimisation(self):
         with torch.no_grad():

@@ -3,7 +3,6 @@ import math
 import numpy
 import torch
 from torch import nn
-from torch.optim import Adam, SGD
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import Dataset
 
@@ -30,7 +29,7 @@ class InvertingImageTranslator(ImageTranslatorBase):
     def __init__(
         self,
         max_epochs=1024,
-        patience=1024,
+        patience=128,
         patience_epsilon=0.0,
         learning_rate=0.01,
         batch_size=64,
@@ -40,7 +39,6 @@ class InvertingImageTranslator(ImageTranslatorBase):
         keep_ratio=1,
         max_voxels_for_training=4e6,
         monitor=None,
-        optimiser_class=Adam,
         use_cuda=True,
         device_index=0,
     ):
@@ -57,7 +55,6 @@ class InvertingImageTranslator(ImageTranslatorBase):
         self.device = torch.device(f"cuda:{device_index}" if use_cuda else "cpu")
         lprint(f"Using device: {self.device}")
 
-        self.optimiser_class = optimiser_class
         self.max_epochs = max_epochs
         self.patience = patience
         self.patience_epsilon = patience_epsilon
@@ -67,6 +64,16 @@ class InvertingImageTranslator(ImageTranslatorBase):
         self.max_voxels_for_training = max_voxels_for_training
         self.keep_ratio = keep_ratio
         self.balance_training_data = balance_training_data
+
+        self.l1_weight_regularisation = 0 * 1e-6
+        self.l2_weight_regularisation = 0 * 1e-6
+        self.input_noise = 0.001
+        self.reload_best_model_period = 128
+        self.reduce_lr_patience = 128
+        self.reduce_lr_factor = 0.5
+        self.model_class = SkipNet2D
+        self.optimiser_class = ESAdam
+        self.max_tile_size = 1024
 
         self._stop_training_flag = False
 
@@ -138,7 +145,7 @@ class InvertingImageTranslator(ImageTranslatorBase):
         ndim = input_image.ndim
 
         # tile size:
-        tile_size = min(1024, min(shape))
+        tile_size = min(self.max_tile_size, min(shape))
 
         # Decide on how many voxels to be used for validation:
         num_val_voxels = int(train_valid_ratio * input_image.size)
@@ -203,7 +210,7 @@ class InvertingImageTranslator(ImageTranslatorBase):
         )
 
         # Model
-        self.model = SkipNet2D(1, 1)
+        self.model = self.model_class(1, 1)
         # lprint(f"Model: {self.model}")
 
         self.model = self.model.to(self.device)
@@ -218,7 +225,7 @@ class InvertingImageTranslator(ImageTranslatorBase):
         optimizer = self.optimiser_class(
             self.model.trainable_parameters(),
             lr=self.learning_rate,
-            weight_decay=0.01 * self.learning_rate,
+            weight_decay=self.l2_weight_regularisation,
         )
         lprint(f"Optimiser: {optimizer}")
 
@@ -232,9 +239,7 @@ class InvertingImageTranslator(ImageTranslatorBase):
             lprint(f"Training/Validation loss: L1")
 
         # Start training:
-        self._train_loop(
-            train_data_loader, val_data_loader, optimizer, loss_function, num_val_voxels
-        )
+        self._train_loop(train_data_loader, val_data_loader, optimizer, loss_function)
 
     def _get_dataset(
         self,
@@ -268,16 +273,15 @@ class InvertingImageTranslator(ImageTranslatorBase):
                     )
                 )
 
-                if not is_training_data:
-                    mask_image = numpy.zeros_like(input_image)
-                    mask_image[validation_voxels[0], validation_voxels[1]] = 1
+                mask_image = numpy.zeros_like(input_image)
+                mask_image[validation_voxels[0], validation_voxels[1]] = 1
 
-                    self.mask_tiles = extract_tiles(
-                        mask_image,
-                        tile_size=tilesize,
-                        extraction_step=tilesize,
-                        flatten=True,
-                    )
+                self.mask_tiles = extract_tiles(
+                    mask_image,
+                    tile_size=tilesize,
+                    extraction_step=tilesize,
+                    flatten=True,
+                )
 
             def __len__(self):
                 return len(self.input_tiles)
@@ -285,35 +289,24 @@ class InvertingImageTranslator(ImageTranslatorBase):
             def __getitem__(self, index):
                 input = self.input_tiles[index, numpy.newaxis, ...]
                 target = self.target_tiles[index, numpy.newaxis, ...]
-                if is_training_data:
-                    return (input, target)
-                else:
-                    mask = self.mask_tiles[index, numpy.newaxis, ...]
-                    return (input, target, mask)
+                mask = self.mask_tiles[index, numpy.newaxis, ...]
 
-        if is_training_data:
-            input_image = input_image.copy()
-            input_image[validation_voxels[0], validation_voxels[1]] = 0
-            target_image = target_image.copy()
-            target_image[validation_voxels[0], validation_voxels[1]] = 0
+                return (input, target, mask)
 
         if mode == 'grid':
             return _Dataset(input_image, target_image, tilesize)
         else:
             return None
 
-    def _train_loop(
-        self,
-        train_data_loader,
-        val_data_loader,
-        optimizer,
-        loss_function,
-        num_val_voxels,
-    ):
+    def _train_loop(self, train_data_loader, val_data_loader, optimizer, loss_function):
 
         # Scheduler:
         scheduler = ReduceLROnPlateau(
-            optimizer, 'min', factor=0.99, verbose=True, patience=32
+            optimizer,
+            'min',
+            factor=self.reduce_lr_factor,
+            verbose=True,
+            patience=self.reduce_lr_patience,
         )
 
         self.model.training = True
@@ -335,7 +328,7 @@ class InvertingImageTranslator(ImageTranslatorBase):
                     self.model.train()
                     train_loss_value = 0
                     iteration = 0
-                    for i, (input_images, target_images) in enumerate(
+                    for i, (input_images, target_images, mask_images) in enumerate(
                         train_data_loader
                     ):
 
@@ -344,13 +337,14 @@ class InvertingImageTranslator(ImageTranslatorBase):
                         )
 
                         # Adding training noise to input:
-                        with torch.no_grad():
-                            alpha = 1e-9
-                            lprint(f"Training noise level: {alpha}")
-                            training_noise = alpha * (
-                                torch.rand_like(input_images) - 0.5
-                            )
-                            input_images += training_noise
+                        if self.input_noise > 0:
+                            with torch.no_grad():
+                                alpha = self.input_noise / (
+                                    1 + (10000 * epoch / self.max_epochs)
+                                )
+                                lprint(f"Training noise level: {alpha}")
+                                training_noise = alpha * torch.randn_like(input_images)
+                                input_images += training_noise
 
                         # Clear gradients w.r.t. parameters
                         optimizer.zero_grad()
@@ -361,28 +355,47 @@ class InvertingImageTranslator(ImageTranslatorBase):
                         target_images_gpu = target_images.to(
                             self.device, non_blocking=True
                         )
+                        mask_images_gpu = mask_images.to(self.device, non_blocking=True)
 
                         # Forward pass:
                         output_images_gpu = self.model(input_images_gpu)
                         # output_images = self.forward_model(output_images)
 
-                        # loss:
-                        loss = loss_function(
-                            output_images_gpu, target_images_gpu
+                        # training loss:
+                        training_loss = loss_function(
+                            output_images_gpu * (1 - mask_images_gpu),
+                            target_images_gpu * (1 - mask_images_gpu),
                         ).mean()
+                        loss = training_loss
+
+                        # Weight regularisation:
+                        if self.l1_weight_regularisation > 0:
+                            weight_regularization_loss = 0
+                            total_number_of_trainable_parameters = 0
+                            for param in self.model.trainable_parameters():
+                                total_number_of_trainable_parameters += torch.numel(
+                                    param
+                                )
+                                weight_regularization_loss += torch.norm(param, 0.99)
+                            weight_regularization_loss /= (
+                                total_number_of_trainable_parameters
+                            )
+                            loss += (
+                                self.l1_weight_regularisation
+                                * weight_regularization_loss
+                            )
 
                         # Back-propagation:
                         loss.backward()
 
                         # update training loss for whole image:
-                        train_loss_value += loss.item()
+                        train_loss_value += training_loss.item()
                         iteration += 1
 
                     train_loss_value /= iteration
                     lprint(f"Training loss value: {train_loss_value}")
 
                     # Updating parameters
-                    self.model.pre_optimisation()
                     optimizer.step()
                     self.model.post_optimisation()
 
@@ -416,11 +429,7 @@ class InvertingImageTranslator(ImageTranslatorBase):
                             loss = loss.mean().cpu()
 
                             # update validation loss for whole image:
-                            val_loss_value += (
-                                loss.item()
-                                * torch.numel(output_images_gpu)
-                                / num_val_voxels
-                            )
+                            val_loss_value += loss.item()
                             iteration += 1
 
                     val_loss_value /= iteration
@@ -451,7 +460,8 @@ class InvertingImageTranslator(ImageTranslatorBase):
                         patience_counter += 1
 
                         if (
-                            epoch % self.patience // 2 == 0 and best_model_state_dict
+                            epoch % max(1, self.reload_best_model_period) == 0
+                            and best_model_state_dict
                         ):  # epoch % 5 == 0 and
                             lprint(f"Reloading best model to date!")
                             self.model.load_state_dict(best_model_state_dict)
