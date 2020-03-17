@@ -34,7 +34,7 @@ def demo(image, name):
 
     nlm = denoise_nl_means(noisy, patch_size=11, sigma=estimate_sigma(noisy))
 
-    generator = FastMultiscaleConvolutionalFeatures()
+    generator = FastMultiscaleConvolutionalFeatures(include_spatial_features=True)
     regressor = GBMRegressor(patience=20)
 
     it = ImageTranslatorClassic(

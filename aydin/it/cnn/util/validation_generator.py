@@ -1,9 +1,6 @@
 import numpy
 from copy import deepcopy
 from scipy.ndimage.filters import convolve
-import tensorflow as tf
-
-ImageDataGenerator = tf.keras.preprocessing.image.ImageDataGenerator
 
 
 def mean_filter(input_image):
@@ -66,29 +63,3 @@ def val_ind_generator(image_train, p=0.1):
     img_filtered = mean_filter(image_train)
     image_train[marker] = img_filtered[marker]
     return image_train, val_pix_values, marker
-
-
-def val_data_generator_from_ind(
-    img_train, img_val, marker, batch_size, train_valid_ratio
-):
-    val_ind = numpy.random.randint(
-        0, img_train.shape[0], int(img_train.shape[0] * train_valid_ratio)
-    )
-    datagen_train = ImageDataGenerator().flow(
-        img_train[val_ind], batch_size=batch_size, shuffle=False
-    )
-    datagen_val = ImageDataGenerator().flow(
-        img_val[val_ind], batch_size=batch_size, shuffle=False
-    )
-    datagen_marker = ImageDataGenerator().flow(
-        ~marker[val_ind], batch_size=batch_size, shuffle=False
-    )
-
-    while True:
-        train_batch = datagen_train.next()
-        val_batch = datagen_val.next()
-        marker_batch = datagen_marker.next()
-        yield {
-            'input': train_batch,
-            'input_msk': marker_batch.astype(numpy.float32),
-        }, val_batch

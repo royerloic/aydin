@@ -1,6 +1,6 @@
 import numpy
 from aydin.it.cnn.util.receptive_field import receptive_field_model, bbox_idx
-from aydin.it.cnn.models.unet_2d import unet_2d_model
+from aydin.it.cnn.models.unet_2d import UNet2DModel
 
 
 # Test masking method ====================================================================
@@ -13,7 +13,7 @@ def test_receptive_field_masking():
     input_image = numpy.zeros((1, 512, 512, 1))
     input_shape = input_image.shape
     input_image[0, int(input_shape[1] / 2), int(input_shape[2] / 2), 0] = 1
-    model = unet_2d_model(
+    model = UNet2DModel(
         input_shape[1:],
         rot_batch_size=1,
         num_lyr=num_lyrs,
@@ -47,7 +47,7 @@ def test_receptive_field_shiftconv():
     input_image = numpy.zeros((1, 512, 512, 1))
     input_shape = input_image.shape
     input_image[0, int(input_shape[1] / 2), int(input_shape[2] / 2), 0] = 1
-    model = unet_2d_model(
+    model = UNet2DModel(
         input_shape[1:],
         rot_batch_size=1,
         num_lyr=num_lyrs,
