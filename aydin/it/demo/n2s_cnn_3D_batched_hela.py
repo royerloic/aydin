@@ -17,12 +17,12 @@ def demo(image, max_epochs=10):
         num_layer=2,
         batch_norm='instance',  # None,  #
         activation='ReLU',
-        mask_shape=(3, 3),
+        mask_shape=(3, 3, 3),
         # tile_size=128,
         # total_num_patches=10,
         max_epochs=max_epochs,
-        verbose=1,
     )
+    it.verbose = 1
 
     start = time.time()
     it.train(image, image, batch_dims=batch_dims)
