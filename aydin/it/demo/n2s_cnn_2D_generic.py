@@ -10,7 +10,7 @@ from aydin.io.datasets import normalise, add_noise, lizard, pollen, newyork
 from aydin.it.it_cnn import ImageTranslatorCNN
 
 
-def demo(image, max_epochs=10):
+def demo(image, max_epochs=100):
 
     image = normalise(image.astype(numpy.float32))
     noisy = add_noise(image)
@@ -18,15 +18,20 @@ def demo(image, max_epochs=10):
     # CNN based Image translation:
     # input_dim only includes H, W, C; number of images is not included
     it = ImageTranslatorCNN(
-        training_architecture='checkerbox',
-        num_layer=5,
+        training_architecture='random',
+        num_layer=4,
+        initial_units=8,
         batch_norm='instance',  # None,  #
         activation='ReLU',
         tile_size=128,
-        mask_shape=(3, 3),
-        # total_num_patches=10,
+        mask_shape=3,
+        total_num_patches=400,
+        batch_size=40,
         max_epochs=max_epochs,
+        learn_rate=0.01,
+        reduce_lr_factor=0.3,
     )
+    it.verbose = 1
 
     start = time.time()
     it.train(noisy, noisy)

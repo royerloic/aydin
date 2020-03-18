@@ -55,6 +55,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         model_architecture='unet',
         batch_size=32,
         num_layer=5,
+        initial_units=8,
         batch_norm=None,
         activation='ReLU',
         tile_size=None,
@@ -67,23 +68,39 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         mask_p=0.1,
         max_epochs=1024,
         patience=4,
+        learn_rate=0.01,
+        reduce_lr_factor=0.3,
+        replace_by='zero',  # 'zero', 'radom', 'median'
+        weight_decay=0,
+        use_residual=False,
+        pooling_mode='max',
+        interpolation='nearest',
     ):
         """
         :param monitor: an object for monitoring training (only for GUI)
         :param training_architecture: 'shiftconv' or 'checkerbox' or 'randommasking' architecture
         :param batch_size: batch size for training
         :param num_layer: number of layers
+        :param initial_units: number of filters in the 1st layer of CNN
         :param batch_norm; type of batch normalization (e.g. batch, instance)
         :param tile_size: tile size for patch sample e.g. 64 or (64, 64)
         :param total_num_patches: total number of patches for training
         :param adoption_rate: % of random patches will be used for training, the rest will be discarded
-        :param mask_shape: mask shape for masking architecture
+        :param mask_shape: mask shape for masking architecture; has to be the same size as the spatial dimension.
         :param EStop_patience: patience for early stopping
         :param ReduceLR_patience: patience for reduced learn rate
         :param min_delta: 1e-6; minimum delta to determine if loss is dropping
         :param mask_p: possibility of masked pixels in ramdom masking approach
         :param max_epochs: maximum epoches
         :param patience: patience for EarlyStop or ReducedLR to be triggered
+        :param learn_rate: initial learn rate
+        :param reduce_lr_factor: reduce learn rate by factor of this value when it reaches plateau
+        :param replace_by: <Only for randommasking architecture> replace masked pixels by 0 or random or median values.
+        :param weight_decay: regularization facotr for L1 regularizers
+        :param use_residual: use Add layers insead of Concatenate layers at merging layers in Unet.
+        :param pooling_mode: 'max' for max pooling, 'ave' for average pooling
+        :param interpolation: 'nearest' or 'bilinear' for Upsampling2D
+
         """
         super().__init__(normaliser_type, monitor)
         self.model = None  # a CNN model
@@ -93,6 +110,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.model_architecture = (model_architecture,)
         self.batch_size = batch_size
         self.num_layer = num_layer
+        self.initial_units = initial_units
         self.batch_norm = batch_norm
         self.activation_fun = activation
         self.tile_size = tile_size
@@ -105,6 +123,13 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.p = mask_p
         self.max_epochs = max_epochs
         self.patience = patience
+        self.learn_rate = learn_rate
+        self.reduce_lr_factor = reduce_lr_factor
+        self.replace_by = replace_by
+        self.weight_decay = weight_decay
+        self.use_residual = use_residual
+        self.pooling_mode = pooling_mode
+        self.interpolation = interpolation
 
         self.batch_dim_upto3 = None
         self.axes_permutation = None
@@ -470,6 +495,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 img_train.shape[1:],
                 rot_batch_size=self.rot_batch_size,  # img_train.shape[0],
                 num_lyr=self.num_layer,
+                initial_unit=self.initial_units,
                 normalization=self.batch_norm,
                 activation=self.activation_fun,
                 supervised=self.supervised,
@@ -477,10 +503,16 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 if 'shiftconv' == self.training_architecture
                 and self.supervised is False
                 else False,
+                weight_decay=self.weight_decay,
+                learning_rate=self.learn_rate,
+                residual=self.use_residual,
+                pooling_mode=self.pooling_mode,
+                interpolation=self.interpolation,
             )
         elif len(self.tile_size) == 3:
             self.model = Unet3DModel(
                 img_train.shape[1:],
+                initial_unit=self.initial_units,
                 rot_batch_size=self.rot_batch_size,  # img_train.shape[0],
                 num_lyr=self.num_layer,
                 normalization=self.batch_norm,
@@ -490,6 +522,10 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 if 'shiftconv' == self.training_architecture
                 and self.supervised is False
                 else False,
+                weight_decay=self.weight_decay,
+                learning_rate=self.learn_rate,
+                residual=self.use_residual,
+                pooling_mode=self.pooling_mode,
             )
         with lsection(f'CNN model summary:'):
             lprint(f'Number of parameters in the model: {self.model.count_params()}')
@@ -846,6 +882,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     [None, None, input_image.shape[-1]],
                     rot_batch_size=1,  # input_image.shape[0],
                     num_lyr=self.num_layer,
+                    initial_unit=self.initial_units,
                     normalization=self.batch_norm,
                     activation=self.activation_fun,
                     supervised=True
@@ -861,6 +898,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     [None, None, None, input_image.shape[-1]],
                     rot_batch_size=1,  # input_image.shape[0],
                     num_lyr=self.num_layer,
+                    initial_unit=self.initial_units,
                     normalization=self.batch_norm,
                     activation=self.activation_fun,
                     supervised=True
