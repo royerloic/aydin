@@ -26,7 +26,6 @@ def demo(image, max_epochs=10):
         mask_shape=(3, 3),
         # total_num_patches=10,
         max_epochs=max_epochs,
-        verbose=1,
     )
 
     start = time.time()

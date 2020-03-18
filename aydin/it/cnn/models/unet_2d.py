@@ -6,15 +6,15 @@ from tensorflow_core.python.keras.layers.convolutional import (
     ZeroPadding2D,
     UpSampling2D,
 )
-from tensorflow_core.python.keras.layers.merge import Concatenate
+from tensorflow_core.python.keras.layers.merge import Concatenate, Add
 from tensorflow_core.python.keras.models import Model
+from tensorflow_core.python.keras.regularizers import l1
 
 from aydin.it.cnn.layers.util import split, rot90
 from aydin.it.cnn.layers.maskout import Maskout
 from aydin.it.cnn.models.utils.conv_block import (
-    conv2d_bn_noshift,
     conv2d_bn,
-    mxpooling_down2D,
+    pooling_down2D,
 )
 
 
@@ -33,13 +33,17 @@ class UNet2DModel(Model):
         self,
         input_dim,
         rot_batch_size=1,
-        num_lyr=5,
+        num_lyr=4,
         normalization=None,  # 'instance' or 'batch'
         activation='ReLU',
         supervised=False,
         shiftconv=True,
-        initial_unit=48,
-        learning_rate=0.001,
+        initial_unit=8,
+        learning_rate=0.01,
+        weight_decay=0,
+        residual=False,
+        pooling_mode='max',
+        interpolation='nearest',
     ):
         """
 
@@ -52,6 +56,10 @@ class UNet2DModel(Model):
         :param shiftconv:
         :param initial_unit:
         :param learning_rate:
+        :param weight_decay: coefficient of l1 regularizer
+        :param residual: whether to use add or concat at merging layers
+        :param pooling_mode: 'max' for max pooling, 'ave' for average pooling
+        :param interpolation: 'nearest' or 'bilinear' for Upsampling2D
         """
         self.compiled = False
 
@@ -62,6 +70,10 @@ class UNet2DModel(Model):
         self.shiftconv = shiftconv
         self.initial_unit = initial_unit
         self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
+        self.residual = residual
+        self.pooling_mode = pooling_mode
+        self.interpolation = interpolation
 
         # Generate a model
         input_lyr = Input(input_dim, name='input')
@@ -90,37 +102,64 @@ class UNet2DModel(Model):
 
         skiplyr = [x]
         for i in range(self.num_lyr):
+            if i == 0:
+                x = conv2d_bn(
+                    x,
+                    unit=self.initial_unit * (i + 1),
+                    shiftconv=self.shiftconv,
+                    norm=None,
+                    act=None,
+                    weight_decay=self.weight_decay,
+                    lyrname=f'enc{i}_cv0',
+                )
+
             x = conv2d_bn(
                 x,
-                self.initial_unit * (i + 1),  # * 2**i,  #  initial_unit,  #
-                self.shiftconv,
-                self.normalization,
-                self.activation,
+                unit=self.initial_unit * (i + 1),
+                shiftconv=self.shiftconv,
+                norm=self.normalization,
+                act=self.activation,
+                weight_decay=self.weight_decay,
                 lyrname=f'enc{i}',
             )
-            x = mxpooling_down2D(x, self.shiftconv, lyrname=f'enc{i}pl')
+            x = pooling_down2D(
+                x, self.shiftconv, mode=self.pooling_mode, lyrname=f'enc{i}pl'
+            )
             if i != self.num_lyr - 1:
                 skiplyr.append(x)
 
         x = conv2d_bn(
             x,
             self.initial_unit,
-            self.shiftconv,
-            self.normalization,
-            self.activation,
-            lyrname='bottm',  # * num_layer,
+            shiftconv=self.shiftconv,
+            norm=self.normalization,
+            act=self.activation,
+            weight_decay=self.weight_decay,
+            lyrname='bottm',
         )
 
         for i in range(self.num_lyr):
-            x = UpSampling2D((2, 2), interpolation='nearest', name=f'up{i}')(x)
-            x = Concatenate(name=f'cnct{i}')([x, skiplyr.pop()])
+            x = UpSampling2D((2, 2), interpolation=self.interpolation, name=f'up{i}')(x)
+            if self.residual:
+                x = Add(name=f'add{i}')([x, skiplyr.pop()])
+            else:
+                x = Concatenate(name=f'cnct{i}')([x, skiplyr.pop()])
             x = conv2d_bn(
                 x,
-                self.initial_unit
-                * (self.num_lyr - i),  # * 2 ** (num_layer - i),  #  * 2,  #
-                self.shiftconv,
-                self.normalization,
-                self.activation,
+                self.initial_unit * max((self.num_lyr - i - 2), 1),
+                shiftconv=self.shiftconv,
+                norm=None,
+                act=None,
+                weight_decay=self.weight_decay,
+                lyrname=f'dec{i}_cv0',
+            )
+            x = conv2d_bn(
+                x,
+                self.initial_unit * max((self.num_lyr - i - 2), 1),
+                shiftconv=self.shiftconv,
+                norm=self.normalization,
+                act=self.activation,
+                weight_decay=self.weight_decay,
                 lyrname=f'dec{i}',
             )
 
@@ -140,21 +179,35 @@ class UNet2DModel(Model):
             x = Concatenate(name='cnct_last', axis=-1)(
                 [output0, output1, output2, output3]
             )
-            x = conv2d_bn_noshift(
+            x = conv2d_bn(
                 x,
                 self.initial_unit * 2 * 4,
-                self.normalization,
+                kernel_size=1,
+                shiftconv=False,
+                norm=self.normalization,
                 act=self.activation,
+                weight_decay=self.weight_decay,
                 lyrname='last1',
             )
-            x = conv2d_bn_noshift(
+            x = conv2d_bn(
                 x,
                 self.initial_unit,
-                self.normalization,
+                kernel_size=1,
+                shiftconv=False,
+                norm=self.normalization,
                 act=self.activation,
+                weight_decay=self.weight_decay,
                 lyrname='last2',
             )
 
-        x = Conv2D(1, (1, 1), padding='same', name='last0', activation='linear')(x)
+        x = Conv2D(
+            1,
+            (1, 1),
+            padding='same',
+            name='last0',
+            kernel_regularizer=l1(self.weight_decay),
+            bias_regularizer=l1(self.weight_decay),
+            activation='linear',
+        )(x)
 
         return x
