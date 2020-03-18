@@ -13,7 +13,7 @@ def test_it_cnn_shiftconv_light():
         Demo for self-supervised denoising using camera image with synthetic noise
     """
     start = time.time()
-    max_epochs = 1
+    max_epochs = 2
     image_width = 200
     image = normalise(camera())
     H0, W0 = (numpy.array(image.shape) - image_width) // 2
@@ -54,7 +54,7 @@ def test_it_cnn_checkerbox_light():
         Demo for self-supervised denoising using camera image with synthetic noise
     """
     start = time.time()
-    max_epochs = 1
+    max_epochs = 2
     image_width = 200
     image = normalise(camera())
     H0, W0 = (numpy.array(image.shape) - image_width) // 2
@@ -96,7 +96,7 @@ def test_it_cnn_random_light():
         Demo for self-supervised denoising using camera image with synthetic noise
     """
     start = time.time()
-    max_epochs = 8
+    max_epochs = 5
     image_width = 200
     image = normalise(camera())
     H0, W0 = (numpy.array(image.shape) - image_width) // 2
@@ -106,7 +106,7 @@ def test_it_cnn_random_light():
 
     it = ImageTranslatorCNN(
         training_architecture='random',
-        num_layer=2,
+        num_layer=3,
         batch_norm='instance',
         max_epochs=max_epochs,
     )

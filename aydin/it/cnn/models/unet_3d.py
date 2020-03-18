@@ -7,15 +7,15 @@ from tensorflow_core.python.keras.layers.convolutional import (
     Cropping3D,
     Conv3D,
 )
-from tensorflow_core.python.keras.layers.merge import Concatenate
+from tensorflow_core.python.keras.layers.merge import Concatenate, Add
 from tensorflow_core.python.keras.models import Model
+from tensorflow_core.python.keras.regularizers import l1
 
 from aydin.it.cnn.layers.util import split, rot90
 from aydin.it.cnn.layers.maskout import Maskout
 from aydin.it.cnn.models.utils.conv_block import (
-    conv3d_bn_noshift,
     conv3d_bn,
-    mxpooling_down3D,
+    pooling_down3D,
 )
 
 
@@ -49,9 +49,12 @@ class Unet3DModel(Model):
         activation='ReLU',
         supervised=False,
         shiftconv=True,
-        initial_unit=48,
-        learning_rate=0.001,
+        initial_unit=8,
+        learning_rate=0.01,
         original_zdim=None,
+        weight_decay=0,
+        residual=False,
+        pooling_mode='max',
     ):
         """
 
@@ -65,6 +68,8 @@ class Unet3DModel(Model):
         :param initial_unit:
         :param learning_rate:
         :param original_zdim:
+        :param weight_decay: coefficient of l1 regularizer
+        :param residual: whether to use add or concat at merging layers
         """
         self.compiled = False
 
@@ -75,6 +80,9 @@ class Unet3DModel(Model):
         self.shiftconv = shiftconv
         self.initial_unit = initial_unit
         self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
+        self.residual = residual
+        self.pooling_mode = pooling_mode
 
         if original_zdim:
             self.zdim = original_zdim
@@ -112,21 +120,39 @@ class Unet3DModel(Model):
         skiplyr = [x]
         down2D_n = 0
         for i in range(self.num_lyr):
+            if i == 0:
+                x = conv3d_bn(
+                    x,
+                    unit=self.initial_unit * (i + 1),
+                    shiftconv=self.shiftconv,
+                    norm=None,
+                    act=None,
+                    weight_decay=self.weight_decay,
+                    lyrname=f'enc{i}_cv0',
+                )
+
             x = conv3d_bn(
                 x,
-                self.initial_unit * (i + 1),  # * 2**i,  #  initial_unit,  #
-                self.shiftconv,
-                self.normalization,
-                self.activation,
+                unit=self.initial_unit * (i + 1),
+                shiftconv=self.shiftconv,
+                norm=self.normalization,
+                act=self.activation,
+                weight_decay=self.weight_decay,
                 lyrname=f'enc{i}',
             )
             if self.zdim > 3:
                 pool_size = (2, 2, 2)
                 self.zdim = numpy.floor(self.zdim / 2)
             else:
-                pool_size = (1, 2, 2)
-                down2D_n += 1
-            x = mxpooling_down3D(x, self.shiftconv, pool_size, lyrname=f'enc{i}pl')
+                if self.shiftconv:
+                    raise ValueError(
+                        'Input size is too small against the depth of the CNN model. '
+                        'Please use masking method or less num_lyr or larger input size.'
+                    )
+                else:
+                    pool_size = (1, 2, 2)
+                    down2D_n += 1
+            x = pooling_down3D(x, self.shiftconv, pool_size, lyrname=f'enc{i}pl')
 
             if i != self.num_lyr - 1:
                 skiplyr.append(x)
@@ -134,9 +160,10 @@ class Unet3DModel(Model):
         x = conv3d_bn(
             x,
             self.initial_unit,
-            self.shiftconv,
-            self.normalization,
-            self.activation,
+            shiftconv=self.shiftconv,
+            norm=self.normalization,
+            act=self.activation,
+            weight_decay=self.weight_decay,
             lyrname='bottm',  # * num_layer,
         )
 
@@ -146,14 +173,26 @@ class Unet3DModel(Model):
                 down2D_n -= 1
             else:
                 x = UpSampling3D((2, 2, 2), name=f'up{i}')(x)
-            x = Concatenate(name=f'cnct{i}')([x, skiplyr.pop()])
+            if self.residual:
+                x = Add(name=f'add{i}')([x, skiplyr.pop()])
+            else:
+                x = Concatenate(name=f'cnct{i}')([x, skiplyr.pop()])
             x = conv3d_bn(
                 x,
-                self.initial_unit
-                * (self.num_lyr - i),  # * 2 ** (num_layer - i),  #  * 2,  #
-                self.shiftconv,
-                self.normalization,
-                self.activation,
+                self.initial_unit * max((self.num_lyr - i - 2), 1),
+                shiftconv=self.shiftconv,
+                norm=None,
+                act=None,
+                weight_decay=self.weight_decay,
+                lyrname=f'dec{i}_cv0',
+            )
+            x = conv3d_bn(
+                x,
+                self.initial_unit * max((self.num_lyr - i - 2), 1),
+                shiftconv=self.shiftconv,
+                norm=self.normalization,
+                act=self.activation,
+                weight_decay=self.weight_decay,
                 lyrname=f'dec{i}',
             )
 
@@ -177,21 +216,35 @@ class Unet3DModel(Model):
             x = Concatenate(name='cnct_last', axis=-1)(
                 [output0, output1, output2, output3, output5, output6]
             )
-            x = conv3d_bn_noshift(
+            x = conv3d_bn(
                 x,
                 self.initial_unit * 2 * 4,
-                self.normalization,
+                kernel_size=3,  # a work around for a bug in tf; supposed to be 1
+                shiftconv=False,
+                norm=self.normalization,
                 act=self.activation,
+                weight_decay=self.weight_decay,
                 lyrname='last1',
             )
-            x = conv3d_bn_noshift(
+            x = conv3d_bn(
                 x,
                 self.initial_unit,
-                self.normalization,
+                kernel_size=3,  # a work around for a bug in tf; supposed to be 1
+                shiftconv=False,
+                norm=self.normalization,
                 act=self.activation,
+                weight_decay=self.weight_decay,
                 lyrname='last2',
             )
 
-        x = Conv3D(1, 3, padding='same', name='last0', activation='linear')(x)
+        x = Conv3D(
+            1,
+            3,  # a work around for a bug in tf; supposed to be 1
+            padding='same',
+            name='last0',
+            kernel_regularizer=l1(self.weight_decay),
+            bias_regularizer=l1(self.weight_decay),
+            activation='linear',
+        )(x)
 
         return x

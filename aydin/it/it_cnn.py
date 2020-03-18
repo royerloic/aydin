@@ -25,7 +25,6 @@ from aydin.it.cnn.util.callbacks import (
     ReduceLROnPlateau,
     CNNCallback,
 )  # noqa: E402
-from aydin.it.cnn.util.receptive_field import receptive_field_model  # noqa: E402
 
 # from tensorflow.keras.models import model_from_json
 from aydin.it.cnn.util.data_util import (
@@ -53,6 +52,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         normaliser_type: str = 'percentile',
         monitor=None,
         training_architecture=None,  # 'shiftconv' or 'random' or 'checkerbox'
+        model_architecture='unet',
         batch_size=32,
         num_layer=5,
         batch_norm=None,
@@ -90,6 +90,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.infmodel = None  # inference model
         self.supervised = True
         self.training_architecture = training_architecture
+        self.model_architecture = (model_architecture,)
         self.batch_size = batch_size
         self.num_layer = num_layer
         self.batch_norm = batch_norm
@@ -172,16 +173,19 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             self.model.load_weights(keras_model_file)
 
     def get_receptive_field_radius(self, num_layer, shiftconv=False):
-        if shiftconv:
-            rf = [6, 22, 54, 110, 222, 446, 894, 1790, 3582, 7166]
+        if 'dncnn' in self.model_architecture:
+            if shiftconv:
+                rf = 10 if num_layer <= 2 else 2 + num_layer * 4
+            else:
+                rf = 5 if num_layer <= 2 else 1 + num_layer * 2
+            return int(rf // 2)
         else:
-            rf = [3, 10, 22, 46, 94, 190, 382, 766, 1534, 3070]
-        if self.model is None:
-            r = rf[num_layer]
-        else:
-            r = receptive_field_model(self.model)
-        # r = numpy.sqrt(r)  # effective receptive field
-        return int(r // 2)
+            if shiftconv:
+                rf = 7 if num_layer == 0 else 36 * 2 ** (num_layer - 1) - 6
+            else:
+                rf = 3 if num_layer == 0 else 18 * 2 ** (num_layer - 1) - 4
+
+        return int(rf // 2)
 
     def limit_epochs(self, max_epochs: int) -> int:
         return max_epochs
@@ -752,7 +756,12 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 )
 
     def translate(
-        self, input_image, translated_image=None, batch_dims=None, tile_size=None
+        self,
+        input_image,
+        translated_image=None,
+        batch_dims=None,
+        tile_size=None,
+        max_margin=32,
     ):
         if batch_dims:
             assert len(batch_dims) == len(input_image.shape), (
