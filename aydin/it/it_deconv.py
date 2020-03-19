@@ -75,9 +75,10 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
         self.reduce_lr_patience = 128
         self.reduce_lr_factor = 0.5
         self.denoising_model_class = SkipNet2D
-        self.deconvolution_model_class = FeedForward  # LucyRichardson
+        self.deconvolution_model_class = LucyRichardson
         self.optimiser_class = Adam
         self.max_tile_size = 1024
+        self.sharpening = 0.0001
 
         self._stop_training_flag = False
 
@@ -237,24 +238,18 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
 
         self.psfconv = PSFConvolutionLayer(self.psf_kernel).to(self.device)
         self.masked_denoise_model = Masking(self.denoise_model).to(self.device)
+        self.masked_deconv_model = Masking(self.deconv_model).to(self.device)
 
         lprint(f"Optimiser class: {self.optimiser_class}")
         lprint(f"Learning rate : {self.learning_rate}")
 
-        # Denoising optimiser:
-        denoising_optimizer = self.optimiser_class(
-            self.denoise_model.parameters(),
+        # Optimiser:
+        optimizer = self.optimiser_class(
+            chain(self.denoise_model.parameters(), self.deconv_model.parameters()),
             lr=self.learning_rate,
             weight_decay=self.l2_weight_regularisation,
         )
-        lprint(f"Optimiser: {denoising_optimizer}")
-
-        deconv_optimizer = self.optimiser_class(
-            self.deconv_model.parameters(),
-            lr=self.learning_rate,
-            weight_decay=self.l2_weight_regularisation,
-        )
-        lprint(f"Optimiser: {deconv_optimizer}")
+        lprint(f"Optimiser: {optimizer}")
 
         # Loss functon:
         loss_function = nn.L1Loss()
@@ -267,11 +262,7 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
 
         # Start training:
         self._train_loop(
-            train_data_loader,
-            val_data_loader,
-            denoising_optimizer,
-            deconv_optimizer,
-            loss_function,
+            train_data_loader, val_data_loader, optimizer, loss_function,
         )
 
     def _get_dataset(
@@ -332,24 +323,12 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
             return None
 
     def _train_loop(
-        self,
-        train_data_loader,
-        val_data_loader,
-        denoising_optimizer,
-        deconv_optimizer,
-        loss_function,
+        self, train_data_loader, val_data_loader, optimizer, loss_function,
     ):
 
         # Scheduler:
-        denoising_scheduler = ReduceLROnPlateau(
-            denoising_optimizer,
-            'min',
-            factor=self.reduce_lr_factor,
-            verbose=True,
-            patience=self.reduce_lr_patience,
-        )
-        deconv_scheduler = ReduceLROnPlateau(
-            deconv_optimizer,
+        scheduler = ReduceLROnPlateau(
+            optimizer,
             'min',
             factor=self.reduce_lr_factor,
             verbose=True,
@@ -393,7 +372,7 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
                                 input_images += training_noise
 
                         # Clear gradients w.r.t. parameters
-                        denoising_optimizer.zero_grad()
+                        optimizer.zero_grad()
 
                         input_images_gpu = input_images.to(
                             self.device, non_blocking=True
@@ -425,17 +404,10 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
                         # Back-propagation:
                         denoise_loss.backward(retain_graph=True)
 
-                        # Updating parameters
-                        denoising_optimizer.step()
-
-                        # zero deconv gradients
-                        deconv_optimizer.zero_grad()
-
                         # deconvolution:
-                        deconvolved_images: torch.Tensor = self.deconv_model(
+                        deconvolved_images: torch.Tensor = self.masked_deconv_model(
                             denoised_images_gpu
                         )
-                        deconvolved_images.clamp_(0, 1)
                         blurred_deconvolved_images = self.psfconv(deconvolved_images)
 
                         # if epoch%20==0:
@@ -447,20 +419,35 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
                         #         viewer.add_image(to_numpy(blurred_deconvolved_images), name='blurred_deconvolved_images')
 
                         # Deconvolution loss:
-                        deconv_loss = (
-                            loss_function(
-                                blurred_deconvolved_images
-                                * (1 - validation_mask_images_gpu),
-                                denoised_images_gpu * (1 - validation_mask_images_gpu),
-                            ).mean()
-                            + 0.000001 * torch.norm(deconvolved_images, 1).mean()
-                        )
+                        deconv_loss = loss_function(
+                            blurred_deconvolved_images
+                            * (1 - validation_mask_images_gpu)
+                            * blind_spot_mask,
+                            target_images_gpu
+                            * (1 - validation_mask_images_gpu)
+                            * blind_spot_mask,
+                        ).mean()
 
                         # Back-propagation:
-                        deconv_loss.backward()
+                        deconv_loss.backward(retain_graph=True)
+
+                        # Sharpen loss:
+                        min_values, _ = deconvolved_images.view(
+                            deconvolved_images.shape[0], -1
+                        ).min(1, keepdim=True)
+                        sum_values = torch.sum(
+                            deconvolved_images - min_values[:, :, None, None],
+                            (2, 3),
+                            keepdim=True,
+                        )
+                        sharpness_loss = (
+                            -self.sharpening
+                            * torch.log1p(deconvolved_images / sum_values).mean()
+                        )
+                        sharpness_loss.backward()
 
                         # Updating parameters
-                        deconv_optimizer.step()
+                        optimizer.step()
                         # self.deconv_model.post_optimisation()
 
                         # update training loss for whole image:
@@ -516,8 +503,7 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
                     lprint(f"Validation loss value: {val_loss_value}")
 
                     # Learning rate schedule:
-                    denoising_scheduler.step(val_loss_value)
-                    deconv_scheduler.step(val_loss_value)
+                    scheduler.step(val_loss_value)
 
                     if val_loss_value < best_loss:
                         lprint(f"## New best val loss!")
@@ -597,7 +583,7 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
         input_image = input_image.to(self.device)
         inferred_image: torch.Tensor = self.deconv_model(
             self.denoise_model(input_image)
-        ).clamp_(0, 1)
+        )
         inferred_image = inferred_image.detach().cpu().numpy()
         inferred_image = inferred_image.squeeze()
         return inferred_image

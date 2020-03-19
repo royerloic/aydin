@@ -7,16 +7,14 @@ from skimage import restoration
 from skimage.measure import compare_psnr as psnr
 from skimage.measure import compare_ssim as ssim
 
-from aydin.io.datasets import normalise, add_noise, characters
+from aydin.io.datasets import normalise, add_noise, characters, scafoldings
 from aydin.it.it_deconv import DeconvolvingImageTranslator
 from aydin.util.psf.simple_microscope_psf import SimpleMicroscopePSF
 
 
 def demo(image):
 
-    # image = image[0:1024, 0:1024]
-
-    image = 1 - normalise(image.astype(numpy.float32))
+    image = normalise(image.astype(numpy.float32))
 
     psf = SimpleMicroscopePSF()
     psf_xyz_array = psf.generate_xyz_psf(dxy=0.406, dz=0.406, xy_size=17, z_size=17)
@@ -26,25 +24,7 @@ def demo(image):
     blurred_image = convolve2d(image, psf_kernel, 'same')
 
     noisy_and_blurred_image = add_noise(blurred_image)
-    # noisy_and_blurred_image = image
 
-    # deconvolved = numpy.stack([restoration.richardson_lucy(noisy_and_blurred_image, psf_kernel, iterations=i)for i in range(0,20,1)])
-    # reconvolved = numpy.stack([convolve2d(i, psf_kernel, 'same') for i in deconvolved])
-    # error = deconvolved -reconvolved
-    #
-    # import napari
-    # with napari.gui_qt():
-    #     viewer = napari.Viewer()
-    #     viewer.add_image(deconvolved, name='deconvolved')
-    #     viewer.add_image(reconvolved, name='reconvolved')
-    #     viewer.add_image(error, name='error')
-
-    # import napari
-    # with napari.gui_qt():
-    #     viewer = napari.Viewer()
-    #     viewer.add_image(psf_kernel, name='psf_kernel')
-    #     viewer.add_image(blurred_image, name='blurred_image')
-    #     viewer.add_image(image, name='image')
     lr_iterations = 30
 
     lr_deconvolved_image = restoration.richardson_lucy(
@@ -54,10 +34,12 @@ def demo(image):
 
     it = DeconvolvingImageTranslator(
         max_epochs=1000,
-        patience=100,
+        patience=500,
         learning_rate=0.01,
         normaliser_type='identity',
-        psf_kernel=psf_kernel,
+        psf_kernel=convolve2d(
+            psf_kernel, numpy.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]]) / 5, 'same'
+        ),
     )
 
     start = time.time()
@@ -91,6 +73,16 @@ def demo(image):
         psnr(image, aydin_denoised_and_deconvolved_image),
         ssim(aydin_denoised_and_deconvolved_image, image),
     )
+    print(
+        "aydin_denoised_lr_deconvolved:",
+        psnr(image, aydin_denoised_lr_deconvolved),
+        ssim(aydin_denoised_lr_deconvolved, image),
+    )
+    print(
+        "lr_deconvolved_image:",
+        psnr(image, lr_deconvolved_image),
+        ssim(lr_deconvolved_image, image),
+    )
 
     import napari
 
@@ -113,13 +105,5 @@ def demo(image):
     return ssim(aydin_denoised_and_deconvolved_image, image)
 
 
-image = characters()
+image = 1 - characters()
 demo(image)
-# image = examples_single.scheffer_fibsem.get_array()[0:1024, 0:1024]
-# ssims = []
-# for i in range(6):
-#     v = demo(image)
-#     ssims.append(v)
-# print(ssims)
-# print(median(ssims))
-# print(median(abs(x-median(ssims)) for x in ssims))

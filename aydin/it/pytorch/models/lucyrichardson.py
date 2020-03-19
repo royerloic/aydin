@@ -1,9 +1,11 @@
 import math
+from collections import Iterator
 
 import numpy
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch.nn import Parameter
 
 
 class LucyRichardson(nn.Module):
@@ -53,6 +55,9 @@ class LucyRichardson(nn.Module):
             im_deconv.clamp_(-1, 1)
 
         return im_deconv
+
+    def parameters(self, recurse: bool = ...) -> Iterator[Parameter]:
+        return chain
 
     def post_optimisation(self):
         with torch.no_grad():

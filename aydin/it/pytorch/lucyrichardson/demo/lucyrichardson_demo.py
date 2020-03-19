@@ -8,7 +8,7 @@ from scipy.signal import convolve2d
 from skimage import restoration
 from skimage.measure import compare_ssim as ssim
 
-from aydin.io.datasets import normalise, add_noise, characters
+from aydin.io.datasets import normalise, add_noise, characters, scafoldings
 from aydin.it.it_skipnet import SkipNetImageTranslator
 from aydin.it.pytorch.models.lucyrichardson import LucyRichardson
 from aydin.util.psf.simple_microscope_psf import SimpleMicroscopePSF
@@ -23,29 +23,41 @@ def demo(image):
     print(psf_xyz_array.shape)
     kernel_psf = psf_xyz_array[0]
 
+    dirac = numpy.zeros_like(kernel_psf)
+    dirac[8, 8] = 1
+    kernel_inverse_psf = dirac - kernel_psf
+
+    import napari
+
+    with napari.gui_qt():
+        viewer = napari.Viewer()
+        viewer.add_image(dirac, name='dirac')
+        viewer.add_image(kernel_inverse_psf, name='kernel_inverse_psf')
+        viewer.add_image(kernel_psf, name='kernel_psf')
+
     blurred_image = convolve2d(image, kernel_psf, 'same')
 
     noisy_and_blurred_image = add_noise(blurred_image)
 
-    module_deconvolved_image = (
-        LucyRichardson(kernel_psf=kernel_psf, iterations=10)(
-            torch.from_numpy(
-                noisy_and_blurred_image[numpy.newaxis, numpy.newaxis, ...]
-            ).float()
-        )
-        .detach()
-        .cpu()
-        .numpy()
-    )
+    # module_deconvolved_image = (
+    #     LucyRichardson(kernel_psf=kernel_psf, iterations=10)(
+    #         torch.from_numpy(
+    #             noisy_and_blurred_image[numpy.newaxis, numpy.newaxis, ...]
+    #         ).float()
+    #     )
+    #     .detach()
+    #     .cpu()
+    #     .numpy()
+    # )
 
-    it = SkipNetImageTranslator(max_epochs=512, patience=128)
-
-    it.train(noisy_and_blurred_image)
-    denoised = it.translate(noisy_and_blurred_image)
+    # it = SkipNetImageTranslator(max_epochs=512, patience=128)
+    #
+    # it.train(noisy_and_blurred_image)
+    # denoised = it.translate(noisy_and_blurred_image)
 
     lr_max_iterations = 60
 
-    input_image = denoised
+    input_image = noisy_and_blurred_image
     mask = numpy.random.rand(*image.shape) < 0.1
     masked_input_image = (
         input_image * ~mask
@@ -66,7 +78,7 @@ def demo(image):
     )
 
     self_supervised_loss = [
-        norm(i * mask - j * mask, 2) for i, j in zip(reconvolved_image, input_image)
+        norm((i - input_image) * mask, 1) for i in reconvolved_image
     ]
 
     print(self_supervised_loss)
@@ -95,48 +107,5 @@ def demo(image):
         viewer.add_image(image, name='image')
 
 
-def richardson_lucy_pytorch(image, psf, iterations=50, clip=True):
-
-    import torch.nn.functional as F
-    import torch
-
-    use_cuda = True
-    device_index = 0
-    device = torch.device(f"cuda:{device_index}" if use_cuda else "cpu")
-    # print(f"Using device: {device}")
-
-    image = image.astype(numpy.float)
-    psf = psf.astype(numpy.float)
-    im_deconv = numpy.full(image.shape, 0.5)
-    psf_mirror = psf[::-1, ::-1].copy()
-    psf_size = psf_mirror.shape[0]
-
-    image = (
-        torch.from_numpy(image[numpy.newaxis, numpy.newaxis, ...]).float().to(device)
-    )
-    psf = torch.from_numpy(psf[numpy.newaxis, numpy.newaxis, ...]).float().to(device)
-    psf_mirror = (
-        torch.from_numpy(psf_mirror[numpy.newaxis, numpy.newaxis, ...])
-        .float()
-        .to(device)
-    )
-    im_deconv = (
-        torch.from_numpy(im_deconv[numpy.newaxis, numpy.newaxis, ...])
-        .float()
-        .to(device)
-    )
-
-    for _ in range(iterations):
-        convolved = F.conv2d(im_deconv, psf, padding=(psf_size - 1) // 2)
-        relative_blur = image / convolved
-        im_deconv *= F.conv2d(relative_blur, psf_mirror, padding=(psf_size - 1) // 2)
-
-    if clip:
-        im_deconv[im_deconv > 1] = 1
-        im_deconv[im_deconv < -1] = -1
-
-    return im_deconv.detach().cpu().numpy().squeeze()
-
-
-image = characters()
+image = scafoldings()
 demo(image)
