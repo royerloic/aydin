@@ -10,7 +10,7 @@ class RonnebergerUNet(nn.Module):
         self,
         in_channels=1,
         n_classes=2,
-        depth=5,
+        depth=3,
         wf=6,
         padding=True,
         batch_norm=False,

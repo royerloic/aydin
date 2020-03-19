@@ -110,7 +110,7 @@ class ImageTranslatorBase(ABC):
     def train(
         self,
         input_image,
-        target_image,
+        target_image=None,
         batch_dims=None,
         train_valid_ratio=0.1,
         callback_period=3,
@@ -120,6 +120,9 @@ class ImageTranslatorBase(ABC):
             This has a lot of the machinery for batching and more...
         """
         with lsection(f"Training on image of dimension {str(input_image.shape)} ."):
+
+            if target_image is None:
+                target_image = input_image
 
             # Verify that input and target images have same shape:
             assert input_image.shape == target_image.shape

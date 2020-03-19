@@ -106,7 +106,7 @@ class SkipNetImageTranslator(ImageTranslatorBase):
     def train(
         self,
         input_image,
-        target_image,
+        target_image=None,
         batch_dims=None,
         train_valid_ratio=0.1,
         callback_period=3,

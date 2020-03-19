@@ -1,4 +1,5 @@
 import math
+from itertools import chain
 
 import numpy
 import torch
@@ -8,11 +9,11 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import Dataset
 
 from aydin.it.it_base import ImageTranslatorBase
-from aydin.it.pytorch.models.RonnebergerUnet import RonnebergerUNet
-from aydin.it.pytorch.models.convolution import PSFConvolutionLayer
+from aydin.it.pytorch.models.feedforward import FeedForward
+from aydin.it.pytorch.models.lucyrichardson import LucyRichardson
 from aydin.it.pytorch.models.masking import Masking
+from aydin.it.pytorch.models.psf_convolution import PSFConvolutionLayer
 from aydin.it.pytorch.models.skipnet import SkipNet2D
-from aydin.it.pytorch.optimisers.esadam import ESAdam
 from aydin.util.log.log import lsection, lprint
 from aydin.util.nd import extract_tiles
 
@@ -70,10 +71,11 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
         self.l1_weight_regularisation = 1e-9
         self.l2_weight_regularisation = 1e-9
         self.input_noise = 0.001
-        self.reload_best_model_period = 128
+        self.reload_best_model_period = max_epochs
         self.reduce_lr_patience = 128
         self.reduce_lr_factor = 0.5
-        self.model_class = SkipNet2D
+        self.denoising_model_class = SkipNet2D
+        self.deconvolution_model_class = FeedForward  # LucyRichardson
         self.optimiser_class = Adam
         self.max_tile_size = 1024
 
@@ -112,7 +114,7 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
     def train(
         self,
         input_image,
-        target_image,
+        target_image=None,
         batch_dims=None,
         train_valid_ratio=0.1,
         callback_period=3,
@@ -207,28 +209,52 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
             pin_memory=True,
         )
 
-        # Model
-        self.denoisedeconv_model = self.model_class(1, 1)
+        # Denoising Model
+        self.denoise_model = self.denoising_model_class(1, 1).to(self.device)
+        if self.deconvolution_model_class is LucyRichardson:
+            self.deconv_model = self.deconvolution_model_class(
+                self.psf_kernel, 1, 1
+            ).to(self.device)
+        else:
+            self.deconv_model = self.deconvolution_model_class(1, 1).to(self.device)
         # lprint(f"Model: {self.model}")
 
-        number_of_parameters = sum(
-            p.numel() for p in self.denoisedeconv_model.parameters() if p.requires_grad
+        number_of_parameters_denoise = sum(
+            p.numel() for p in self.denoise_model.parameters() if p.requires_grad
         )
-        lprint(f"Number of trainable parameters in model: {number_of_parameters}")
+        lprint(
+            f"Number of trainable parameters in denoise model: {number_of_parameters_denoise}"
+        )
+        number_of_parameters_deconv = sum(
+            p.numel() for p in self.deconv_model.parameters() if p.requires_grad
+        )
+        lprint(
+            f"Number of trainable parameters in deconv model: {number_of_parameters_deconv}"
+        )
+        lprint(
+            f"Total number of trainable parameters in model: {number_of_parameters_deconv+number_of_parameters_denoise}"
+        )
 
         self.psfconv = PSFConvolutionLayer(self.psf_kernel).to(self.device)
-        self.model = nn.Sequential(self.denoisedeconv_model, self.psfconv)
-        self.masked_model = Masking(self.model).to(self.device)
+        self.masked_denoise_model = Masking(self.denoise_model).to(self.device)
 
-        # Optimiser:
         lprint(f"Optimiser class: {self.optimiser_class}")
         lprint(f"Learning rate : {self.learning_rate}")
-        optimizer = self.optimiser_class(
-            self.model.parameters(),
+
+        # Denoising optimiser:
+        denoising_optimizer = self.optimiser_class(
+            self.denoise_model.parameters(),
             lr=self.learning_rate,
             weight_decay=self.l2_weight_regularisation,
         )
-        lprint(f"Optimiser: {optimizer}")
+        lprint(f"Optimiser: {denoising_optimizer}")
+
+        deconv_optimizer = self.optimiser_class(
+            self.deconv_model.parameters(),
+            lr=self.learning_rate,
+            weight_decay=self.l2_weight_regularisation,
+        )
+        lprint(f"Optimiser: {deconv_optimizer}")
 
         # Loss functon:
         loss_function = nn.L1Loss()
@@ -240,7 +266,13 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
             lprint(f"Training/Validation loss: L1")
 
         # Start training:
-        self._train_loop(train_data_loader, val_data_loader, optimizer, loss_function)
+        self._train_loop(
+            train_data_loader,
+            val_data_loader,
+            denoising_optimizer,
+            deconv_optimizer,
+            loss_function,
+        )
 
     def _get_dataset(
         self,
@@ -299,21 +331,33 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
         else:
             return None
 
-    def _train_loop(self, train_data_loader, val_data_loader, optimizer, loss_function):
+    def _train_loop(
+        self,
+        train_data_loader,
+        val_data_loader,
+        denoising_optimizer,
+        deconv_optimizer,
+        loss_function,
+    ):
 
         # Scheduler:
-        scheduler = ReduceLROnPlateau(
-            optimizer,
+        denoising_scheduler = ReduceLROnPlateau(
+            denoising_optimizer,
+            'min',
+            factor=self.reduce_lr_factor,
+            verbose=True,
+            patience=self.reduce_lr_patience,
+        )
+        deconv_scheduler = ReduceLROnPlateau(
+            deconv_optimizer,
             'min',
             factor=self.reduce_lr_factor,
             verbose=True,
             patience=self.reduce_lr_patience,
         )
 
-        self.model.training = True
-
         best_loss = math.inf
-        best_model_state_dict = None
+        best_denoise_model_state_dict, best_deconv_model_state_dict = None, None
         patience_counter = 0
 
         with lsection(f"Training loop:"):
@@ -326,7 +370,8 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
                 with lsection(f"Epoch {epoch}:"):
 
                     # Train:
-                    self.model.train()
+                    self.denoise_model.train()
+                    self.deconv_model.train()
                     train_loss_value = 0
                     iteration = 0
                     for i, (input_images, target_images, mask_images) in enumerate(
@@ -348,7 +393,7 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
                                 input_images += training_noise
 
                         # Clear gradients w.r.t. parameters
-                        optimizer.zero_grad()
+                        denoising_optimizer.zero_grad()
 
                         input_images_gpu = input_images.to(
                             self.device, non_blocking=True
@@ -361,81 +406,73 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
                         )
 
                         # Forward pass:
-                        output_images_gpu = self.masked_model(input_images_gpu)
+                        denoised_images_gpu = self.masked_denoise_model(
+                            input_images_gpu
+                        )
 
-                        blind_spot_mask = self.masked_model.get_mask()
+                        blind_spot_mask = self.masked_denoise_model.get_mask()
 
-                        import napari
-
-                        with napari.gui_qt():
-                            viewer = napari.Viewer()
-                            viewer.add_image(
-                                to_numpy(input_images_gpu), name='input_images_gpu'
-                            )
-                            viewer.add_image(
-                                to_numpy(output_images_gpu), name='output_images_gpu'
-                            )
-                            viewer.add_image(
-                                to_numpy(blind_spot_mask), name='blind_spot_mask'
-                            )
-                            viewer.add_image(
-                                to_numpy(validation_mask_images_gpu),
-                                name='validation_mask_images_gpu',
-                            )
-                            viewer.add_image(
-                                to_numpy(
-                                    output_images_gpu * (1 - validation_mask_images_gpu)
-                                ),
-                                name='output_images_gpu * (1 - validation_mask_images_gpu)',
-                            )
-                            viewer.add_image(
-                                to_numpy(
-                                    output_images_gpu
-                                    * (1 - validation_mask_images_gpu)
-                                    * blind_spot_mask
-                                ),
-                                name='output_images_gpu * (1 - validation_mask_images_gpu) * blind_spot_mask',
-                            )
-
-                        # training loss:
-                        training_loss = loss_function(
-                            output_images_gpu
+                        # denoise loss:
+                        denoise_loss = loss_function(
+                            denoised_images_gpu
                             * (1 - validation_mask_images_gpu)
                             * blind_spot_mask,
                             target_images_gpu
                             * (1 - validation_mask_images_gpu)
                             * blind_spot_mask,
                         ).mean()
-                        loss = training_loss
-
-                        # Weight regularisation:
-                        if self.l1_weight_regularisation > 0:
-                            weight_regularization_loss = 0
-                            total_number_of_parameters = 0
-                            for param in self.model.parameters():
-                                total_number_of_parameters += torch.numel(param)
-                                weight_regularization_loss += torch.norm(param, 0.99)
-                            weight_regularization_loss /= total_number_of_parameters
-                            loss += (
-                                self.l1_weight_regularisation
-                                * weight_regularization_loss
-                            )
 
                         # Back-propagation:
-                        loss.backward()
+                        denoise_loss.backward(retain_graph=True)
+
+                        # Updating parameters
+                        denoising_optimizer.step()
+
+                        # zero deconv gradients
+                        deconv_optimizer.zero_grad()
+
+                        # deconvolution:
+                        deconvolved_images: torch.Tensor = self.deconv_model(
+                            denoised_images_gpu
+                        )
+                        deconvolved_images.clamp_(0, 1)
+                        blurred_deconvolved_images = self.psfconv(deconvolved_images)
+
+                        # if epoch%20==0:
+                        #     import napari
+                        #     with napari.gui_qt():
+                        #         viewer = napari.Viewer()
+                        #         viewer.add_image(to_numpy(denoised_images_gpu), name='denoised_images_gpu* ~blind_spot_mask')
+                        #         viewer.add_image(to_numpy(deconvolved_images), name='deconvolved_images')
+                        #         viewer.add_image(to_numpy(blurred_deconvolved_images), name='blurred_deconvolved_images')
+
+                        # Deconvolution loss:
+                        deconv_loss = (
+                            loss_function(
+                                blurred_deconvolved_images
+                                * (1 - validation_mask_images_gpu),
+                                denoised_images_gpu * (1 - validation_mask_images_gpu),
+                            ).mean()
+                            + 0.000001 * torch.norm(deconvolved_images, 1).mean()
+                        )
+
+                        # Back-propagation:
+                        deconv_loss.backward()
+
+                        # Updating parameters
+                        deconv_optimizer.step()
+                        # self.deconv_model.post_optimisation()
 
                         # update training loss for whole image:
-                        train_loss_value += training_loss.item()
+                        train_loss_value += denoise_loss.item() + deconv_loss.item()
                         iteration += 1
 
                     train_loss_value /= iteration
                     lprint(f"Training loss value: {train_loss_value}")
 
-                    # Updating parameters
-                    optimizer.step()
-
                     # Validate:
-                    self.model.eval()
+                    self.denoise_model.eval()
+                    self.deconv_model.eval()
                     val_loss_value = 0
                     iteration = 0
                     for i, (input_images, target_images, mask_images) in enumerate(
@@ -454,11 +491,17 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
 
                         with torch.no_grad():
                             # Forward pass:
-                            output_images_gpu = self.model(input_images_gpu)
+                            denoised_images_gpu = self.masked_denoise_model(
+                                input_images_gpu
+                            )
+                            deconvolved_images_gpu = self.deconv_model(
+                                denoised_images_gpu
+                            )
+                            blured_images_gpu = self.psfconv(deconvolved_images_gpu)
 
                             # loss:
                             loss = loss_function(
-                                output_images_gpu * validation_mask_images_gpu,
+                                blured_images_gpu * validation_mask_images_gpu,
                                 target_images_gpu * validation_mask_images_gpu,
                             )
 
@@ -473,7 +516,8 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
                     lprint(f"Validation loss value: {val_loss_value}")
 
                     # Learning rate schedule:
-                    scheduler.step(val_loss_value)
+                    denoising_scheduler.step(val_loss_value)
+                    deconv_scheduler.step(val_loss_value)
 
                     if val_loss_value < best_loss:
                         lprint(f"## New best val loss!")
@@ -484,10 +528,18 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
                         best_loss = val_loss_value
                         from collections import OrderedDict
 
-                        best_model_state_dict = {
-                            k: v.to('cpu') for k, v in self.model.state_dict().items()
-                        }
-                        best_model_state_dict = OrderedDict(best_model_state_dict)
+                        best_denoise_model_state_dict = OrderedDict(
+                            {
+                                k: v.to('cpu')
+                                for k, v in self.denoise_model.state_dict().items()
+                            }
+                        )
+                        best_deconv_model_state_dict = OrderedDict(
+                            {
+                                k: v.to('cpu')
+                                for k, v in self.deconv_model.state_dict().items()
+                            }
+                        )
 
                     else:
                         # No improvement:
@@ -498,10 +550,15 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
 
                         if (
                             epoch % max(1, self.reload_best_model_period) == 0
-                            and best_model_state_dict
+                            and best_denoise_model_state_dict
                         ):  # epoch % 5 == 0 and
                             lprint(f"Reloading best model to date!")
-                            self.model.load_state_dict(best_model_state_dict)
+                            self.denoise_model.load_state_dict(
+                                best_denoise_model_state_dict
+                            )
+                            self.deconv_model.load_state_dict(
+                                best_deconv_model_state_dict
+                            )
 
                         if patience_counter > self.patience:
                             lprint(f"Early stopping!")
@@ -514,7 +571,8 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
                         break
 
         lprint(f"Reloading best model to date!")
-        self.model.load_state_dict(best_model_state_dict)
+        self.denoise_model.load_state_dict(best_denoise_model_state_dict)
+        self.deconv_model.load_state_dict(best_deconv_model_state_dict)
 
     def _translate(self, input_image, batch_dims=None):
         """
@@ -523,10 +581,23 @@ class DeconvolvingImageTranslator(ImageTranslatorBase):
         :param batch_dims: batch dimensions
         :return:
         """
-        self.model.training = False
+
+        return self.denoise_and_deconvolve(input_image)
+
+    def denoise(self, input_image):
         input_image = torch.Tensor(input_image[numpy.newaxis, numpy.newaxis, ...])
         input_image = input_image.to(self.device)
-        inferred_image: torch.Tensor = self.denoisedeconv_model(input_image)
+        inferred_image: torch.Tensor = self.denoise_model(input_image)
+        inferred_image = inferred_image.detach().cpu().numpy()
+        inferred_image = inferred_image.squeeze()
+        return inferred_image
+
+    def denoise_and_deconvolve(self, input_image):
+        input_image = torch.Tensor(input_image[numpy.newaxis, numpy.newaxis, ...])
+        input_image = input_image.to(self.device)
+        inferred_image: torch.Tensor = self.deconv_model(
+            self.denoise_model(input_image)
+        ).clamp_(0, 1)
         inferred_image = inferred_image.detach().cpu().numpy()
         inferred_image = inferred_image.squeeze()
         return inferred_image

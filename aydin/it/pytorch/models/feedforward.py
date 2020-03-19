@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class FeedForward(nn.Module):
@@ -8,9 +9,6 @@ class FeedForward(nn.Module):
         super().__init__()
 
         self.convs = []
-        self.norms = []
-        self.nonlins = []
-        # nn.Dropout2d(
 
         for i in range(0, depth - 1):
             in_channels = n_input_channel if i == 0 else nic
@@ -22,17 +20,7 @@ class FeedForward(nn.Module):
             )
             self.convs.append(conv)
 
-            norm = nn.InstanceNorm2d(nic)
-            self.norms.append(norm)
-
-            relu = nn.Hardtanh(inplace=True)
-            self.nonlins.append(relu)
-
-            #
-
         self.convs = nn.ModuleList(self.convs)
-        self.norms = nn.ModuleList(self.norms)
-        self.nonlins = nn.ModuleList(self.nonlins)
         self.final_conv = nn.Conv2d(nic, n_output_channel, kernel_size=1, padding=0)
 
     def forward(self, x0):
@@ -40,13 +28,16 @@ class FeedForward(nn.Module):
         x = x0
 
         xn = []
-        for conv, norm, nonlin in zip(self.convs, self.norms, self.nonlins):
-            x = nonlin(norm(conv(x)))
+        for conv in self.convs:
+            x = conv(x)
+            x = F.leaky_relu(x, negative_slope=0.01)
             xn.append(x)
 
         y = xn[0]
+        s = 1
         for x in xn[1:]:
-            y = y + x
+            y = y + s * x
+            # s*=0.5
 
         y = self.final_conv(y)
 

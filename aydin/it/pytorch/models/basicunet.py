@@ -17,7 +17,7 @@ class BasicConvBlock(nn.Module):
         return x
 
 
-class BasicUnet(nn.Module):
+class BasicUNet(nn.Module):
     def __init__(self, n_input_channel=1, n_output_channel=1, nic=8, residual=True):
         super().__init__()
 
