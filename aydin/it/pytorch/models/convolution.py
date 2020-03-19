@@ -5,9 +5,7 @@ from torch import nn
 
 
 class PSFConvolutionLayer(nn.Module):
-    def __init__(
-        self, kernel_psf, num_channels_in=1, num_channels_out=1,
-    ):
+    def __init__(self, kernel_psf, num_channels_in=1, num_channels_out=1):
         kernel_size = kernel_psf.shape[0]
         super(PSFConvolutionLayer, self).__init__()
         self.seq = nn.Sequential(

@@ -21,6 +21,7 @@ from aydin.io.datasets import (
     characters,
     examples_single,
     fibsem,
+    scafoldings,
 )
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
@@ -115,5 +116,7 @@ newyork_image = newyork()
 demo(newyork_image, "newyork")
 characters_image = characters()
 demo(characters_image, "characters")
+scafoldings_image = scafoldings()
+demo(scafoldings_image, "scafoldings")
 fibsem_image = fibsem()
 demo(fibsem_image, "fibsem")

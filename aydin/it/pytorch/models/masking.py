@@ -6,9 +6,7 @@ import torch.nn.functional as F
 
 
 class Masking(nn.Module):
-    def __init__(
-        self, module,
-    ):
+    def __init__(self, module):
         super().__init__()
 
         self.module: nn.Module = module

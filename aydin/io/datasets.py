@@ -55,8 +55,12 @@ def pollen():
     return examples_single.generic_pollen.get_array()
 
 
+def scafoldings():
+    return examples_single.generic_scafoldings.get_array()
+
+
 def characters():
-    return examples_single.characters.get_array()
+    return examples_single.generic_characters.get_array()
 
 
 def fibsem(full=False):
@@ -81,9 +85,10 @@ class examples_single(Enum):
     generic_newyork = ('15Nuu_NU3iNuoPRmpFbrGIY0VT0iCmuKu', 'newyork.png')
     generic_lizard = ('1GUc6jy5QH5DaiUskCrPrf64YBOLzT6j1', 'lizard.png')
     generic_pollen = ('1S0o2NWtD1shB5DfGRIqOFxTLOi8cHQD-', 'pollen.png')
+    generic_scafoldings = ('1ZiWhHnkuaQH-BS8B71y00wkN1Ylo38nY', 'scafoldings.png')
 
     # Characters (2D monochrome, inverted):
-    characters = ('1ZWkHFI2iddKa9qv6tft4QZlCoDS5fLMK', 'characters.jpg')
+    generic_characters = ('1ZWkHFI2iddKa9qv6tft4QZlCoDS5fLMK', 'characters.jpg')
 
     # XYC (RGB)
     celldiv = ('120w8j2XgJgwD0w0nqX-Gd0C4Qi_gJ8oO', 'Example-noisy1.png')
