@@ -63,6 +63,10 @@ def characters():
     return examples_single.generic_characters.get_array()
 
 
+def andromeda():
+    return examples_single.generic_andromeda.get_array()
+
+
 def fibsem(full=False):
     array = examples_single.scheffer_fibsem.get_array()
     if not full:
@@ -86,6 +90,7 @@ class examples_single(Enum):
     generic_lizard = ('1GUc6jy5QH5DaiUskCrPrf64YBOLzT6j1', 'lizard.png')
     generic_pollen = ('1S0o2NWtD1shB5DfGRIqOFxTLOi8cHQD-', 'pollen.png')
     generic_scafoldings = ('1ZiWhHnkuaQH-BS8B71y00wkN1Ylo38nY', 'scafoldings.png')
+    generic_andromeda = ('1Zl3DtkwUlZSbvpxGILexiIoLW1JOdJh8', 'andromeda.png')
 
     # Characters (2D monochrome, inverted):
     generic_characters = ('1ZWkHFI2iddKa9qv6tft4QZlCoDS5fLMK', 'characters.jpg')

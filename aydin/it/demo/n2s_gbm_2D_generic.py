@@ -22,6 +22,7 @@ from aydin.io.datasets import (
     examples_single,
     fibsem,
     scafoldings,
+    andromeda,
 )
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
@@ -118,5 +119,7 @@ characters_image = characters()
 demo(characters_image, "characters")
 scafoldings_image = scafoldings()
 demo(scafoldings_image, "scafoldings")
+andromeda_image = andromeda()
+demo(andromeda_image, "andromeda")
 fibsem_image = fibsem()
 demo(fibsem_image, "fibsem")
