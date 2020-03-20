@@ -151,7 +151,7 @@ def test_it_cnn_random_patching():
         num_layer=2,
         batch_norm='instance',
         max_epochs=max_epochs,
-        tile_size=64,
+        patch_size=64,
     )
     it.train(noisy, noisy)
     denoised = it.translate(noisy, tile_size=image_width)
