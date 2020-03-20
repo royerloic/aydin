@@ -5,6 +5,7 @@ from os.path import join
 import jsonpickle
 
 from aydin.analysis.correlation import correlation_distance
+from aydin.it.exceptions.base import ArrayShapeDoesNotMatchError
 from aydin.normaliser.identity import IdentityNormaliser
 from aydin.normaliser.minmax import MinMaxNormaliser
 from aydin.normaliser.base import NormaliserBase
@@ -127,7 +128,10 @@ class ImageTranslatorBase(ABC):
         with lsection(f"Training on image of dimension {str(input_image.shape)} ."):
 
             # Verify that input and target images have same shape:
-            assert input_image.shape == target_image.shape
+            if input_image.shape != target_image.shape:
+                raise ArrayShapeDoesNotMatchError(
+                    'Input and Output image shape does not match!'
+                )
 
             # If we use the same image for input and ouput then we are in a self-supervised setting:
             self.self_supervised = input_image is target_image
@@ -162,7 +166,6 @@ class ImageTranslatorBase(ABC):
                 )
 
             # Calibrates normaliser(s):
-
             self.input_normaliser.calibrate(input_image)
             if not self.self_supervised:
                 self.target_normaliser.calibrate(target_image)
@@ -172,11 +175,14 @@ class ImageTranslatorBase(ABC):
                 batch_dims = (False,) * len(input_image.shape)
 
             # Sanity check when not default batch dims:
-            assert len(batch_dims) == len(input_image.shape)
+            if len(batch_dims) != len(input_image.shape):
+                raise ArrayShapeDoesNotMatchError(
+                    'The length of batch_dims and input_image dimensions are different.'
+                )
 
             # 'Last minute' normalisation:
             normalised_input_image = self.input_normaliser.normalise(input_image)
-            if not self.self_supervised:
+            if self.self_supervised:
                 normalised_target_image = normalised_input_image
             else:
                 normalised_target_image = self.target_normaliser.normalise(target_image)
@@ -215,9 +221,12 @@ class ImageTranslatorBase(ABC):
             # set default batch_dim value:
             if batch_dims is None:
                 batch_dims = (False,) * len(input_image.shape)
-
-            # Sanity check when not default batch dims:
-            assert len(batch_dims) == len(input_image.shape)
+            elif len(batch_dims) != len(
+                input_image.shape
+            ):  # Sanity check when using not-default batch dims:
+                raise ArrayShapeDoesNotMatchError(
+                    'batch_dims does not have same number of dimensions with input_image!'
+                )
 
             # Input image shape:
             shape = input_image.shape

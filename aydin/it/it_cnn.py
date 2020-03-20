@@ -5,6 +5,7 @@ from os.path import join
 
 import numpy
 
+from aydin.it.exceptions.base import ArrayShapeDoesNotMatchError
 from aydin.providers.opencl.opencl_provider import OpenCLProvider
 
 provider = OpenCLProvider()
@@ -26,7 +27,6 @@ from aydin.it.cnn.util.callbacks import (
     CNNCallback,
 )  # noqa: E402
 
-# from tensorflow.keras.models import model_from_json
 from aydin.it.cnn.util.data_util import (
     random_sample_patches,
     sim_model_size,
@@ -58,7 +58,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         initial_units=8,
         batch_norm=None,
         activation='ReLU',
-        tile_size=None,
+        patch_size=None,
         total_num_patches=None,
         adoption_rate=0.5,
         mask_shape=(9, 9),
@@ -83,7 +83,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         :param num_layer: number of layers
         :param initial_units: number of filters in the 1st layer of CNN
         :param batch_norm; type of batch normalization (e.g. batch, instance)
-        :param tile_size: tile size for patch sample e.g. 64 or (64, 64)
+        :param patch_size: Size for patch sample e.g. 64 or (64, 64)
         :param total_num_patches: total number of patches for training
         :param adoption_rate: % of random patches will be used for training, the rest will be discarded
         :param mask_shape: mask shape for masking architecture; has to be the same size as the spatial dimension.
@@ -113,7 +113,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.initial_units = initial_units
         self.batch_norm = batch_norm
         self.activation_fun = activation
-        self.tile_size = tile_size
+        self.patch_size = patch_size
         self.total_num_patches = total_num_patches
         self.adoption_rate = adoption_rate
         self.mask_shape = mask_shape
@@ -141,8 +141,8 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.rot_batch_size = None
         self.img_val = None
         self.val_marker = None
-        self.batch_processing = (
-            False  # whether validation data is chosen from pixels or slices
+        self._batch_processing = (
+            False  # whether validation data is chosen from pixels or patches
         )
 
     def save(self, path: str):
@@ -156,7 +156,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         return frozen
 
     def save_cnn(self, path: str):
-        # super().save(path)
+        model_json = None
         if self.model is not None:
             # serialize model to JSON:
             keras_model_file = join(path, 'keras_model.txt')
@@ -169,7 +169,6 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             self.model.save_weights(keras_model_file)
         return model_json
 
-    # TODO: We exclude certain fields from saving:
     def __getstate__(self):
         state = self.__dict__.copy()
         # exclude fields below that should/cannot be saved properly:
@@ -177,11 +176,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         del state['reduce_learning_rate']
         del state['checkpoint']
         del state['model']
-        # del state['input_normaliser']
-        # del state['target_normaliser']
         return state
-
-    # TODO: SPECIAL please fix the naming of the file for the weights here and in nn.
 
     def _load_internals(self, path: str):
         with lsection(f"Loading 'classic' image translator from {path}"):
@@ -211,9 +206,6 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 rf = 3 if num_layer == 0 else 18 * 2 ** (num_layer - 1) - 4
 
         return int(rf // 2)
-
-    def limit_epochs(self, max_epochs: int) -> int:
-        return max_epochs
 
     def stop_training(self):
         self.stop_fitting = True
@@ -256,8 +248,9 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.batch_dim_upto3 = numpy.logical_or(
             self.batch_dim_upto3, batch_dim_permuted
         )
-        self.image_shape_upto3 = image.shape
+
         # Denoised images will be first reshaped to self.image_sahpe_upto3
+        self.image_shape_upto3 = image.shape
 
         # Collapse batch dims
         batch_dim_size = numpy.prod(
@@ -299,25 +292,33 @@ class ImageTranslatorCNN(ImageTranslatorBase):
 
     def train(
         self,
-        input_image,  # dimension (batch, H, W, C)
-        target_image,  # dimension (batch, H, W, C)
+        input_image,
+        target_image,
         batch_dims=None,
         train_valid_ratio=0.1,
         callback_period=3,
     ):
+        """
+
+        :param input_image: dimension (batch, H, W, C)
+        :param target_image: dimension (batch, H, W, C)
+        :param batch_dims:
+        :param train_valid_ratio:
+        :param callback_period:
+        :return:
+        """
         # Check for supervised & batch_input
         if input_image is target_image:
             self.supervised = False
 
         # set default batch_dim value:
-        image_dimension = len(input_image.shape)
         if batch_dims:
-            assert len(batch_dims) == image_dimension, (
-                'The size of batch_dims and that of input image dimensions are different. '
-                'Please make sure them are same.'
-            )
+            if len(batch_dims) != len(input_image.shape):
+                raise ArrayShapeDoesNotMatchError(
+                    'The length of batch_dims and input_image dimensions are different.'
+                )
         else:
-            batch_dims = (False,) * image_dimension
+            batch_dims = (False,) * len(input_image.shape)
         # batch_dims is the very first (original to the raw input) dimension indicator.
 
         # Check if there're dims with size 1.
@@ -333,13 +334,13 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.input_dim = input_image.shape[1:]
 
         # Compute tile size from batch size
-        if self.tile_size is None:
-            self.tile_size = self.batch2tile_size(
+        if self.patch_size is None:
+            self.patch_size = self.batch2tile_size(
                 self.batch_size,
                 shiftconv=True if 'shiftconv' in self.training_architecture else False,
             )
-            self.tile_size = min(
-                self.tile_size,
+            self.patch_size = min(
+                self.patch_size,
                 self.get_receptive_field_radius(
                     self.num_layer,
                     shiftconv=True
@@ -347,35 +348,36 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     else False,
                 ),
             )
-            assert (
-                self.tile_size >= 2 ** self.num_layer
-            ), 'Number of layers is too large.'
-            self.tile_size = self.tile_size - self.tile_size % 2 ** self.num_layer
+            if self.patch_size < 2 ** self.num_layer:
+                raise ValueError('Number of layers is too large for given patch size.')
+            self.patch_size = self.patch_size - self.patch_size % 2 ** self.num_layer
         else:
             if 'shiftconv' in self.training_architecture:
-                assert numpy.unique(self.tile_size).size == 1, (
-                    'shiftconv only accepts tile_size with same length in all dimensions.'
-                    'Please make tile_size with the same length in all dimensions. '
-                )
-        lprint(f'Patch size: {self.tile_size}')
+                if numpy.unique(self.patch_size).size != 1:
+                    raise ValueError(
+                        'shiftconv only accepts patch_size with same length in all dimensions.'
+                    )
+        lprint(f'Patch size: {self.patch_size}')
 
-        # Check if the tile_size is appropriate for the model
-        if type(self.tile_size) == int:
-            self.tile_size = [self.tile_size for _ in self.input_dim[:-1]]
+        # Check if the patch_size is appropriate for the model
+        if type(self.patch_size) == int:
+            self.patch_size = [self.patch_size for _ in self.input_dim[:-1]]
 
-        tile_size = numpy.array(self.tile_size)
+        patch_size = numpy.array(self.patch_size)
 
-        assert (
-            tile_size.max() / 2 ** self.num_layer > 0
-        ).any(), f'Tile size is too small. The largest dimension of tile size has to be >= {2 ** self.num_layer}.'
-        assert (
-            tile_size[-2:] % 2 ** self.num_layer == 0
-        ).any(), f'Tile sizes on XY plane have to be multiple of 2^{self.num_layer}'
+        if (patch_size.max() / (2 ** self.num_layer) <= 0).any():
+            raise ValueError(
+                f'Tile size is too small. The largest dimension of tile size has to be >= {2 ** self.num_layer}.'
+            )
+        if (patch_size[-2:] % 2 ** self.num_layer != 0).any():
+            raise ValueError(
+                f'Tile sizes on XY plane have to be multiple of 2^{self.num_layer}'
+            )
 
         # Determine total number of patches
         if self.total_num_patches is None:
             self.total_num_patches = max(
-                1024, input_image.size / numpy.prod(self.tile_size)
+                1024, input_image.size / numpy.prod(self.patch_size)
             )  # compare with the input image size
             self.total_num_patches = min(
                 self.total_num_patches, 10240
@@ -386,9 +388,8 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 + self.batch_size
             )
         else:
-            assert (
-                self.total_num_patches >= self.batch_size
-            ), 'total_num_patches has to be larger than batch_size. Please make a larger value for total_num_patches.'
+            if self.total_num_patches < self.batch_size:
+                raise ValueError('total_num_patches has to be larger than batch_size.')
             self.total_num_patches = (
                 self.total_num_patches
                 - (self.total_num_patches % self.batch_size)
@@ -399,8 +400,8 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         lprint("Max mem: ", provider.device.global_mem_size)
         lprint(f"Keras batch size for training: {self.batch_size}")
 
-        # Determine how to create validation data
-        if 1024 > input_image.size / numpy.prod(self.tile_size):
+        # Decide whether to use validation pixels or patches
+        if 1024 > input_image.size / numpy.prod(self.patch_size):
             with lsection(
                 f'Validation data will be created by monitoring {train_valid_ratio} of the pixels in the input data.'
             ):
@@ -411,26 +412,26 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             with lsection(
                 f'Validation data will be created by monitoring {train_valid_ratio} of the patches/images in the input data.'
             ):
-                self.batch_processing = True
+                self._batch_processing = True
 
         # Tile input and target image
-        if self.tile_size is not None:
+        if self.patch_size is not None:
             with lsection(f'Random patch sampling...'):
                 lprint(f'Total number of patches: {self.total_num_patches}')
                 input_patch_idx = random_sample_patches(
                     input_image,
-                    self.tile_size,
+                    self.patch_size,
                     self.total_num_patches,
                     self.adoption_rate,
                 )
 
-                if self.batch_processing:
-                    img_train_patch = []
+                img_train_patch = []
+
+                if self._batch_processing:
                     for i in input_patch_idx:
                         img_train_patch.append(input_image[i])
                     img_train = numpy.vstack(img_train_patch)
                 else:
-                    img_train_patch = []
                     img_val_patch = []
                     marker_patch = []
                     for i in input_patch_idx:
@@ -457,43 +458,47 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             lprint(
                 'Shift convolution will be turned off automatically because supervised learning was selected.'
             )
-        elif (
-            'shiftconv' == self.training_architecture and self.supervised is False
-        ):  # TODO: refactor asserts
-            assert (
+        elif 'shiftconv' == self.training_architecture and self.supervised is False:
+            # TODO: Hirofumi what is going on the conditional below :D
+            if (
                 numpy.mod(
                     img_train.shape[1:][:-1],
                     numpy.repeat(2 ** self.num_layer, len(img_train.shape[1:][:-1])),
                 )
-                == 0
-            ).all(), 'Each dimension of the input image has to be a multiple of 2^num_layer for shiftconv. '
+                != 0
+            ).any():
+                raise ValueError(
+                    'Each dimension of the input image has to be a multiple of 2^num_layer for shiftconv.'
+                )
             lprint(
-                'Model will be generated for self-supervised learning with shift convlution scheme.'
+                'Model will be generated for self-supervised learning with shift convolution scheme.'
             )
-            assert (
-                numpy.diff(img_train.shape[1:][:2]) == 0
-            ), 'Make sure the input image shape is cubic as shiftconv mode involves rotation.'
-            assert (
+            if numpy.diff(img_train.shape[1:][:2]) != 0:
+                raise ValueError(
+                    'Make sure the input image shape is cubic as shiftconv mode involves rotation.'
+                )
+            if (
                 numpy.mod(
                     img_train.shape[1:][:-1],
                     numpy.repeat(
                         2 ** (self.num_layer - 1), len(img_train.shape[1:][:-1])
                     ),
                 )
-                == 0
-            ).all(), (
-                'Each dimension of the input image has to be a multiple of '
-                '2^(num_layer-1) as shiftconv mode involvs pixel shift. '
-            )
+                != 0
+            ).any():
+                raise ValueError(
+                    'Each dimension of the input image has to be a multiple of '
+                    '2^(num_layer-1) as shiftconv mode involvs pixel shift. '
+                )
         else:
             lprint(
                 'Model will be generated for self-supervised with moving-blind spot scheme.'
             )
 
-        if len(self.tile_size) == 2:
+        if len(self.patch_size) == 2:
             self.model = UNet2DModel(
                 img_train.shape[1:],
-                rot_batch_size=self.rot_batch_size,  # img_train.shape[0],
+                rot_batch_size=self.rot_batch_size,
                 num_lyr=self.num_layer,
                 initial_unit=self.initial_units,
                 normalization=self.batch_norm,
@@ -509,7 +514,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 pooling_mode=self.pooling_mode,
                 interpolation=self.interpolation,
             )
-        elif len(self.tile_size) == 3:
+        elif len(self.patch_size) == 3:
             self.model = Unet3DModel(
                 img_train.shape[1:],
                 initial_unit=self.initial_units,
@@ -539,6 +544,13 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             target_image,
             batch_dims=batch_dims,
             callback_period=callback_period,
+        )
+
+    def retrain(self, input_image, target_image, training_architecture=None):
+        self.training_architecture = training_architecture
+
+        self.train(
+            input_image, target_image,
         )
 
     def _train(
@@ -598,7 +610,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                             for x_m in self.monitoring_datasets
                         ]
                         inferred_images = [
-                            y_m.reshape(self.tile_size)
+                            y_m.reshape(self.patch_size)
                             for (image, y_m) in zip(
                                 self.monitor.monitoring_images,
                                 predicted_monitoring_datasets,
@@ -675,7 +687,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 callbacks.append(self.reduce_learning_rate)
                 callbacks.append(self.checkpoint)
 
-            if self.batch_processing:
+            if self._batch_processing:
                 tv_ratio = train_valid_ratio
             else:
                 tv_ratio = 0
@@ -696,7 +708,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 ).astype(int)
                 validation_data = [input_image, self.img_val]
 
-                if self.batch_processing:
+                if self._batch_processing:
                     val_split = self.total_num_patches * train_valid_ratio
                     val_split = (
                         val_split - (val_split % self.batch_size) + self.batch_size
@@ -722,7 +734,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             elif 'checkerbox' in self.training_architecture:
                 self.model.fit(
                     maskedgen(
-                        self.tile_size,
+                        self.patch_size,
                         self.mask_shape,
                         input_image,
                         self.batch_size,
@@ -737,14 +749,14 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     verbose=self.verbose,
                     callbacks=callbacks,
                     validation_data=maskedgen(
-                        self.tile_size,
+                        self.patch_size,
                         self.mask_shape,
                         input_image,
                         self.batch_size,
                         train_valid_ratio=train_valid_ratio,
                         subset='validation',
                     )
-                    if self.batch_processing
+                    if self._batch_processing
                     else val_data_generator(
                         input_image,
                         self.img_val,
@@ -778,7 +790,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                         train_valid_ratio=train_valid_ratio,
                         subset='validation',
                     )
-                    if self.batch_processing
+                    if self._batch_processing
                     else val_data_generator(
                         input_image,
                         self.img_val,
@@ -800,10 +812,10 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         max_margin=32,
     ):
         if batch_dims:
-            assert len(batch_dims) == len(input_image.shape), (
-                'The size of batch_dims and that of input image dimensions are different. '
-                'Please make sure them are same.'
-            )
+            if len(batch_dims) != len(input_image.shape):
+                raise ValueError(
+                    'The length of batch_dims and that of input image dimensions are different.'
+                )
         else:
             batch_dims = (False,) * len(input_image.shape)
         # batch_dims is the very first (original to the raw input) dimension indicator.

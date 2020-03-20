@@ -27,8 +27,8 @@ def collect_feature_2d(
     image_y, image_x = image_gpu.shape
     feature_y, feature_x = feature_gpu.shape
 
-    assert image_x == feature_x
-    assert image_y == feature_y
+    if image_x != feature_x or image_y != feature_y:
+        raise ValueError('Dimensions of image_gpu and feature_gpu has to be same')
 
     # exclude_center = exclude_center  and abs(dx) <= rx and abs(dy) <= ry
 

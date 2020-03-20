@@ -30,9 +30,8 @@ def collect_feature_3d(
     image_z, image_y, image_x = image_gpu.shape
     feature_z, feature_y, feature_x = feature_gpu.shape
 
-    assert image_x == feature_x
-    assert image_y == feature_y
-    assert image_z == feature_z
+    if image_x != feature_x or image_y != feature_y or image_z != feature_z:
+        raise ValueError('Dimensions of image_gpu and feature_gpu has to be same')
 
     if optimisation and nx + px == 1 and ny + py == 1 and nz + pz == 1:
         program_code = f"""
