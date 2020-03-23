@@ -18,13 +18,13 @@ def demo(image, max_epochs=100):
     # CNN based Image translation:
     # input_dim only includes H, W, C; number of images is not included
     it = ImageTranslatorCNN(
-        training_architecture='random',
+        training_architecture='checkran',
         num_layer=4,
         initial_units=8,
         batch_norm='instance',  # None,  #
         activation='ReLU',
-        tile_size=128,
-        mask_shape=3,
+        patch_size=128,
+        mask_shape=(5, 5),
         total_num_patches=400,
         batch_size=40,
         max_epochs=max_epochs,
