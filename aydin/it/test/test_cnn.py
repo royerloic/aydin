@@ -132,6 +132,47 @@ def test_it_cnn_random_light():
     # assert psnr_denoised > 20 and ssim_denoised > 0.7
 
 
+def test_it_cnn_checkran_light():
+    """
+        Demo for self-supervised denoising using camera image with synthetic noise
+    """
+    start = time.time()
+    max_epochs = 2
+    image_width = 200
+    image = normalise(camera())
+    H0, W0 = (numpy.array(image.shape) - image_width) // 2
+    image = image[H0 : H0 + image_width, W0 : W0 + image_width]
+    noisy = add_noise(image)
+    noisy = numpy.expand_dims(numpy.expand_dims(noisy, axis=2), axis=0)
+
+    it = ImageTranslatorCNN(
+        training_architecture='checkran',
+        num_layer=2,
+        mask_shape=(3, 3),
+        batch_norm='instance',
+        max_epochs=max_epochs,
+    )
+    it.train(noisy, noisy)
+    denoised = it.translate(noisy, tile_size=image_width)
+    denoised = denoised.reshape(image.shape)
+
+    image = numpy.clip(image, 0, 1)
+    noisy = numpy.clip(noisy.reshape(image.shape), 0, 1)
+    denoised = numpy.clip(denoised, 0, 1)
+
+    psnr_noisy = psnr(noisy, image)
+    ssim_noisy = ssim(noisy, image)
+    print("noisy", psnr_noisy, ssim_noisy)
+
+    psnr_denoised = psnr(denoised, image)
+    ssim_denoised = ssim(denoised, image)
+    print("denoised", psnr_denoised, ssim_denoised)
+
+    stop = time.time()
+    print(f"Total elapsed time: {stop-start} ")
+    assert psnr_denoised > psnr_noisy and ssim_denoised > ssim_noisy
+
+
 @pytest.mark.heavy
 def test_it_cnn_random_patching():
     """

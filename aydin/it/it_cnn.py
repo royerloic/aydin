@@ -51,7 +51,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self,
         normaliser_type: str = 'percentile',
         monitor=None,
-        training_architecture=None,  # 'shiftconv' or 'random' or 'checkerbox'
+        training_architecture=None,
         model_architecture='unet',
         batch_size=32,
         num_layer=5,
@@ -61,7 +61,8 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         patch_size=None,
         total_num_patches=None,
         adoption_rate=0.5,
-        mask_shape=(9, 9),
+        mask_shape: tuple = (9, 9),
+        random_mask_ratio=0.1,
         EStop_patience=None,
         ReduceLR_patience=None,
         min_delta=0,
@@ -78,7 +79,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
     ):
         """
         :param monitor: an object for monitoring training (only for GUI)
-        :param training_architecture: 'shiftconv' or 'checkerbox' or 'randommasking' architecture
+        :param training_architecture: 'shiftconv' or 'checkerbox' or 'randommasking' or 'checkran' architecture
         :param batch_size: batch size for training
         :param num_layer: number of layers
         :param initial_units: number of filters in the 1st layer of CNN
@@ -87,6 +88,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         :param total_num_patches: total number of patches for training
         :param adoption_rate: % of random patches will be used for training, the rest will be discarded
         :param mask_shape: mask shape for masking architecture; has to be the same size as the spatial dimension.
+        :param random_mask_ratio: probability of masked pixels in random masking approach
         :param EStop_patience: patience for early stopping
         :param ReduceLR_patience: patience for reduced learn rate
         :param min_delta: 1e-6; minimum delta to determine if loss is dropping
@@ -117,6 +119,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         self.total_num_patches = total_num_patches
         self.adoption_rate = adoption_rate
         self.mask_shape = mask_shape
+        self.random_mask_ratio = random_mask_ratio
         self.EStop_patience = EStop_patience
         self.ReduceLR_patience = ReduceLR_patience
         self.min_delta = min_delta
@@ -459,7 +462,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 'Shift convolution will be turned off automatically because supervised learning was selected.'
             )
         elif 'shiftconv' == self.training_architecture and self.supervised is False:
-            # TODO: Hirofumi what is going on the conditional below :D
+            # TODO: Hirofumi what is going on the conditional below :D  <-- check input dim is compatible w/ shiftconv
             if (
                 numpy.mod(
                     img_train.shape[1:][:-1],
@@ -633,12 +636,10 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     self.last_callback_time_sec = current_time_sec
 
             # Early stopping patience:
-            early_stopping_patience = self.EStop_patience
-            lprint(f"Early stopping patience: {early_stopping_patience}")
+            lprint(f"Early stopping patience: {self.EStop_patience}")
 
             # Effective LR patience:
-            effective_lr_patience = self.ReduceLR_patience
-            lprint(f"Effective LR patience: {effective_lr_patience}")
+            lprint(f"Effective LR patience: {self.ReduceLR_patience}")
             lprint(f'Batch size: {self.batch_size}')
 
             # Here is the list of callbacks:
@@ -652,7 +653,15 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 self,
                 monitor='loss' if self.supervised else 'val_loss',
                 min_delta=self.min_delta,
-                patience=early_stopping_patience,
+                patience=self.EStop_patience,
+                mode='auto',
+                restore_best_weights=True,
+            )
+            self.early_stopping1 = EarlyStopping(
+                self,
+                monitor='loss' if self.supervised else 'val_loss',
+                min_delta=self.min_delta,
+                patience=self.EStop_patience,
                 mode='auto',
                 restore_best_weights=True,
             )
@@ -663,9 +672,18 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 min_delta=self.min_delta,
                 factor=0.1,
                 verbose=1,
-                patience=effective_lr_patience,
+                patience=self.ReduceLR_patience,
                 mode='auto',
                 min_lr=1e-8,
+            )
+            self.reduce_learning_rate1 = ReduceLROnPlateau(
+                monitor='loss' if self.supervised else 'val_loss',
+                min_delta=self.min_delta,
+                factor=self.reduce_lr_factor,
+                verbose=1,
+                patience=self.ReduceLR_patience,
+                mode='auto',
+                min_lr=self.learn_rate * self.reduce_lr_factor ** 2,
             )
 
             if self.checkpoint is None:
@@ -680,12 +698,11 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     verbose=1,
                     save_best_only=True,
                 )
-
                 # Add callbacks to the list:
                 callbacks.append(self.keras_callback)
+                callbacks.append(self.checkpoint)
                 callbacks.append(self.early_stopping)
                 callbacks.append(self.reduce_learning_rate)
-                callbacks.append(self.checkpoint)
 
             if self._batch_processing:
                 tv_ratio = train_valid_ratio
@@ -739,6 +756,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                         input_image,
                         self.batch_size,
                         train_valid_ratio=tv_ratio,
+                        replace_by=self.replace_by,
                         subset='training',
                     ),
                     epochs=self.max_epochs,
@@ -755,6 +773,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                         self.batch_size,
                         train_valid_ratio=train_valid_ratio,
                         subset='validation',
+                        replace_by=self.replace_by,
                     )
                     if self._batch_processing
                     else val_data_generator(
@@ -773,8 +792,9 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     randmaskgen(
                         input_image,
                         self.batch_size,
-                        p=train_valid_ratio,
+                        p=self.random_mask_ratio,
                         train_valid_ratio=tv_ratio,
+                        replace_by=self.replace_by,
                         subset='training',
                     ),
                     epochs=self.max_epochs,
@@ -786,9 +806,10 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     validation_data=randmaskgen(
                         input_image,
                         self.batch_size,
-                        p=train_valid_ratio,
+                        p=self.random_mask_ratio,
                         train_valid_ratio=train_valid_ratio,
                         subset='validation',
+                        replace_by=self.replace_by,
                     )
                     if self._batch_processing
                     else val_data_generator(
@@ -799,6 +820,87 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                         train_valid_ratio=train_valid_ratio,
                     ),
                     validation_steps=numpy.floor(
+                        self.total_num_patches * train_valid_ratio / self.batch_size
+                    ).astype(int),
+                )
+            elif 'checkran' in self.training_architecture:
+                # train with checkerbox first
+                lprint('Starting with checkerbox masking.')
+                self.history = self.model.fit(
+                    maskedgen(
+                        self.patch_size,
+                        self.mask_shape,
+                        input_image,
+                        self.batch_size,
+                        train_valid_ratio=tv_ratio,
+                        subset='training',
+                        replace_by=self.replace_by,
+                    ),
+                    epochs=self.max_epochs,
+                    steps_per_epoch=numpy.prod(self.mask_shape)
+                    * numpy.ceil(
+                        input_image.shape[0] * (1 - tv_ratio) / self.batch_size
+                    ).astype(int),
+                    verbose=self.verbose,
+                    callbacks=callbacks[:2]
+                    + [self.early_stopping1, self.reduce_learning_rate1],
+                    validation_data=maskedgen(
+                        self.patch_size,
+                        self.mask_shape,
+                        input_image,
+                        self.batch_size,
+                        train_valid_ratio=train_valid_ratio,
+                        replace_by=self.replace_by,
+                        subset='validation',
+                    )
+                    if self._batch_processing
+                    else val_data_generator(
+                        input_image,
+                        self.img_val,
+                        self.val_marker,
+                        self.batch_size,
+                        train_valid_ratio=train_valid_ratio,
+                    ),
+                    validation_steps=numpy.ceil(
+                        input_image.shape[0] * train_valid_ratio / self.batch_size
+                    ).astype(int),
+                )
+
+                # Then switch to random masking
+                lprint('Switched to random masking.')
+                self.model.fit(
+                    randmaskgen(
+                        input_image,
+                        self.batch_size,
+                        p=self.random_mask_ratio,
+                        train_valid_ratio=tv_ratio,
+                        replace_by=self.replace_by,
+                        subset='training',
+                    ),
+                    epochs=self.max_epochs,
+                    steps_per_epoch=numpy.ceil(
+                        self.total_num_patches * (1 - tv_ratio) / self.batch_size
+                    ).astype(int),
+                    verbose=self.verbose,
+                    callbacks=callbacks,
+                    initial_epoch=self.history.epoch[-1] + 1,
+                    validation_data=randmaskgen(
+                        input_image,
+                        self.batch_size,
+                        p=self.random_mask_ratio,
+                        train_valid_ratio=train_valid_ratio,
+                        subset='validation',
+                        replace_by=self.replace_by,
+                    )
+                    if self._batch_processing
+                    else val_data_generator(
+                        input_image,
+                        self.img_val,
+                        self.val_marker,
+                        self.batch_size,
+                        train_valid_ratio=train_valid_ratio,
+                    ),
+                    validation_steps=numpy.ceil(
                         self.total_num_patches * train_valid_ratio / self.batch_size
                     ).astype(int),
                 )

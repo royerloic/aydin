@@ -52,9 +52,9 @@ def maskedgen(
     :param mask_shape: mask shape e.g. (3, 3)
     :param image: input image
     :param batch_size: batch size
-    :param p: possibility of masked pixels on random masking approach
-    :param replace_by: Masked pixels are replaced by random number or 0 or median values.
     :param train_valid_ratio: ratio of the data will be used for validation
+    :param replace_by: Masked pixels are replaced by random number or 0 or median values.
+    :param subset: indication of whether to generate training or validation data
     """
 
     val_ind = np.zeros(image.shape[0], dtype=bool)
@@ -118,8 +118,10 @@ def randmaskgen(
     Mask generator. Returns a generator.
     :param image: input image
     :param batch_size: batch size
-    :param replace_by: Masked pixels are replaced by random number or 0 or median values.
     :param p: possibility of masked pixels on random masking approach
+    :param train_valid_ratio: train validation ratio
+    :param replace_by: Masked pixels are replaced by random number or 0 or median values.
+    :param subset: indication of whether to generate training or validation data
     :param reduce_p: if True, p will dynamically change
     :param p_reduce_rate: reduction rate of p
     :param p_reduce_patience: number of epochs before reducing p
