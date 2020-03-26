@@ -82,6 +82,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
         batch_dims=None,
         train_valid_ratio=0.1,
         callback_period=3,
+        force_jinv=False,
     ):
 
         # Resetting regressor:
@@ -93,6 +94,7 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             batch_dims=batch_dims,
             train_valid_ratio=train_valid_ratio,
             callback_period=callback_period,
+            force_jinv=force_jinv,
         )
 
     def stop_training(self):
@@ -150,7 +152,13 @@ class ImageTranslatorClassic(ImageTranslatorBase):
             return inferred_image
 
     def _train(
-        self, input_image, target_image, batch_dims, train_valid_ratio, callback_period
+        self,
+        input_image,
+        target_image,
+        batch_dims,
+        train_valid_ratio,
+        callback_period,
+        force_jinv,
     ):
 
         with lsection(
@@ -159,7 +167,10 @@ class ImageTranslatorClassic(ImageTranslatorBase):
 
             # Compute features on main training data:
             x = self._compute_features(
-                input_image, batch_dims, self.self_supervised, self.self_supervised
+                input_image,
+                batch_dims,
+                self.self_supervised,
+                self.self_supervised or force_jinv,
             )
             y = target_image.reshape(-1)
             # if self.debug:

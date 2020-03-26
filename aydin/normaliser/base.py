@@ -79,13 +79,16 @@ class NormaliserBase(ABC):
         :param array: array to normaliser
         :type array: ndarray
         """
-        if array.dtype != numpy.float32:
-            array = array.astype(numpy.float32)
 
         if self.rmin is not None and self.rmax is not None:
             min_value = numpy.float32(self.rmin)
             max_value = numpy.float32(self.rmax)
             epsilon = numpy.float32(self.epsilon)
+
+            if array.dtype != numpy.float32:
+                array = array.astype(numpy.float32, copy=True)
+            else:
+                array = numpy.copy(array)
 
             try:
                 # We perform operation in-place with numexpr if possible:
@@ -112,6 +115,10 @@ class NormaliserBase(ABC):
         :param array: array to denormalise
         :type array: ndarray
         """
+
+        # we copy the array to preserve the original array:
+        array = numpy.copy(array)
+
         if self.rmin is not None and self.rmax is not None:
 
             min_value = numpy.float32(self.rmin)

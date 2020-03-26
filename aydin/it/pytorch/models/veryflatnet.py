@@ -58,7 +58,6 @@ class VeryFlatNet(nn.Module):
         return self.convp5.parameters()
 
     def forward(self, x):
-
         y = self.convfeatures(x)
 
         features = F.relu(torch.cat((x, y), 1))

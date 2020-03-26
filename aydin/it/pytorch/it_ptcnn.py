@@ -1,14 +1,17 @@
 import math
+from collections import OrderedDict
+from itertools import chain
 
 import numpy
 import torch
 from torch import nn
-from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import Dataset
 
 from aydin.it.it_base import ImageTranslatorBase
-from aydin.it.pytorch.models.skipnet import SkipNet2D
+from aydin.it.pytorch.models.jidcnet import JIDCnet2D
+from aydin.it.pytorch.models.masking import Masking
+from aydin.it.pytorch.optimisers.esadam import ESAdam
 from aydin.util.log.log import lsection, lprint
 from aydin.util.nd import extract_tiles
 
@@ -17,9 +20,9 @@ def to_numpy(tensor):
     return tensor.clone().detach().cpu().numpy()
 
 
-class SkipNetImageTranslator(ImageTranslatorBase):
+class PTCNNImageTranslator(ImageTranslatorBase):
     """
-        Inverting image translator
+        Pytorch-based CNN image translator
     """
 
     def __init__(
@@ -29,7 +32,9 @@ class SkipNetImageTranslator(ImageTranslatorBase):
         patience_epsilon=0.0,
         learning_rate=0.01,
         batch_size=64,
-        loss='l1',
+        model_class=JIDCnet2D,
+        denoise_loss='l1',
+        deconv_loss='l1',
         normaliser_type='percentile',
         balance_training_data=None,
         keep_ratio=1,
@@ -39,7 +44,7 @@ class SkipNetImageTranslator(ImageTranslatorBase):
         device_index=0,
     ):
         """
-        Constructs a CNN image translator using the pytorch deep learning library.
+        Constructs an image translator using the pytorch deep learning library.
 
         :param normaliser_type: normaliser type
         :param balance_training_data: balance data ? (limits number training entries per target value histogram bin)
@@ -56,20 +61,26 @@ class SkipNetImageTranslator(ImageTranslatorBase):
         self.patience_epsilon = patience_epsilon
         self.learning_rate = learning_rate
         self.batch_size = batch_size
-        self.loss = loss
+        self.denoise_loss = denoise_loss
+        self.deconv_loss = deconv_loss
         self.max_voxels_for_training = max_voxels_for_training
         self.keep_ratio = keep_ratio
         self.balance_training_data = balance_training_data
 
+        self.model_class = model_class
+
+        # These parametres are 'private'  we don't expect the user to modify them,
+        # but since they are fields they can be modified if need be after construction...
         self.l1_weight_regularisation = 1e-9
         self.l2_weight_regularisation = 1e-9
-        self.input_noise = 0.001
-        self.reload_best_model_period = 128
-        self.reduce_lr_patience = 128
+        self.training_noise = 0.001
+        self.reload_best_model_period = max_epochs  # //2
+        self.reduce_lr_patience = 128  # TODO: consider patience//2
         self.reduce_lr_factor = 0.5
-        self.model_class = SkipNet2D
-        self.optimiser_class = Adam
-        self.max_tile_size = 1024
+        self.masking = False
+        self.enforce_blind_spot = True
+        self.optimiser_class = ESAdam
+        self.max_tile_size = 1024  # TODO: adjust based on available memory
 
         self._stop_training_flag = False
 
@@ -100,8 +111,13 @@ class SkipNetImageTranslator(ImageTranslatorBase):
         return state
 
     def get_receptive_field_radius(self, nb_dim):
-        # TODO: estimate receptive field radius
-        return 10
+        try:
+            return self.model.receptive_field_radius
+        except AttributeError:
+            lprint(
+                f"Model does not provide a receptive field radius, we will use a default value"
+            )
+            return 32
 
     def train(
         self,
@@ -110,6 +126,7 @@ class SkipNetImageTranslator(ImageTranslatorBase):
         batch_dims=None,
         train_valid_ratio=0.1,
         callback_period=3,
+        force_jinv=False,
     ):
         super().train(
             input_image,
@@ -130,6 +147,7 @@ class SkipNetImageTranslator(ImageTranslatorBase):
         batch_dims,
         train_valid_ratio=0.1,
         callback_period=3,
+        force_jinv=False,
     ):
         self._stop_training_flag = False
 
@@ -150,88 +168,80 @@ class SkipNetImageTranslator(ImageTranslatorBase):
         lprint(f"Validation voxel coordinates: {val_voxels}")
 
         # Training Tile size:
-        train_tile_size = tile_size
-        lprint(f"Train Tile dimensions: {train_tile_size}")
+        lprint(f"Train Tile dimensions: {tile_size}")
 
         # Prepare Training Dataset:
-        train_dataset = self._get_dataset(
+        dataset = self._get_dataset(
             input_image,
             target_image,
             self.self_supervised,
-            tilesize=train_tile_size,
+            tilesize=tile_size,
             mode='grid',
-            is_training_data=True,
             validation_voxels=val_voxels,
         )
-        lprint(f"Number tiles for training: {len(train_dataset)}")
-
-        # Validation Tile size:
-        val_tile_size = tile_size
-        lprint(f"Validation Tile dimensions: {val_tile_size}")
-
-        # Prepare Validation dataset:
-        val_dataset = self._get_dataset(
-            input_image,
-            target_image,
-            self.self_supervised,
-            tilesize=val_tile_size,
-            mode='grid',
-            is_training_data=False,
-            validation_voxels=val_voxels,
-        )
-        lprint(f"Number tiles for training: {len(val_dataset)}")
+        lprint(f"Number tiles for training: {len(dataset)}")
 
         # Training Data Loader:
         # num_workers = max(3, os.cpu_count() // 2)
         num_workers = 0  # faster if data is already in memory...
         lprint(f"Number of workers for loading training/validation data: {num_workers}")
-        train_data_loader = torch.utils.data.DataLoader(
-            train_dataset,
+        data_loader = torch.utils.data.DataLoader(
+            dataset,
             batch_size=1,  # self.batch_size,
             shuffle=True,
             num_workers=num_workers,
             pin_memory=True,
         )
 
-        val_data_loader = torch.utils.data.DataLoader(
-            val_dataset,
-            batch_size=1,
-            shuffle=True,
-            num_workers=num_workers,
-            pin_memory=True,
-        )
-
         # Model
-        self.model = self.model_class(1, 1)
-        # lprint(f"Model: {self.model}")
+        self.model = self.model_class(1, 1).to(self.device)
 
-        self.model = self.model.to(self.device)
         number_of_parameters = sum(
             p.numel() for p in self.model.parameters() if p.requires_grad
         )
-        lprint(f"Number of trainable parameters in model: {number_of_parameters}")
+        lprint(
+            f"Number of trainable parameters in {self.model_class} model: {number_of_parameters}"
+        )
 
-        # Optimiser:
+        if self.masking:
+            self.masked_model = Masking(self.model).to(self.device)
+
         lprint(f"Optimiser class: {self.optimiser_class}")
         lprint(f"Learning rate : {self.learning_rate}")
+
+        # Optimiser:
         optimizer = self.optimiser_class(
-            self.model.parameters(),
+            chain(self.model.parameters()),
+            start_noise_level=self.training_noise,
             lr=self.learning_rate,
             weight_decay=self.l2_weight_regularisation,
         )
         lprint(f"Optimiser: {optimizer}")
 
-        # Loss functon:
+        # Denoise loss functon:
         loss_function = nn.L1Loss()
-        if self.loss.lower() == 'l2':
+        if self.denoise_loss.lower() == 'l2':
             lprint(f"Training/Validation loss: L2")
-            loss_function = nn.MSELoss(reduction='none')
-        elif self.loss.lower() == 'l1':
-            loss_function = nn.L1Loss(reduction='none')
+            if self.masking:
+                loss_function = (
+                    lambda u, v, m: (u - v) ** 2 if m is None else ((u - v) * m) ** 2
+                )
+            else:
+                loss_function = lambda u, v: (u - v) ** 2
+
+        elif self.denoise_loss.lower() == 'l1':
+            if self.masking:
+                loss_function = (
+                    lambda u, v, m: torch.abs(u - v)
+                    if m is None
+                    else torch.abs((u - v) * m)
+                )
+            else:
+                loss_function = lambda u, v: torch.abs(u - v)
             lprint(f"Training/Validation loss: L1")
 
         # Start training:
-        self._train_loop(train_data_loader, val_data_loader, optimizer, loss_function)
+        self._train_loop(data_loader, optimizer, loss_function)
 
     def _get_dataset(
         self,
@@ -240,7 +250,6 @@ class SkipNetImageTranslator(ImageTranslatorBase):
         self_supervised: bool,
         tilesize: int,
         mode: str,
-        is_training_data: bool,
         validation_voxels,
     ):
         class _Dataset(Dataset):
@@ -265,8 +274,8 @@ class SkipNetImageTranslator(ImageTranslatorBase):
                     )
                 )
 
-                mask_image = numpy.zeros_like(input_image, dtype=numpy.bool)
-                mask_image[validation_voxels[0], validation_voxels[1]] = True
+                mask_image = numpy.zeros_like(input_image)
+                mask_image[validation_voxels[0], validation_voxels[1]] = 1
 
                 self.mask_tiles = extract_tiles(
                     mask_image,
@@ -290,7 +299,7 @@ class SkipNetImageTranslator(ImageTranslatorBase):
         else:
             return None
 
-    def _train_loop(self, train_data_loader, val_data_loader, optimizer, loss_function):
+    def _train_loop(self, data_loader, optimizer, loss_function):
 
         # Scheduler:
         scheduler = ReduceLROnPlateau(
@@ -301,9 +310,7 @@ class SkipNetImageTranslator(ImageTranslatorBase):
             patience=self.reduce_lr_patience,
         )
 
-        self.model.training = True
-
-        best_loss = math.inf
+        best_val_loss_value = math.inf
         best_model_state_dict = None
         patience_counter = 0
 
@@ -316,108 +323,134 @@ class SkipNetImageTranslator(ImageTranslatorBase):
             for epoch in range(self.max_epochs):
                 with lsection(f"Epoch {epoch}:"):
 
-                    # Train:
-                    self.model.train()
                     train_loss_value = 0
+                    val_loss_value = 0
                     iteration = 0
-                    for i, (input_images, target_images, mask_images) in enumerate(
-                        train_data_loader
+                    for i, (input_images, target_images, val_mask_images) in enumerate(
+                        data_loader
                     ):
+                        lprint(f"index: {i}, shape:{input_images.shape}")
 
-                        lprint(
-                            f"index: {i}, input shape:{input_images.shape}, target shape:{target_images.shape}"
+                        input_images_gpu = input_images.to(
+                            self.device, non_blocking=True
+                        )
+                        target_images_gpu = target_images.to(
+                            self.device, non_blocking=True
+                        )
+                        validation_mask_images_gpu = val_mask_images.to(
+                            self.device, non_blocking=True
                         )
 
                         # Adding training noise to input:
-                        if self.input_noise > 0:
+                        if self.training_noise > 0:
                             with torch.no_grad():
-                                alpha = self.input_noise / (
+                                alpha = self.training_noise / (
                                     1 + (10000 * epoch / self.max_epochs)
                                 )
                                 lprint(f"Training noise level: {alpha}")
                                 training_noise = alpha * torch.randn_like(input_images)
-                                input_images += training_noise
+                                input_images_gpu += training_noise.to(
+                                    input_images_gpu.device
+                                )
 
                         # Clear gradients w.r.t. parameters
                         optimizer.zero_grad()
 
-                        input_images_gpu = input_images.to(
-                            self.device, non_blocking=True
-                        )
-                        target_images_gpu = target_images.to(
-                            self.device, non_blocking=True
-                        )
-                        mask_images_gpu = mask_images.to(self.device, non_blocking=True)
-
                         # Forward pass:
-                        output_images_gpu = self.model(input_images_gpu)
+                        self.model.train()
+                        if self.masking:
+                            translated_images_gpu = self.masked_model(input_images_gpu)
+                        else:
+                            translated_images_gpu = self.model(input_images_gpu)
 
-                        # training loss:
-                        training_loss = loss_function(
-                            output_images_gpu * (~mask_images_gpu),
-                            target_images_gpu * (~mask_images_gpu),
-                        ).mean()
-                        loss = training_loss
+                        # apply forward model:
+                        forward_model_images_gpu = self._forward_model(
+                            translated_images_gpu
+                        )
 
-                        # Weight regularisation:
-                        if self.l1_weight_regularisation > 0:
-                            weight_regularization_loss = 0
-                            total_number_of_parameters = 0
-                            for param in self.model.parameters():
-                                total_number_of_parameters += torch.numel(param)
-                                weight_regularization_loss += torch.norm(param, 0.99)
-                            weight_regularization_loss /= total_number_of_parameters
-                            loss += (
-                                self.l1_weight_regularisation
-                                * weight_regularization_loss
+                        # validation masking:
+                        u = forward_model_images_gpu * (1 - validation_mask_images_gpu)
+                        v = target_images_gpu * (1 - validation_mask_images_gpu)
+
+                        # translation loss (per voxel):
+                        if self.masking:
+                            mask = self.masked_model.get_mask()
+                            translation_loss = loss_function(u, v, mask)
+                        else:
+                            translation_loss = loss_function(u, v)
+
+                        # loss value (for all voxels):
+                        translation_loss_value = translation_loss.mean()
+
+                        # Additional losses:
+                        additional_loss_value = self._additional_losses(
+                            translated_images_gpu, forward_model_images_gpu
+                        )
+                        if additional_loss_value is not None:
+                            translation_loss_value += additional_loss_value
+
+                        # backpropagation:
+                        translation_loss_value.backward()
+
+                        # Updating parameters
+                        optimizer.step()
+
+                        # post optimisation -- if needed:
+                        self.model.post_optimisation()
+
+                        # If self-supervised then enforce blind-spot:
+                        if self.self_supervised and self.enforce_blind_spot:
+                            try:
+                                self.model.enforce_blind_spot()
+                                lprint(
+                                    f"Post optimisation corrections applied to model"
+                                )
+                            except AttributeError:
+                                lprint(
+                                    f"NO post optimisation corrections applied to model"
+                                )
+
+                        # update training loss_deconvolution for whole image:
+                        train_loss_value += translation_loss_value.item()
+                        iteration += 1
+
+                        # Validation:
+                        with torch.no_grad():
+                            # Forward pass:
+                            self.model.eval()
+                            if self.masking:
+                                translated_images_gpu = self.masked_model(
+                                    input_images_gpu
+                                )
+                            else:
+                                translated_images_gpu = self.model(input_images_gpu)
+
+                            # apply forward model:
+                            forward_model_images_gpu = self._forward_model(
+                                translated_images_gpu
                             )
 
-                        # Back-propagation:
-                        loss.backward()
+                            # validation masking:
+                            u = forward_model_images_gpu * validation_mask_images_gpu
+                            v = target_images_gpu * validation_mask_images_gpu
 
-                        # update training loss for whole image:
-                        train_loss_value += training_loss.item()
-                        iteration += 1
+                            # translation loss (per voxel):
+                            if self.masking:
+                                translation_loss = loss_function(u, v, None)
+                            else:
+                                translation_loss = loss_function(u, v)
+
+                            # loss values:
+                            translation_loss_value = (
+                                translation_loss.mean().cpu().item()
+                            )
+
+                            # update validation loss_deconvolution for whole image:
+                            val_loss_value += translation_loss_value
+                            iteration += 1
 
                     train_loss_value /= iteration
                     lprint(f"Training loss value: {train_loss_value}")
-
-                    # Updating parameters
-                    optimizer.step()
-                    self.model.post_optimisation()
-
-                    # Validate:
-                    self.model.eval()
-                    val_loss_value = 0
-                    iteration = 0
-                    for i, (input_images, target_images, mask_images) in enumerate(
-                        val_data_loader
-                    ):
-
-                        input_images_gpu = input_images.to(
-                            self.device, non_blocking=True
-                        )
-                        target_images_gpu = target_images.to(
-                            self.device, non_blocking=True
-                        )
-                        mask_images_gpu = mask_images.to(self.device, non_blocking=True)
-
-                        with torch.no_grad():
-                            # Forward pass:
-                            output_images_gpu = self.model(input_images_gpu)
-
-                            # loss:
-                            loss = loss_function(
-                                output_images_gpu * mask_images_gpu,
-                                target_images_gpu * mask_images_gpu,
-                            )
-
-                            # Select validation voxels:
-                            loss = loss.mean().cpu()
-
-                            # update validation loss for whole image:
-                            val_loss_value += loss.item()
-                            iteration += 1
 
                     val_loss_value /= iteration
                     lprint(f"Validation loss value: {val_loss_value}")
@@ -425,46 +458,59 @@ class SkipNetImageTranslator(ImageTranslatorBase):
                     # Learning rate schedule:
                     scheduler.step(val_loss_value)
 
-                    if val_loss_value < best_loss:
+                    if val_loss_value < best_val_loss_value:
                         lprint(f"## New best val loss!")
-                        if val_loss_value < best_loss - self.patience_epsilon:
+                        if val_loss_value < best_val_loss_value - self.patience_epsilon:
                             lprint(f"## Good enough to reset patience!")
                             patience_counter = 0
 
-                        best_loss = val_loss_value
-                        from collections import OrderedDict
+                        # Update best val loss value:
+                        best_val_loss_value = val_loss_value
 
-                        best_model_state_dict = {
-                            k: v.to('cpu') for k, v in self.model.state_dict().items()
-                        }
-                        best_model_state_dict = OrderedDict(best_model_state_dict)
+                        # Save model:
+                        best_model_state_dict = OrderedDict(
+                            {k: v.to('cpu') for k, v in self.model.state_dict().items()}
+                        )
 
                     else:
-                        # No improvement:
-                        lprint(
-                            f"No improvement of validation loss. patience = {patience_counter}/{self.patience} "
-                        )
-                        patience_counter += 1
-
                         if (
                             epoch % max(1, self.reload_best_model_period) == 0
                             and best_model_state_dict
-                        ):  # epoch % 5 == 0 and
-                            lprint(f"Reloading best model to date!")
+                        ):
+                            lprint(f"Reloading best models to date!")
                             self.model.load_state_dict(best_model_state_dict)
 
                         if patience_counter > self.patience:
                             lprint(f"Early stopping!")
                             break
 
-                    lprint(f"## Best loss value: {best_loss}")
+                        # No improvement:
+                        lprint(
+                            f"No improvement of validation losses, patience = {patience_counter}/{self.patience} "
+                        )
+                        patience_counter += 1
+
+                    lprint(f"## Best val loss: {best_val_loss_value}")
 
                     if self._stop_training_flag:
                         lprint(f"Training interupted!")
                         break
 
-        lprint(f"Reloading best model to date!")
+        lprint(f"Reloading best models to date!")
         self.model.load_state_dict(best_model_state_dict)
+
+        if self.self_supervised and self.enforce_blind_spot:
+            try:
+                self.model.fill_blind_spot()
+                lprint(f"Blind spot filled!")
+            except AttributeError:
+                lprint(f"Blind spot NOT filled! (no method available)")
+
+    def _additional_losses(self, translated_image, forward_model_image):
+        return None
+
+    def _forward_model(self, input):
+        return input
 
     def _translate(self, input_image, batch_dims=None):
         """
@@ -473,10 +519,17 @@ class SkipNetImageTranslator(ImageTranslatorBase):
         :param batch_dims: batch dimensions
         :return:
         """
-        self.model.training = False
         input_image = torch.Tensor(input_image[numpy.newaxis, numpy.newaxis, ...])
         input_image = input_image.to(self.device)
         inferred_image: torch.Tensor = self.model(input_image)
         inferred_image = inferred_image.detach().cpu().numpy()
         inferred_image = inferred_image.squeeze()
         return inferred_image
+
+    def visualise_weights(self):
+        try:
+            self.model.visualise_weights()
+        except AttributeError:
+            lprint(
+                f"Method 'visualise_weights()' unavailable, cannot visualise weights. "
+            )

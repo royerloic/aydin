@@ -5,6 +5,10 @@ from os.path import join, exists
 
 import gdown
 import numpy
+import skimage
+from scipy.ndimage import binary_dilation
+from scipy.signal import convolve
+from scipy.signal import convolve2d
 from skimage.exposure import rescale_intensity
 from skimage.util import random_noise
 
@@ -12,6 +16,7 @@ from skimage.util import random_noise
 from aydin.io import io
 from aydin.io.folders import get_cache_folder
 from aydin.util.log.log import lprint
+from aydin.util.psf.simple_microscope_psf import SimpleMicroscopePSF
 
 datasets_folder = join(get_cache_folder(), 'data')
 
@@ -29,11 +34,27 @@ def normalise(image):
 
 def add_noise(image, intensity=5, variance=0.01, sap=0.0, dtype=numpy.float32):
     numpy.random.seed(0)
-    noisy = numpy.random.poisson(image * intensity) / intensity
+    noisy = image
+    if intensity is not None:
+        noisy = numpy.random.poisson(image * intensity) / intensity
     noisy = random_noise(noisy, mode="gaussian", var=variance, seed=0)
     noisy = random_noise(noisy, mode="s&p", amount=sap, seed=0)
     noisy = noisy.astype(dtype)
     return noisy
+
+
+def add_blur_2d(image, dz=0):
+    psf = SimpleMicroscopePSF()
+    psf_xyz_array = psf.generate_xyz_psf(dxy=0.406, dz=0.406, xy_size=17, z_size=17)
+    psf_kernel = psf_xyz_array[dz]
+    return convolve2d(image, psf_kernel, mode='same'), psf_kernel
+
+
+def add_blur_3d(image):
+    psf = SimpleMicroscopePSF()
+    psf_xyz_array = psf.generate_xyz_psf(dxy=0.406, dz=0.406, xy_size=17, z_size=17)
+    psf_kernel = psf_xyz_array
+    return convolve(image, psf_kernel, mode='same'), psf_kernel
 
 
 # Convenience shortcuts:
@@ -43,8 +64,8 @@ def lizard():
     return examples_single.generic_lizard.get_array()
 
 
-# def camera():
-#    return examples_single.generic_camera.get_array()
+def camera():
+    return skimage.data.camera().astype(numpy.float32)
 
 
 def newyork():
@@ -60,7 +81,7 @@ def scafoldings():
 
 
 def characters():
-    return examples_single.generic_characters.get_array()
+    return 1 - examples_single.generic_characters.get_array()
 
 
 def andromeda():
@@ -72,6 +93,14 @@ def fibsem(full=False):
     if not full:
         array = array[0:1024, 0:1024]
     return array
+
+
+def dots():
+    image = numpy.random.rand(512, 512) < 0.005  # andromeda()#[256:-256, 256:-256]
+    image = 0.8 * binary_dilation(image).astype(numpy.float32)
+    image[0:256, 0:256] += 0.1
+    image.clip(0, 1)
+    return image
 
 
 class examples_single(Enum):

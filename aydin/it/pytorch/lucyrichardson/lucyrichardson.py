@@ -1,10 +1,9 @@
 import numpy
-import torch.nn.functional as F
 import torch
+import torch.nn.functional as F
 
 
 def richardson_lucy_pytorch(image, psf, iterations=50, clip=True, donut=False):
-
     use_cuda = True
     device_index = 0
     device = torch.device(f"cuda:{device_index}" if use_cuda else "cpu")
@@ -12,7 +11,7 @@ def richardson_lucy_pytorch(image, psf, iterations=50, clip=True, donut=False):
 
     image = image.astype(numpy.float)
     psf = psf.astype(numpy.float)
-    im_deconv = numpy.full(image.shape, 0.5)
+    im_deconv = numpy.full(image.shape, image.mean())
     psf_mirror = psf[::-1, ::-1].copy()
     psf_size = psf_mirror.shape[0]
 
@@ -32,12 +31,16 @@ def richardson_lucy_pytorch(image, psf, iterations=50, clip=True, donut=False):
     )
 
     for _ in range(iterations):
-        convolved = F.conv2d(im_deconv, psf, padding=(psf_size - 1) // 2)
+        pad = (psf_size - 1) // 2
+        convolved = F.conv2d(F.pad(im_deconv, (pad, pad, pad, pad), "reflect"), psf)
         relative_blur = image / convolved
-        im_deconv *= F.conv2d(relative_blur, psf_mirror, padding=(psf_size - 1) // 2)
+
+        im_deconv *= F.conv2d(
+            F.pad(relative_blur, (pad, pad, pad, pad), "reflect"), psf_mirror
+        )
 
     if clip:
         im_deconv[im_deconv > 1] = 1
-        im_deconv[im_deconv < -1] = -1
+        im_deconv[im_deconv < 0] = 0
 
     return im_deconv.detach().cpu().numpy().squeeze()

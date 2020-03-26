@@ -464,6 +464,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
         batch_dims,
         train_valid_ratio=0.1,
         callback_period=3,
+        force_jinv=False,
     ):
 
         with lsection(

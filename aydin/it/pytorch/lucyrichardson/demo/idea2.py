@@ -1,5 +1,5 @@
 import numpy
-from aydin.it.pytorch.lucyrichardson.demo.regularised_lr import richardson_lucy_reg
+from scipy.fft import dct
 from scipy.signal import convolve2d
 from skimage.exposure import rescale_intensity
 from skimage.measure import compare_psnr as psnr
@@ -17,6 +17,13 @@ def n(image):
     return rescale_intensity(
         image.astype(numpy.float32), in_range='image', out_range=(0, 1)
     )
+
+
+def dctpsnr(true_image, test_image):
+    true_image = n(dct(dct(true_image, axis=0), axis=1))
+    test_image = n(dct(dct(test_image, axis=0), axis=1))
+
+    return psnr(true_image, test_image)
 
 
 # Prepare image:
@@ -38,38 +45,37 @@ noisy_and_blurred_image = add_noise(
 
 # try classic LR:
 lr_deconvolved_image = richardson_lucy(
-    noisy_and_blurred_image, kernel_psf, iterations=30
+    noisy_and_blurred_image, kernel_psf, iterations=60
 )
 
-# Try denoising and then lr deconvolution:
 it = ImageTranslatorClassic(
     feature_generator=FastMultiscaleConvolutionalFeatures(exclude_scale_one=False),
-    regressor=GBMRegressor(n_estimators=100),
+    regressor=GBMRegressor(n_estimators=1000),
     normaliser_type='identity',
 )
-it.train(noisy_and_blurred_image)
-denoised_image = it.translate(noisy_and_blurred_image)
-denoised_deconvolved_image = richardson_lucy(denoised_image, kernel_psf, iterations=30)
 
 # lr deconvolution followed by denoising:
 it.train(lr_deconvolved_image)
 deconvolved_denoised_image = it.translate(lr_deconvolved_image)
 
+# Try denoising and then lr deconvolution:
+it.train(noisy_and_blurred_image)
+denoised_image = it.translate(noisy_and_blurred_image)
+denoised_deconvolved_image = richardson_lucy(denoised_image, kernel_psf, iterations=30)
+
 # Train to translate input to denoised deconvolved, but without blind spot:
 it = ImageTranslatorClassic(
     feature_generator=FastMultiscaleConvolutionalFeatures(exclude_scale_one=False),
-    regressor=GBMRegressor(n_estimators=100),
+    regressor=GBMRegressor(n_estimators=10),
     normaliser_type='identity',
 )
 it.train(noisy_and_blurred_image, denoised_deconvolved_image, force_jinv=False)
 restored_image = it.translate(noisy_and_blurred_image)
 
-lr_reg_deconvolved_image = richardson_lucy_reg(
-    noisy_and_blurred_image, kernel_psf, iterations=10
-)
+# lr_reg_deconvolved_image = richardson_lucy_reg(noisy_and_blurred_image, kernel_psf, iterations=10)
 
 # Clipping for comparison:
-lr_reg_deconvolved_image = numpy.clip(lr_reg_deconvolved_image, 0, 1)
+# lr_reg_deconvolved_image = numpy.clip(lr_reg_deconvolved_image, 0, 1)
 lr_deconvolved_image = numpy.clip(lr_deconvolved_image, 0, 1)
 denoised_image = numpy.clip(denoised_image, 0, 1)
 deconvolved_denoised_image = numpy.clip(deconvolved_denoised_image, 0, 1)
@@ -77,12 +83,12 @@ denoised_deconvolved_image = numpy.clip(denoised_deconvolved_image, 0, 1)
 restored_image = numpy.clip(restored_image, 0, 1)
 
 # Compare results:
-print(
-    "lr_reg_deconvolved_image",
-    psnr(image, lr_reg_deconvolved_image),
-    dctpsnr(image, lr_reg_deconvolved_image),
-    ssim(image, lr_reg_deconvolved_image),
-)
+# print(
+#     "lr_reg_deconvolved_image",
+#     psnr(image, lr_reg_deconvolved_image),
+#     dctpsnr(image, lr_reg_deconvolved_image),
+#     ssim(image, lr_reg_deconvolved_image),
+# )
 print(
     "lr_deconvolved_image",
     psnr(image, lr_deconvolved_image),
@@ -121,7 +127,7 @@ with napari.gui_qt():
     viewer.add_image(image, name='image')
     viewer.add_image(blurred_image, name='blurred_image')
     viewer.add_image(noisy_and_blurred_image, name='noisy_and_blurred_image')
-    viewer.add_image(lr_reg_deconvolved_image, name='lr_reg_deconvolved_image')
+    # viewer.add_image(lr_reg_deconvolved_image, name='lr_reg_deconvolved_image')
     viewer.add_image(lr_deconvolved_image, name='lr_deconvolved_image')
     viewer.add_image(denoised_image, name='denoised_image')
     viewer.add_image(deconvolved_denoised_image, name='deconvolved_denoised_image')

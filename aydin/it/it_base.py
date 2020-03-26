@@ -20,7 +20,7 @@ class ImageTranslatorBase(ABC):
 
     """
 
-    def __init__(self, normaliser_type='percentile', monitor=None):
+    def __init__(self, normaliser_type='minmax', monitor=None):
         """
         """
 
@@ -82,7 +82,13 @@ class ImageTranslatorBase(ABC):
 
     @abstractmethod
     def _train(
-        self, input_image, target_image, batch_dims, train_valid_ratio, callback_period
+        self,
+        input_image,
+        target_image,
+        batch_dims,
+        train_valid_ratio,
+        callback_period,
+        force_jinv,
     ):
         raise NotImplementedError()
 
@@ -114,6 +120,7 @@ class ImageTranslatorBase(ABC):
         batch_dims=None,
         train_valid_ratio=0.1,
         callback_period=3,
+        force_jinv=False,
     ):
         """
             Train to translate a given input image to a given output image
@@ -127,14 +134,13 @@ class ImageTranslatorBase(ABC):
             # Verify that input and target images have same shape:
             assert input_image.shape == target_image.shape
 
-            # If we use the same image for input and ouput then we are in a self-supervised setting:
+            # If we use the same image for input and output then we are in a self-supervised setting:
             self.self_supervised = input_image is target_image
-
             lprint(f'Training is self-supervised.')
 
             # Analyse the input image correlation structure:
-            self.correlation = correlation_distance(input_image, target_image)
-            lprint(f'Correlation structure of the image: {self.correlation}.')
+            # self.correlation = correlation_distance(input_image, target_image)
+            # lprint(f'Correlation structure of the image: {self.correlation}.')
 
             # Instanciates normaliser(s):
             if self.normaliser_type == 'identity':
@@ -174,7 +180,7 @@ class ImageTranslatorBase(ABC):
 
             # 'Last minute' normalisation:
             normalised_input_image = self.input_normaliser.normalise(input_image)
-            if not self.self_supervised:
+            if self.self_supervised:
                 normalised_target_image = normalised_input_image
             else:
                 normalised_target_image = self.target_normaliser.normalise(target_image)
@@ -186,6 +192,7 @@ class ImageTranslatorBase(ABC):
                 batch_dims=batch_dims,
                 train_valid_ratio=train_valid_ratio,
                 callback_period=callback_period,
+                force_jinv=force_jinv,
             )
 
     def translate(

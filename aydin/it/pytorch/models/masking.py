@@ -1,8 +1,5 @@
-from random import random
-
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class Masking(nn.Module):
@@ -14,7 +11,6 @@ class Masking(nn.Module):
         self.mask = None
 
     def forward(self, x):
-
         self.mask = torch.rand_like(x) < self.density
         x = (~self.mask) * x
         x = self.module(x)

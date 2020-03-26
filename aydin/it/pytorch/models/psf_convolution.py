@@ -1,5 +1,3 @@
-import numpy
-import scipy
 import torch
 from torch import nn
 
