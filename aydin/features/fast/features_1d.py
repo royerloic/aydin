@@ -24,7 +24,8 @@ def collect_feature_1d(
     (image_x,) = image_gpu.shape
     (feature_x,) = feature_gpu.shape
 
-    assert image_x == feature_x
+    if image_x != feature_x:
+        raise ValueError('Dimensions of image_gpu and feature_gpu has to be same')
 
     if optimisation and px + nx == 1:
         program_code = f"""

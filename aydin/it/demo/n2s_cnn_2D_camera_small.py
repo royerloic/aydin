@@ -25,12 +25,6 @@ def demo(image, max_epochs=4, image_width=200):
     image = image[H0 : H0 + image_width, W0 : W0 + image_width]
     noisy = add_noise(image)
 
-    # Classical denoisers:
-    # median1 = skimage.filters.median(noisy, disk(1))
-    # median2 = skimage.filters.median(noisy, disk(2))
-    # median5 = skimage.filters.median(noisy, disk(5))
-    # nlm = denoise_nl_means(noisy, patch_size=11, sigma=estimate_sigma(noisy))
-
     # CNN based Image translation:
     # input_dim only includes H, W, C; number of images is not included
     it = ImageTranslatorCNN(
@@ -38,7 +32,6 @@ def demo(image, max_epochs=4, image_width=200):
         num_layer=3,
         batch_norm=None,  # 'instance',
         max_epochs=max_epochs,
-        verbose=1,
     )
 
     start = time.time()
@@ -65,10 +58,6 @@ def demo(image, max_epochs=4, image_width=200):
         viewer = napari.Viewer()
         viewer.add_image(normalise(image), name='image')
         viewer.add_image(normalise(noisy), name='noisy')
-        # viewer.add_image(n(nlm), name='nlm')
-        # viewer.add_image(n(median1), name='median1')
-        # viewer.add_image(n(median2), name='median2')
-        # viewer.add_image(n(median5), name='median5')
         viewer.add_image(normalise(denoised_inf), name='denoised_inf')
 
 

@@ -65,7 +65,7 @@ class PTCNNDeconvolution(PTCNNImageTranslator):
 
         # Sharpen loss_deconvolution:
         if self.sharpening and self.sharpening > 0:
-            sum_values = torch.sum(translated_image, (2, 3), keepdim=True,)
+            sum_values = torch.sum(translated_image, (2, 3), keepdim=True)
             entropy = self.sharpening * torch.sqrt(1 + translated_image / sum_values)
             entropy_loss_value = entropy.mean()
             loss += entropy_loss_value

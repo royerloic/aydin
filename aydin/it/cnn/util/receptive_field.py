@@ -48,10 +48,7 @@ def receptive_field_up(pl_size, n0=1):
     :param pl_size: pooling size
     :param n0: receptive field from previous layer
     """
-    if n0 == 1:
-        return n0
-    else:
-        return numpy.ceil(n0 * 1 / pl_size).astype(int)
+    return n0 if n0 == 1 else numpy.ceil(n0 * 1 / pl_size).astype(int)
 
 
 def receptive_field_model(model, verbose=False):

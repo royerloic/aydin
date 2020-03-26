@@ -119,7 +119,7 @@ def demo(image):
         viewer.add_image(noisy_and_blurred_image, name='noisy')
         viewer.add_image(denoised_image, name='denoised_image')
         viewer.add_image(
-            aydin_denoised_lr_deconvolved, name='aydin_denoised_lr_deconvolved',
+            aydin_denoised_lr_deconvolved, name='aydin_denoised_lr_deconvolved'
         )
         viewer.add_image(lr_deconvolved_image, name='lr_deconvolved_image')
         viewer.add_image(

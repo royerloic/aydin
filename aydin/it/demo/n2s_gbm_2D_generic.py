@@ -12,18 +12,7 @@ from skimage.morphology import disk
 from skimage.restoration import denoise_nl_means, estimate_sigma
 
 from aydin.features.fast.fast_features import FastMultiscaleConvolutionalFeatures
-from aydin.io.datasets import (
-    newyork,
-    pollen,
-    normalise,
-    add_noise,
-    lizard,
-    characters,
-    examples_single,
-    fibsem,
-    scafoldings,
-    andromeda,
-)
+from aydin.io.datasets import newyork, pollen, normalise, add_noise, lizard
 from aydin.it.it_classic import ImageTranslatorClassic
 from aydin.regression.gbm import GBMRegressor
 from aydin.util.log.log import Log
@@ -38,7 +27,6 @@ def demo(image, name):
 
     image = normalise(image.astype(np.float32))
     noisy = add_noise(image)
-    # noisy = image
 
     median1 = skimage.filters.median(noisy, disk(1))
     median2 = skimage.filters.median(noisy, disk(2))
@@ -46,9 +34,8 @@ def demo(image, name):
 
     nlm = denoise_nl_means(noisy, patch_size=11, sigma=estimate_sigma(noisy))
 
-    generator = FastMultiscaleConvolutionalFeatures()
-
-    regressor = GBMRegressor(n_estimators=4096, patience=20)  # n_estimators=4096,
+    generator = FastMultiscaleConvolutionalFeatures(include_spatial_features=True)
+    regressor = GBMRegressor(patience=20)
 
     it = ImageTranslatorClassic(
         feature_generator=generator, regressor=regressor, normaliser_type='identity'
@@ -77,7 +64,7 @@ def demo(image, name):
 
     import matplotlib.pyplot as plt
 
-    plt.figure(figsize=(2.7 * 5, 5), dpi=300)
+    plt.figure(figsize=(2.7 * 5, 5))
     plt.subplot(1, 3, 1)
     plt.imshow(normalise(noisy), cmap='gray')
     plt.axis('off')
@@ -115,11 +102,3 @@ pollen_image = pollen()
 demo(pollen_image, "pollen")
 newyork_image = newyork()
 demo(newyork_image, "newyork")
-characters_image = characters()
-demo(characters_image, "characters")
-scafoldings_image = scafoldings()
-demo(scafoldings_image, "scafoldings")
-andromeda_image = andromeda()
-demo(andromeda_image, "andromeda")
-fibsem_image = fibsem()
-demo(fibsem_image, "fibsem")

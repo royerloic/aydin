@@ -79,6 +79,7 @@ def noise2self(**kwargs):
         use_model_flag=kwargs['use_model'],
         input_model_path=input_model_path,
     )
+    print(noisy_metadata)
     denoised = n2s.run(noisy, pbar, noisy_metadata=noisy_metadata, image_path=path)
     path = path[:-4] + "_denoised" + path[-4:]
     imwrite(denoised, path, denoised.shape, denoised.dtype)

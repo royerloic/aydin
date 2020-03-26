@@ -1,5 +1,8 @@
 from copy import deepcopy
 import numpy as np
+from scipy.ndimage import median_filter
+
+from aydin.util.log.log import lprint
 
 
 def masker(batch_vol, i=None, mask_shape=None, p=None):
@@ -26,8 +29,22 @@ def masker(batch_vol, i=None, mask_shape=None, p=None):
     return mask
 
 
+def med_filter(input_image):
+    k = [1] + [3 for _ in input_image.shape[1:-1]] + [1]
+    kernel = np.ones(k)
+    k = [0] + [1 for _ in range(len(input_image.shape[1:-1]))] + [0]
+    kernel[tuple(k)] = 0
+    return median_filter(input_image, footprint=kernel)
+
+
 def maskedgen(
-    batch_vol, mask_shape, image, batch_size, train_valid_ratio=0, subset='training'
+    batch_vol,
+    mask_shape,
+    image,
+    batch_size,
+    train_valid_ratio=0,
+    replace_by='zero',
+    subset='training',
 ):
     """
     Mask generator. Returns a generator.
@@ -35,14 +52,18 @@ def maskedgen(
     :param mask_shape: mask shape e.g. (3, 3)
     :param image: input image
     :param batch_size: batch size
-    :param p: possibility of masked pixels on random masking approach
     :param train_valid_ratio: ratio of the data will be used for validation
+    :param replace_by: Masked pixels are replaced by random number or 0 or median values.
+    :param subset: indication of whether to generate training or validation data
     """
 
-    val_ind = np.random.random(image.shape[0])
-    val_ind[val_ind >= train_valid_ratio] = 1
-    val_ind[val_ind < train_valid_ratio] = 0
-    val_ind = ~val_ind.astype(bool)
+    val_ind = np.zeros(image.shape[0], dtype=bool)
+    num_val = (
+        np.floor(image.shape[0] * train_valid_ratio / batch_size).astype(int)
+        * batch_size
+    )
+    val_ind[:num_val] = True
+    np.random.shuffle(val_ind)  # indices for validation slices
 
     if 'train' in subset:
         img_output = deepcopy(image[~val_ind])
@@ -51,6 +72,7 @@ def maskedgen(
 
     j = 0
     num_cycle = np.ceil(img_output.shape[0] / batch_size)
+    lprint(f'Masked pixels are replaced by {replace_by}')
     while True:
         i = np.mod(j, num_cycle).astype(int)
         image_batch = img_output[batch_size * i : batch_size * (i + 1)]
@@ -67,6 +89,12 @@ def maskedgen(
                 )
                 * image_batch
             )  # pixels in training image are blocked by multiply by 0
+
+            if replace_by == 'random':
+                train_img = train_img + np.random.random(batch_vol) * masknega
+            elif replace_by == 'median':
+                train_img = train_img + med_filter(image_batch) * masknega
+
             target_img = masknega * image_batch
             j += 1
             yield {
@@ -75,22 +103,39 @@ def maskedgen(
             }, target_img
 
 
-def randmaskgen(image, batch_size, p=None, train_valid_ratio=0, subset='training'):
+def randmaskgen(
+    image,
+    batch_size,
+    p=None,
+    train_valid_ratio=0,
+    replace_by='zero',  # 'zero' or 'random' or 'median'
+    subset='training',
+    reduce_p=False,
+    p_reduce_rate=0.5,
+    p_reduce_patience=50,
+):
     """
     Mask generator. Returns a generator.
-    :param batch_vol: batch volume; desn't include batch and ch dimensions
-    :param mask_shape: mask shape e.g. (3, 3)
     :param image: input image
     :param batch_size: batch size
     :param p: possibility of masked pixels on random masking approach
+    :param train_valid_ratio: train validation ratio
+    :param replace_by: Masked pixels are replaced by random number or 0 or median values.
+    :param subset: indication of whether to generate training or validation data
+    :param reduce_p: if True, p will dynamically change
+    :param p_reduce_rate: reduction rate of p
+    :param p_reduce_patience: number of epochs before reducing p
     """
 
     batch_vol = (batch_size,) + image.shape[1:]
 
-    val_ind = np.random.random(image.shape[0])
-    val_ind[val_ind >= train_valid_ratio] = 1
-    val_ind[val_ind < train_valid_ratio] = 0
-    val_ind = ~val_ind.astype(bool)
+    val_ind = np.zeros(image.shape[0], dtype=bool)
+    num_val = (
+        np.floor(image.shape[0] * train_valid_ratio / batch_size).astype(int)
+        * batch_size
+    )
+    val_ind[:num_val] = True
+    np.random.shuffle(val_ind)  # indices for validation slices
 
     if 'train' in subset:
         img_output = deepcopy(image[~val_ind])
@@ -99,9 +144,15 @@ def randmaskgen(image, batch_size, p=None, train_valid_ratio=0, subset='training
 
     j = 0
     num_cycle = np.ceil(img_output.shape[0] / batch_size)
+    lprint(f'Masked pixels are replaced by {replace_by}')
     while True:
         i = np.mod(j, num_cycle).astype(int)
         image_batch = img_output[batch_size * i : batch_size * (i + 1)]
+
+        if reduce_p:
+            if j % p_reduce_patience == 0 and j != 0:
+                p *= p_reduce_rate
+                lprint(f'p is reduced to {p}')
         mask = masker(
             batch_vol, p=p
         )  # generate a 2D mask with same size of image_batch; p of the pix are 0
@@ -109,5 +160,13 @@ def randmaskgen(image, batch_size, p=None, train_valid_ratio=0, subset='training
             mask * image_batch
         )  # pixels in training image are blocked by multiply by 0
         masknega = ~mask  # p of the pixels are 1
+
+        if replace_by == 'random':
+            train_img = train_img + np.random.random(batch_vol) * masknega
+        elif replace_by == 'median':
+            train_img = train_img + med_filter(image_batch) * masknega
+
         target_img = masknega * image_batch
+        j += 1
+
         yield {'input': train_img, 'input_msk': masknega.astype(np.float32)}, target_img

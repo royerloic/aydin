@@ -64,8 +64,8 @@ def correlation(
         target_image = input_image
 
     # Makes sure that the images have the same shape:
-    if input_image is not target_image:
-        assert input_image.shape == target_image.shape
+    if input_image is not target_image and input_image.shape != target_image.shape:
+        raise ValueError('Input image and target image has different shapes.')
 
     # Number of dimensions:
     nb_dim = len(shape)

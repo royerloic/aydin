@@ -11,8 +11,10 @@ from aydin.util.log.log import lprint
 def is_zarr_storage(input_path):
     try:
         z = zarr.open(input_path)
-        assert len(z.shape) >= 0
-        lprint(f"This path is a ZARR storage: {input_path}")
+        if len(z.shape) >= 0:
+            lprint(f"This path is a ZARR storage: {input_path}")
+        else:
+            raise Exception
         # IF we reach this point, then we could open the file and therefore it is a Zarr file...
         return True
     except Exception:

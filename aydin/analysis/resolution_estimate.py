@@ -49,12 +49,7 @@ def resolution_estimate_2d(
 
     resolution_limit = float(-reg.intercept_ / reg.coef_)
 
-    return (
-        spectrum_image,
-        spectrum_image_profile,
-        corrected_profile,
-        resolution_limit,
-    )
+    return (spectrum_image, spectrum_image_profile, corrected_profile, resolution_limit)
 
 
 def fft_mirror_2d(image, apodisation=True):
