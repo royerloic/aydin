@@ -18,7 +18,7 @@
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Report a bug/Request a feature" href="../../contact_us/github.html" />
+    <link rel="next" title="Options JSON" href="../options_json.html" />
     <link rel="prev" title="UNetModel" href="unet.html" /> 
 </head>
 
@@ -70,6 +70,7 @@
 <li class="toctree-l2 current"><a class="current reference internal" href="#">JINetModel</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="../options_json.html">Options JSON</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Contact Us</span></p>
 <ul>
@@ -296,8 +297,8 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_train_function</span></code>()</p></td>
 <td><p>Creates a function that executes one step of training.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code>(x[, batch_size, verbose, steps, ...])</p></td>
-<td><p>Generates output predictions for the input samples.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#aydin.nn.models.jinet.JINetModel.predict" title="aydin.nn.models.jinet.JINetModel.predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code></a>(x[, batch_size, verbose, steps, ...])</p></td>
+<td><p>Overwritten model predict method.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict_generator</span></code>(generator[, steps, ...])</p></td>
 <td><p>Generates predictions for the input samples from a data generator.</p></td>
@@ -390,6 +391,26 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="aydin.nn.models.jinet.JINetModel.predict">
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callbacks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_queue_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_multiprocessing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aydin/nn/models/jinet.html#JINetModel.predict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aydin.nn.models.jinet.JINetModel.predict" title="Permalink to this definition"></a></dt>
+<dd><p>Overwritten model predict method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>x</strong></dt><dd></dd>
+<dt><strong>batch_size</strong></dt><dd></dd>
+<dt><strong>verbose</strong></dt><dd></dd>
+<dt><strong>steps</strong></dt><dd></dd>
+<dt><strong>callbacks</strong></dt><dd></dd>
+<dt><strong>max_queue_size</strong></dt><dd></dd>
+<dt><strong>workers</strong></dt><dd></dd>
+<dt><strong>use_multiprocessing</strong></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="aydin.nn.models.jinet.JINetModel.size">
 <span class="sig-name descname"><span class="pre">size</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aydin/nn/models/jinet.html#JINetModel.size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aydin.nn.models.jinet.JINetModel.size" title="Permalink to this definition"></a></dt>
 <dd><p>Returns size of the model in bytes</p>
@@ -404,7 +425,7 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="unet.html" class="btn btn-neutral float-left" title="UNetModel" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../../contact_us/github.html" class="btn btn-neutral float-right" title="Report a bug/Request a feature" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../options_json.html" class="btn btn-neutral float-right" title="Options JSON" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

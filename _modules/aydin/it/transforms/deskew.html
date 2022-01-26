@@ -63,6 +63,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../api/regressors.html">Regressors</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../api/io.html">IO</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../api/nn.html">NN</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/options_json.html">Options JSON</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Contact Us</span></p>
 <ul>
@@ -97,7 +98,7 @@
   <h1>Source code for aydin.it.transforms.deskew</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">numpy</span>
 
-<span class="c1"># from numpy.typing import ArrayLike</span>
+<span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
 
 <span class="kn">from</span> <span class="nn">aydin.it.transforms.base</span> <span class="kn">import</span> <span class="n">ImageTransformBase</span>
 <span class="kn">from</span> <span class="nn">aydin.util.log.log</span> <span class="kn">import</span> <span class="n">lsection</span><span class="p">,</span> <span class="n">lprint</span>
@@ -115,7 +116,7 @@
 <span class="sd">    per plane - must be an integer. We automatically snap the delta value to the closest integer. Padding is supported.</span>
 
 <span class="sd">    Note: this only works for images with at least 3 dimensions. Does nothing</span>
-<span class="sd">    on images with less than 3 dimensions.</span>
+<span class="sd">    on images with less than 3 dimensions.(advanced)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">preprocess_description</span> <span class="o">=</span> <span class="s2">&quot;Deskew image&quot;</span> <span class="o">+</span> <span class="n">ImageTransformBase</span><span class="o">.</span><span class="n">preprocess_description</span>
@@ -179,7 +180,7 @@
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">preprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">preprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">):</span>
         <span class="k">with</span> <span class="n">lsection</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Deskewing (delta=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">delta</span><span class="si">}</span><span class="s2">, z_axis=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">z_axis</span><span class="si">}</span><span class="s2">, skew_axis=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">skew_axis</span><span class="si">}</span><span class="s2">, pad=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pad</span><span class="si">}</span><span class="s2">) array of shape: </span><span class="si">{</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> and dtype: </span><span class="si">{</span><span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">:&quot;</span>
         <span class="p">):</span>
@@ -188,7 +189,7 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">array</span>
 
-    <span class="k">def</span> <span class="nf">postprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">postprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_postprocess</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">array</span>
         <span class="k">with</span> <span class="n">lsection</span><span class="p">(</span>
@@ -199,7 +200,7 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">array</span>
 
-    <span class="k">def</span> <span class="nf">deskew</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">pad_mode</span><span class="o">=</span><span class="s1">&#39;wrap&#39;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">deskew</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">pad_mode</span><span class="o">=</span><span class="s1">&#39;wrap&#39;</span><span class="p">):</span>
         <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_permutate</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
         <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_skew_transform</span><span class="p">(</span>
             <span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">crop</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pad_mode</span><span class="o">=</span><span class="n">pad_mode</span>
@@ -207,7 +208,7 @@
         <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_depermutate</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">array</span>
 
-    <span class="k">def</span> <span class="nf">reskew</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">reskew</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">):</span>
         <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_permutate</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
         <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_skew_transform</span><span class="p">(</span>
             <span class="n">array</span><span class="p">,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">delta</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">crop</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">pad_mode</span><span class="o">=</span><span class="s1">&#39;&#39;</span>
@@ -215,17 +216,17 @@
         <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_depermutate</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">array</span>
 
-    <span class="k">def</span> <span class="nf">_permutate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_permutate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">):</span>
         <span class="n">permutation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_permutation</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
         <span class="n">array</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">permutation</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">array</span>
 
-    <span class="k">def</span> <span class="nf">_depermutate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_depermutate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">):</span>
         <span class="n">permutation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_permutation</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">array</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">permutation</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">array</span>
 
-    <span class="k">def</span> <span class="nf">_get_permutation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">inverse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_get_permutation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">inverse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="n">permutation</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z_axis</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">skew_axis</span><span class="p">)</span> <span class="o">+</span> <span class="nb">tuple</span><span class="p">(</span>
             <span class="n">axis</span>
             <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">ndim</span><span class="p">)</span>
@@ -236,7 +237,7 @@
         <span class="k">return</span> <span class="n">permutation</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_skew_transform</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">pad</span><span class="p">,</span> <span class="n">crop</span><span class="p">,</span> <span class="n">pad_mode</span><span class="o">=</span><span class="s1">&#39;wrap&#39;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_skew_transform</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">pad</span><span class="p">,</span> <span class="n">crop</span><span class="p">,</span> <span class="n">pad_mode</span><span class="o">=</span><span class="s1">&#39;wrap&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        This method assumes that the first dimension (index=0) is the z dimension,</span>
 <span class="sd">        and the second dimension (index=1) is the &#39;skewed&#39; dimension.</span>

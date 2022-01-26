@@ -63,6 +63,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../api/regressors.html">Regressors</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../api/io.html">IO</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../api/nn.html">NN</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/options_json.html">Options JSON</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Contact Us</span></p>
 <ul>
@@ -138,6 +139,7 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">input_layer_size</span><span class="p">,</span>
         <span class="n">spacetime_ndim</span><span class="p">,</span>
+        <span class="n">training_architecture</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;random&#39;</span><span class="p">,</span>
         <span class="n">mini_batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
         <span class="n">nb_unet_levels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
         <span class="n">normalization</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;batch&#39;</span><span class="p">,</span>  <span class="c1"># None,  # &#39;instance&#39;,</span>
@@ -183,6 +185,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">compiled</span> <span class="o">=</span> <span class="kc">False</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_architecture</span> <span class="o">=</span> <span class="n">training_architecture</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rot_batch_size</span> <span class="o">=</span> <span class="n">mini_batch_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">num_lyr</span> <span class="o">=</span> <span class="n">nb_unet_levels</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">normalization</span> <span class="o">=</span> <span class="n">normalization</span>
@@ -521,7 +524,6 @@
         <span class="n">max_epochs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">ReduceLR_patience</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">reduce_lr_factor</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
-        <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
@@ -545,7 +547,6 @@
 <span class="sd">        max_epochs</span>
 <span class="sd">        ReduceLR_patience</span>
 <span class="sd">        reduce_lr_factor</span>
-<span class="sd">        parent</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -689,7 +690,42 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">loss_history</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
 
-        <span class="k">return</span> <span class="n">loss_history</span></div></div>
+        <span class="k">return</span> <span class="n">loss_history</span></div>
+
+<div class="viewcode-block" id="UNetModel.predict"><a class="viewcode-back" href="../../../../api/nn/unet.html#aydin.nn.models.unet.UNetModel.predict">[docs]</a>    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">,</span>
+        <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">steps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">callbacks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">max_queue_size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">workers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">use_multiprocessing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Overwritten model predict method.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x</span>
+<span class="sd">        batch_size</span>
+<span class="sd">        verbose</span>
+<span class="sd">        steps</span>
+<span class="sd">        callbacks</span>
+<span class="sd">        max_queue_size</span>
+<span class="sd">        workers</span>
+<span class="sd">        use_multiprocessing</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: move as much as you can from it cnn _translate</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+        <span class="p">)</span></div></div>
 </pre></div>
 
            </div>

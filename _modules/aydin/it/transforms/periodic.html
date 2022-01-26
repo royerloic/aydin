@@ -63,6 +63,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../api/regressors.html">Regressors</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../api/io.html">IO</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../api/nn.html">NN</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/options_json.html">Options JSON</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Contact Us</span></p>
 <ul>
@@ -98,7 +99,7 @@
 <span></span><span class="kn">import</span> <span class="nn">numpy</span>
 <span class="kn">import</span> <span class="nn">scipy</span>
 
-<span class="c1"># from numpy.typing import ArrayLike</span>
+<span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
 <span class="kn">from</span> <span class="nn">scipy.ndimage</span> <span class="kn">import</span> <span class="n">minimum_filter</span>
 <span class="kn">from</span> <span class="nn">skimage.feature</span> <span class="kn">import</span> <span class="n">peak_local_max</span>
 
@@ -113,7 +114,7 @@
 <span class="sd">    Some images have a form of periodic noise that can be seen as strong</span>
 <span class="sd">    peaks in their power spectral density. Suppressing these peaks before and</span>
 <span class="sd">    after denoising is often a good idea. This is tricky to use, use with</span>
-<span class="sd">    care. Works with non-axis aligned periodic patterns.</span>
+<span class="sd">    care. Works with non-axis aligned periodic patterns.(advanced)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">preprocess_description</span> <span class="o">=</span> <span class="p">(</span>
@@ -185,7 +186,7 @@
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">preprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">preprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">):</span>
 
         <span class="k">with</span> <span class="n">lsection</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Applies periodic noise suppression to array of shape: </span><span class="si">{</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> and dtype: </span><span class="si">{</span><span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -193,7 +194,7 @@
             <span class="n">new_array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_suppress_periodic_patterns</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">new_array</span>
 
-    <span class="k">def</span> <span class="nf">postprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">postprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">):</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_postprocess</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">array</span>
@@ -208,7 +209,7 @@
                 <span class="n">new_array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_suppress_periodic_patterns</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">new_array</span>
 
-    <span class="k">def</span> <span class="nf">_suppress_periodic_patterns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_suppress_periodic_patterns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_original_dtype</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">dtype</span>
         <span class="n">array</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
@@ -283,7 +284,7 @@
 
         <span class="k">return</span> <span class="n">new_array</span>
 
-    <span class="k">def</span> <span class="nf">_reapply_periodic_patterns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_reapply_periodic_patterns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">):</span>
         <span class="n">array</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="n">ft</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftn</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">workers</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
         <span class="n">ft</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">ft</span><span class="p">)</span>

@@ -61,6 +61,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#denoising-a-single-image-with-a-pre-trained-aydin-model">Denoising a single image with a pre-trained Aydin model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#denoising-multiple-image-files">Denoising multiple image files</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#deconvolving-a-single-image">Deconvolving a single image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#specifying-your-own-output-folder">Specifying your own output folder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#using-your-psf-to-deconvolve-your-image">Using your PSF to deconvolve your image</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#choosing-the-computational-backend">Choosing the computational backend</a></li>
 </ul>
@@ -77,6 +78,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../api/regressors.html">Regressors</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api/io.html">IO</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api/nn.html">NN</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/options_json.html">Options JSON</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Contact Us</span></p>
 <ul>
@@ -154,6 +156,13 @@ to Aydin CLI. One can achieve this as shown below:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ aydin denoise image.tif --lower-level-args<span class="o">=</span>image_options.json
 </pre></div>
 </div>
+<p>Also we provide the dimensions tab on Aydin Studio where user can select how
+Aydin should be treating dimensions of the loaded image.  This is also possible
+with Aydin CLI denoise command. An example on how to tell Aydin to treat first
+two dimensions of a four-dimensional image as batch dimensions shown below:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ aydin denoise image.tif --batch-axis <span class="s2">&quot;[True, True, False, False]&quot;</span>
+</pre></div>
+</div>
 </section>
 <section id="denoising-a-single-image-with-a-pre-trained-aydin-model">
 <h2>Denoising a single image with a pre-trained Aydin model<a class="headerlink" href="#denoising-a-single-image-with-a-pre-trained-aydin-model" title="Permalink to this headline"></a></h2>
@@ -181,6 +190,15 @@ options:</p>
 <p>You can use the following line to deconvolve a single image with default
 options.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ aydin lucyrichardson image.tif
+</pre></div>
+</div>
+</section>
+<section id="specifying-your-own-output-folder">
+<h2>Specifying your own output folder<a class="headerlink" href="#specifying-your-own-output-folder" title="Permalink to this headline"></a></h2>
+<p>You can use the following lines to specify your desired output folder to
+Aydin for both denoising and deconvolution runs:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ aydin denoise image.tif --output-folder<span class="o">=</span>/PATH/TO/YOUR/FOLDER
+$ aydin lucyrichardson image.tif  --output-folder<span class="o">=</span>/PATH/TO/YOUR/FOLDER
 </pre></div>
 </div>
 </section>

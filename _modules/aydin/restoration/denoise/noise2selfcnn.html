@@ -63,6 +63,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../api/regressors.html">Regressors</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../api/io.html">IO</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../api/nn.html">NN</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/options_json.html">Options JSON</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Contact Us</span></p>
 <ul>
@@ -139,7 +140,7 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">lower_level_args</span> <span class="o">=</span> <span class="n">lower_level_args</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">backend_it</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend_or_model</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">variant</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">variant</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="s2">&quot;cnn&quot;</span><span class="p">,</span> <span class="s2">&quot;jinet&quot;</span><span class="p">)</span>
+            <span class="p">(</span><span class="s2">&quot;cnn&quot;</span><span class="p">,</span> <span class="s2">&quot;jinet&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">variant</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">variant</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">)</span>
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">input_model_path</span> <span class="o">=</span> <span class="n">input_model_path</span>
