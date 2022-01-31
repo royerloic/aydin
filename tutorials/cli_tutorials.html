@@ -62,7 +62,6 @@
 <li class="toctree-l2"><a class="reference internal" href="#denoising-multiple-image-files">Denoising multiple image files</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#deconvolving-a-single-image">Deconvolving a single image</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#specifying-your-own-output-folder">Specifying your own output folder</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#using-your-psf-to-deconvolve-your-image">Using your PSF to deconvolve your image</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#choosing-the-computational-backend">Choosing the computational backend</a></li>
 </ul>
 </li>
@@ -188,8 +187,9 @@ options:</p>
 <section id="deconvolving-a-single-image">
 <h2>Deconvolving a single image<a class="headerlink" href="#deconvolving-a-single-image" title="Permalink to this headline"></a></h2>
 <p>You can use the following line to deconvolve a single image with default
-options.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ aydin lucyrichardson image.tif
+options. Passed psf file assumed to be a single psf image
+in a lossless format.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ aydin lucyrichardson image.tif psf.tif
 </pre></div>
 </div>
 </section>
@@ -198,16 +198,7 @@ options.</p>
 <p>You can use the following lines to specify your desired output folder to
 Aydin for both denoising and deconvolution runs:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ aydin denoise image.tif --output-folder<span class="o">=</span>/PATH/TO/YOUR/FOLDER
-$ aydin lucyrichardson image.tif  --output-folder<span class="o">=</span>/PATH/TO/YOUR/FOLDER
-</pre></div>
-</div>
-</section>
-<section id="using-your-psf-to-deconvolve-your-image">
-<h2>Using your PSF to deconvolve your image<a class="headerlink" href="#using-your-psf-to-deconvolve-your-image" title="Permalink to this headline"></a></h2>
-<p>You can use the following line to deconvolve a single image with default
-options and their own psf. Passed psf file assumed to be a single psf image
-in a lossless format.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ aydin lucyrichardson image.tiff psf.tif
+$ aydin lucyrichardson image.tif  psf.tif --output-folder<span class="o">=</span>/PATH/TO/YOUR/FOLDER
 </pre></div>
 </div>
 </section>
