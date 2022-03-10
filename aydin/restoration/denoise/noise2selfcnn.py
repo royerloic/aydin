@@ -4,7 +4,6 @@ import os
 import shutil
 
 from aydin.it.base import ImageTranslatorBase
-from aydin.it.cnn import ImageTranslatorCNN
 from aydin.it.transforms.padding import PaddingTransform
 from aydin.it.transforms.range import RangeTransform
 from aydin.it.transforms.variance_stabilisation import VarianceStabilisationTransform
@@ -65,6 +64,9 @@ class Noise2SelfCNN(DenoiseRestorationBase):
         """Returns the configurable arguments that will be exposed
         on GUI and CLI.
         """
+
+        # Local import to avoid import pollution of Tensorflow, keras, etc..
+        from aydin.it.cnn import ImageTranslatorCNN
 
         # IT CNN
         it = ImageTranslatorCNN
@@ -145,6 +147,8 @@ class Noise2SelfCNN(DenoiseRestorationBase):
             )
             it = ImageTranslatorBase.load(self.input_model_path[:-4])
         else:
+            # Local import to avoid import pollution of Tensorflow, keras, etc..
+            from aydin.it.cnn import ImageTranslatorCNN
             it = ImageTranslatorCNN(
                 **self.lower_level_args["it"]["kwargs"]
                 if self.lower_level_args is not None

@@ -5,6 +5,7 @@ from aydin.restoration import denoise
 from aydin.restoration.denoise.base import DenoiseRestorationBase
 from aydin.restoration.denoise.noise2selfcnn import Noise2SelfCNN
 from aydin.restoration.denoise.noise2selffgr import Noise2SelfFGR
+from aydin.util.log.log import lprint
 
 
 def get_pretrained_denoiser_class_instance(loaded_model_it):
@@ -76,14 +77,21 @@ def get_list_of_denoiser_implementations():
     descriptions = []
 
     for module in DenoiseRestorationBase.get_implementations_in_a_module(denoise):
-        response = importlib.import_module(denoise.__name__ + '.' + module.name)
+        try:
+            response = importlib.import_module(denoise.__name__ + '.' + module.name)
 
-        elem = [x for x in dir(response) if module.name.replace('_', '') in x.lower()][
-            0
-        ]  # class name
+            elem = [x for x in dir(response) if module.name.replace('_', '') in x.lower()][
+                0
+            ]  # class name
 
-        denoiser_class = response.__getattribute__(elem)
-        denoiser_implementations += denoiser_class().implementations
-        descriptions += denoiser_class().implementations_description
+            denoiser_class = response.__getattribute__(elem)
+            denoiser_implementations += denoiser_class().implementations
+            descriptions += denoiser_class().implementations_description
+        except:
+            # If anything wrong happens as we enumerate denoisers, we skip the offending denoiser
+            lprint(
+                f"Denoiser {module.name} falied to load!"
+            )
+
 
     return denoiser_implementations, descriptions

@@ -8,7 +8,6 @@ from aydin.features.standard_features import StandardFeatureGenerator
 from aydin.it.balancing.data_histogram_balancer import DataHistogramBalancer
 from aydin.it.base import ImageTranslatorBase
 from aydin.regression.base import RegressorBase
-from aydin.regression.cb import CBRegressor
 from aydin.util.array.nd import nd_split_slices
 from aydin.util.log.log import lprint, lsection
 from aydin.util.offcore.offcore import offcore_array
@@ -68,7 +67,15 @@ class ImageTranslatorFGR(ImageTranslatorBase):
             if feature_generator is None
             else feature_generator
         )
-        self.regressor = CBRegressor() if regressor is None else regressor
+        if regressor is None:
+            # default regressor, using local imports to avoid 'import pollution'
+            try:
+                from aydin.regression.cb import CBRegressor
+                self.regressor = CBRegressor()
+            except:
+                # On some system CB is not available, fallback::
+                from aydin.regression.lgbm import LGBMRegressor
+                self.regressor = LGBMRegressor()
 
         self.max_voxels_for_training = (
             self.regressor.recommended_max_num_datapoints()

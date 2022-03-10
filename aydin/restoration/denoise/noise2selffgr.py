@@ -11,7 +11,6 @@ from aydin.it.fgr import ImageTranslatorFGR
 from aydin.it.transforms.padding import PaddingTransform
 from aydin.it.transforms.range import RangeTransform
 from aydin.it.transforms.variance_stabilisation import VarianceStabilisationTransform
-from aydin.regression.cb import CBRegressor
 from aydin.restoration.denoise.base import DenoiseRestorationBase
 from aydin.util.log.log import lsection
 
@@ -214,7 +213,14 @@ class Noise2SelfFGR(DenoiseRestorationBase):
                 **self.lower_level_args["regressor"]["kwargs"]
             )
         else:
-            regressor = CBRegressor()
+            try:
+                from aydin.regression.cb import CBRegressor
+                regressor = CBRegressor()
+            except:
+                # On some system CB is not available:
+                from aydin.regression.lgbm import LGBMRegressor
+                regressor = LGBMRegressor()
+
 
         return regressor
 

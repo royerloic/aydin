@@ -24,7 +24,7 @@ class SystemSummaryWidget(QWidget):
 
         # CPU freq
         self.cpu_freq_stats_label = QLabel(
-            f"Current CPU frequency:\t {round(psutil.cpu_freq().current, 2)} Mhz", self
+            f"Current CPU frequency:\t {self._cpu_freq()}", self
         )
         self.cpu_group_box_layout.addWidget(self.cpu_freq_stats_label)
 
@@ -180,3 +180,10 @@ class SystemSummaryWidget(QWidget):
         self.layout.addWidget(self.gpu_group_box)
 
         self.setLayout(self.layout)
+
+    def _cpu_freq(self) -> str:
+        try:
+            return f'{round(psutil.cpu_freq().current, 2)} Mhz'
+        except FileNotFoundError:
+            # On some systems we can't deternmine the CPU speed, this should not crash Aydin...
+            return 'unavailable'
