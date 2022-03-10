@@ -76,8 +76,7 @@ class DenoiseTab(QWidget):
             for t in zip(*sorted(zip(backend_options, backend_options_descriptions)))
         )
 
-        self.basic_backend_options = [
-            'Classic-butterworth',
+        _basic_backend_options = ['Classic-butterworth',
             'Classic-gaussian',
             'Classic-gm',
             'Classic-nlm',
@@ -87,6 +86,8 @@ class DenoiseTab(QWidget):
             'Noise2SelfFGR-lgbm',
             'Noise2SelfFGR-random_forest',
         ]
+
+        self.basic_backend_options = [bo for bo in self.backend_options if bo in _basic_backend_options]
 
         self.basic_backend_options_descriptions = [
             description
