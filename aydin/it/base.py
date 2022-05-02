@@ -6,7 +6,7 @@ from os.path import join
 from typing import Union, List, Optional, Tuple
 import jsonpickle
 import numpy
-import psutil
+
 
 from aydin.analysis.blind_spot_analysis import auto_detect_blindspots
 from aydin.it.exceptions.base import ArrayShapeDoesNotMatchError
@@ -191,7 +191,14 @@ class ImageTranslatorBase(ABC):
         """
         # TODO: make sure if this makes sense with GPU too
         # By default there is no memory needed and all memory is available
-        return 0, psutil.virtual_memory().total
+        try:
+            import psutil
+            return 0, psutil.virtual_memory().total
+        except ImportError:
+            # If we have issues measuring the amount of memory, gracefully fail:
+            lprint("Error: we could not measure the amount of total and available memory in the system!")
+            return 0, 16e9 # we assume at least 16gigabytes available
+
 
     def train(
         self,

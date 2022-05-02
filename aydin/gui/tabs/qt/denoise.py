@@ -76,6 +76,7 @@ class DenoiseTab(QWidget):
             for t in zip(*sorted(zip(backend_options, backend_options_descriptions)))
         )
 
+        # this is the list of basic backend options:
         _basic_backend_options = ['Classic-butterworth',
             'Classic-gaussian',
             'Classic-gm',
@@ -87,7 +88,9 @@ class DenoiseTab(QWidget):
             'Noise2SelfFGR-random_forest',
         ]
 
+        # We filter out from that list all unavailable backend options:
         self.basic_backend_options = [bo for bo in self.backend_options if bo in _basic_backend_options]
+
 
         self.basic_backend_options_descriptions = [
             description

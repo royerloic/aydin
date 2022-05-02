@@ -1,5 +1,4 @@
 import numpy
-import psutil
 import tempfile
 from typing import Tuple, Union, Generator
 
@@ -37,19 +36,26 @@ def offcore_array(
         size_in_bytes = numpy.prod(shape) * numpy.dtype(dtype).itemsize
         lprint(f'Array requested will be {(size_in_bytes / 1E6)} MB.')
 
-        total_physical_memory_in_bytes = psutil.virtual_memory().total
-        total_swap_memory_in_bytes = psutil.swap_memory().total
+        try:
+            import psutil
+            total_physical_memory_in_bytes = psutil.virtual_memory().total
+            total_swap_memory_in_bytes = psutil.swap_memory().total
 
-        total_mem_in_bytes = total_physical_memory_in_bytes + total_swap_memory_in_bytes
-        lprint(
-            f'There is {int(psutil.virtual_memory().total / 1E6)} MB of physical memory'
-        )
-        lprint(f'There is {int(psutil.swap_memory().total / 1E6)} MB of swap memory')
-        lprint(f'There is {int(total_mem_in_bytes / 1E6)} MB of total memory')
+            total_mem_in_bytes = total_physical_memory_in_bytes + total_swap_memory_in_bytes
+            lprint(
+                f'There is {int(psutil.virtual_memory().total / 1E6)} MB of physical memory'
+            )
+            lprint(f'There is {int(psutil.swap_memory().total / 1E6)} MB of swap memory')
+            lprint(f'There is {int(total_mem_in_bytes / 1E6)} MB of total memory')
 
-        is_enough_total_memory = (
-            size_in_bytes < max_memory_usage_ratio * total_mem_in_bytes
-        )
+            is_enough_total_memory = (
+                size_in_bytes < max_memory_usage_ratio * total_mem_in_bytes
+            )
+        except ImportError:
+            # If we have issues measuring the amount of memory, gracefully fail:
+            lprint("Error: we could not measure the amount of total and available memory in the system!")
+            is_enough_total_memory = True
+
 
         if not force_memmap and is_enough_total_memory:
             lprint(
