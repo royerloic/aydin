@@ -42,7 +42,7 @@ class StandardFeatureGenerator(ExtensibleFeatureGenerator):
         num_lowpass_features: int = 8,
         include_dct_features: bool = False,
         dct_max_freq: float = 0.5,
-        include_particle_features: bool = True,
+        include_particle_features: bool = False,
         particle_min_sigma: float = 0.5,
         particle_max_sigma: float = 1.0,
         particle_num_filters: int = 4,

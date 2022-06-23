@@ -253,7 +253,7 @@ class ExtensibleFeatureGenerator(FeatureGeneratorBase):
 
                                 for feature_group in self.features_group_list:
                                     lprint(
-                                        f'Computing feature {feature_group}, '  # , and kwargs={kwargs}'
+                                        f'Computing feature {type(feature_group).__name__}, '  # , and kwargs={kwargs}'
                                     )
 
                                     # number of features in group:

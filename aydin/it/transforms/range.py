@@ -137,7 +137,7 @@ class RangeTransform(ImageTransformBase):
             force_float_datatype = self.force_float_datatype
 
             # Let's figure out if it is reasonable to keep the denoised data as float:
-            if force_float_datatype is False and numpy.issubdtype(
+            if not force_float_datatype and numpy.issubdtype(
                 self._original_dtype, numpy.integer
             ):
                 range = abs(self._max_value - self._min_value)
@@ -147,6 +147,5 @@ class RangeTransform(ImageTransformBase):
             new_array = self._normaliser.denormalise(
                 array, leave_as_float=force_float_datatype, clip=self.clip
             )
-            new_array = new_array.astype(self._original_dtype, copy=False)
 
             return new_array
