@@ -342,7 +342,8 @@ class Classic(DenoiseRestorationBase):
                 tile_size=kwargs['tile_size'] if 'tile_size' in kwargs else None,
             )
 
-            response = response.astype(noisy_image.dtype, copy=False)
+            # This cannot be done this way as it causes overflows, must be handled in the normalisation code.
+            # response = response.astype(noisy_image.dtype, copy=False)
 
             return response
 

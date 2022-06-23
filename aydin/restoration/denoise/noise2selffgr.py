@@ -301,8 +301,6 @@ class Noise2SelfFGR(DenoiseRestorationBase):
                 tile_size=kwargs['tile_size'] if 'tile_size' in kwargs else None,
             )
 
-            response = response.astype(noisy_image.dtype, copy=False)
-
             return response
 
 
