@@ -82,6 +82,9 @@ pip install -e .
 # Install development specific dependencies
 pip install -r requirements/development.txt
 
+# If you have an NVIDIA graphics card and installed drivers, you can install the cudatoolkit:
+conda install cudatoolkit
+
 # Before making a PR make sure tests are passing
 # To run tests
 python -m pytest . --disable-pytest-warnings --show-capture=stderr

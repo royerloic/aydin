@@ -35,6 +35,7 @@ class CBRegressor(RegressorBase):
         max_bin: int = None,
         learning_rate: Optional[float] = None,
         loss: str = 'l1',
+        quantisation_mode: str = 'mixed',
         patience: int = 32,
         compute_load: float = 0.95,
         gpu: bool = True,
@@ -69,6 +70,7 @@ class CBRegressor(RegressorBase):
             also leads to longer training and more memory consumption. We do not
             recommend changing this parameter.
             When using GPU training the number of bins must be equal or below 254.
+            The default value (None) is 254 for GPU training and 512 for CPU training.
             (advanced)
 
         learning_rate : Optional[float]
@@ -83,6 +85,16 @@ class CBRegressor(RegressorBase):
             'Expectile:alpha=0.5' for expectile loss with alpha parameter set to 0.5,
             or 'expectile' as a shortcut for 'Expectile:alpha=0.5'.
             We recommend using: 'l1', 'l2', and 'Poisson'.
+            (advanced)
+
+        quantisation_mode: str
+            Before learning, the possible values of features are divided into
+            disjoint ranges (buckets) delimited by the threshold values (splits).
+            The number of bins is set by the max_bin parameter above. The different
+            strategies for splitting the range are: 'median' all buckets have
+            equal occupancy, 'uniform'all buckets have the same width, 'mixed'
+            combines splits from both uniform and median, 'greedylogsum' default
+            CatBoost quantisation.
             (advanced)
 
         patience : int
@@ -120,6 +132,7 @@ class CBRegressor(RegressorBase):
             self.max_bin = max_bin
         self.learning_rate = learning_rate
         self.metric = loss
+        self.quantisation_mode = quantisation_mode
         self.early_stopping_rounds = patience
         self.compute_load = compute_load
 
@@ -178,6 +191,16 @@ class CBRegressor(RegressorBase):
             iterations = self.max_num_estimators
         lprint(f'max_num_estimators: {iterations}')
 
+        quantisation_mode = self.quantisation_mode.lower().strip()
+        if quantisation_mode == 'median':
+            quantisation_mode = 'Median'
+        elif quantisation_mode == 'uniform':
+            quantisation_mode = 'Uniform'
+        elif quantisation_mode == 'mixed':
+            quantisation_mode = 'UniformAndQuantiles'
+        elif quantisation_mode == 'greedylogsum':
+            quantisation_mode = 'GreedyLogSum'
+
         params = {
             "iterations": iterations,
             "task_type": "GPU" if use_gpu else "CPU",
@@ -199,7 +222,7 @@ class CBRegressor(RegressorBase):
             'bagging_temperature': 1,
             'min_data_in_leaf': min_data_in_leaf,
             'l2_leaf_reg': 30,
-            'feature_border_type': 'UniformAndQuantiles',
+            'feature_border_type': quantisation_mode,
             # 'verbose_eval' : 10,
             'metric_period': 50 if use_gpu else 1,
             # "num_leaves": self.num_leaves,

@@ -4,6 +4,7 @@ from aydin.features.extensible_features import ExtensibleFeatureGenerator
 from aydin.features.groups.dct import DCTFeatures
 from aydin.features.groups.lowpass import LowPassFeatures
 from aydin.features.groups.median import MedianFeatures
+from aydin.features.groups.particle import ParticleFeatures
 from aydin.features.groups.random import RandomFeatures
 from aydin.features.groups.spatial import SpatialFeatures
 from aydin.features.groups.uniform import UniformFeatures
@@ -41,6 +42,10 @@ class StandardFeatureGenerator(ExtensibleFeatureGenerator):
         num_lowpass_features: int = 8,
         include_dct_features: bool = False,
         dct_max_freq: float = 0.5,
+        include_particle_features: bool = True,
+        particle_min_sigma: float = 0.5,
+        particle_max_sigma: float = 1.0,
+        particle_num_filters: int = 4,
         include_random_conv_features: bool = False,
         dtype: numpy.dtype = numpy.float32,
     ):
@@ -157,11 +162,23 @@ class StandardFeatureGenerator(ExtensibleFeatureGenerator):
             Should be a number within [0, 1]
             (advanced)
 
+        include_particle_features : bool
+            When True paticle features are included.
+            (advanced)
+
+        particle_min_sigma : float
+            Minimum sigma of particle feature gaussian.
+
+        particle_max_sigma : float
+            Maximum sigma of particle feature gaussian.
+
+        particle_num_filters : int
+            Number of particle features within sigma range of [min_sigma, max_sigma].
+
         include_random_conv_features : bool
             When True random convolutional features are included.
             This is experimental and of academic interest only.
             (advanced)
-
 
         dtype
             Datatype of the features
@@ -194,7 +211,7 @@ class StandardFeatureGenerator(ExtensibleFeatureGenerator):
             self.add_feature_group(spatial)
 
         if num_sinusoidal_features > 0:
-            periods = list([1 / 2**i for i in range(num_sinusoidal_features)])
+            periods = list([1 / 2 ** i for i in range(num_sinusoidal_features)])
             for period in periods:
                 spatial = SpatialFeatures(period=period)
                 self.add_feature_group(spatial)
@@ -223,3 +240,11 @@ class StandardFeatureGenerator(ExtensibleFeatureGenerator):
         if include_lowpass_features:
             lowpass = LowPassFeatures(num_features=num_lowpass_features)
             self.add_feature_group(lowpass)
+
+        if include_particle_features:
+            particle = ParticleFeatures(
+                min_sigma=particle_min_sigma,
+                max_sigma=particle_max_sigma,
+                num_features=particle_num_filters,
+            )
+            self.add_feature_group(particle)

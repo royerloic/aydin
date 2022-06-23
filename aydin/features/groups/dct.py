@@ -20,9 +20,11 @@ class DCTFeatures(CorrelationFeatures):
         ----------
         size : int
             Size of the DCT filters
+
         max_freq : float
             Maximum frequency of DCT filters
             (advanced)
+
         power : float
             Filters can be exponentiated to a given power to change behaviour.
             (advanced)
