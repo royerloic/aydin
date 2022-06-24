@@ -168,12 +168,15 @@ class StandardFeatureGenerator(ExtensibleFeatureGenerator):
 
         particle_min_sigma : float
             Minimum sigma of particle feature gaussian.
+            (advanced)
 
         particle_max_sigma : float
             Maximum sigma of particle feature gaussian.
+            (advanced)
 
         particle_num_filters : int
             Number of particle features within sigma range of [min_sigma, max_sigma].
+            (advanced)
 
         include_random_conv_features : bool
             When True random convolutional features are included.
