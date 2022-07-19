@@ -163,7 +163,7 @@ class StandardFeatureGenerator(ExtensibleFeatureGenerator):
             (advanced)
 
         include_particle_features : bool
-            When True paticle features are included.
+            When True particle features are included.
             (advanced)
 
         particle_min_sigma : float

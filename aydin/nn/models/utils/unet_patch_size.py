@@ -10,9 +10,9 @@ def get_ideal_patch_size(nb_unet_levels, training_architecture):
         * 2
     )
 
-    patch_size -= patch_size % 2**nb_unet_levels
+    patch_size -= patch_size % 2 ** nb_unet_levels
 
-    if patch_size < 2**nb_unet_levels:
+    if patch_size < 2 ** nb_unet_levels:
         raise ValueError('Number of layers is too large for given patch size.')
 
     lprint(f'Patch size: {patch_size}')

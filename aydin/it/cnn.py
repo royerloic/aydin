@@ -278,11 +278,11 @@ class ImageTranslatorCNN(ImageTranslatorBase):
             # Check patch_size for unet models
             if 'unet' in self.model_architecture:
                 patch_size = numpy.array(self.patch_size)
-                if (patch_size.max() / (2**self.nb_unet_levels) <= 0).any():
+                if (patch_size.max() / (2 ** self.nb_unet_levels) <= 0).any():
                     raise ValueError(
                         f'Tile size is too small. The largest dimension of tile size has to be >= {2 ** self.nb_unet_levels}.'
                     )
-                if (patch_size[-2:] % 2**self.nb_unet_levels != 0).any():
+                if (patch_size[-2:] % 2 ** self.nb_unet_levels != 0).any():
                     raise ValueError(
                         f'Tile sizes on XY plane have to be multiple of 2^{self.nb_unet_levels}'
                     )
@@ -388,7 +388,7 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                     numpy.mod(
                         img_train.shape[1:][:-1],
                         numpy.repeat(
-                            2**self.nb_unet_levels, len(img_train.shape[1:][:-1])
+                            2 ** self.nb_unet_levels, len(img_train.shape[1:][:-1])
                         ),
                     )
                     != 0
@@ -580,11 +580,11 @@ class ImageTranslatorCNN(ImageTranslatorBase):
                 input_image = numpy.pad(input_image, pad_width1, 'edge')
                 spatial_shape = numpy.array(input_image.shape[1:-1])
 
-            if not (spatial_shape % 2**self.nb_unet_levels == 0).all():
+            if not (spatial_shape % 2 ** self.nb_unet_levels == 0).all():
                 reshaped_for_model = True
                 pad_width0 = (
-                    2**self.nb_unet_levels
-                    - (spatial_shape % 2**self.nb_unet_levels)
+                    2 ** self.nb_unet_levels
+                    - (spatial_shape % 2 ** self.nb_unet_levels)
                     # + pad_square
                 ) / 2
                 pad_width2 = (
